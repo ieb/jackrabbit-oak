@@ -36,6 +36,7 @@ import org.apache.jackrabbit.oak.security.authentication.token.TokenConfiguratio
 import org.apache.jackrabbit.oak.security.authorization.AuthorizationConfigurationImpl;
 import org.apache.jackrabbit.oak.security.principal.PrincipalConfigurationImpl;
 import org.apache.jackrabbit.oak.security.privilege.PrivilegeConfigurationImpl;
+import org.apache.jackrabbit.oak.security.tenant.TenantConfigurationImpl;
 import org.apache.jackrabbit.oak.security.user.UserConfigurationImpl;
 import org.apache.jackrabbit.oak.spi.security.ConfigurationBase;
 import org.apache.jackrabbit.oak.spi.security.ConfigurationParameters;
@@ -49,6 +50,7 @@ import org.apache.jackrabbit.oak.spi.security.authorization.accesscontrol.Access
 import org.apache.jackrabbit.oak.spi.security.principal.CompositePrincipalConfiguration;
 import org.apache.jackrabbit.oak.spi.security.principal.PrincipalConfiguration;
 import org.apache.jackrabbit.oak.spi.security.privilege.PrivilegeConfiguration;
+import org.apache.jackrabbit.oak.spi.security.tenant.TenantConfiguration;
 import org.apache.jackrabbit.oak.spi.security.user.UserConfiguration;
 import org.apache.jackrabbit.oak.spi.security.user.UserConstants;
 import org.apache.jackrabbit.oak.spi.whiteboard.Whiteboard;
@@ -76,6 +78,10 @@ public class SecurityProviderImpl implements SecurityProvider, WhiteboardAware {
 
     @Reference
     private volatile UserConfiguration userConfiguration;
+
+    @Reference
+    private volatile TenantConfiguration tenantConfiguration;
+
 
     @Reference(referenceInterface = PrincipalConfiguration.class,
             name = "principalConfiguration",
@@ -123,6 +129,7 @@ public class SecurityProviderImpl implements SecurityProvider, WhiteboardAware {
         authorizationConfiguration = new AuthorizationConfigurationImpl(this);
         userConfiguration = new UserConfigurationImpl(this);
         privilegeConfiguration = new PrivilegeConfigurationImpl();
+        tenantConfiguration = new TenantConfigurationImpl();
 
         principalConfiguration.setDefaultConfig(new PrincipalConfigurationImpl(this));
         tokenConfiguration.setDefaultConfig(new TokenConfigurationImpl(this));
@@ -163,6 +170,7 @@ public class SecurityProviderImpl implements SecurityProvider, WhiteboardAware {
         scs.add(principalConfiguration);
         scs.add(privilegeConfiguration);
         scs.add(tokenConfiguration);
+        scs.add(tenantConfiguration);
         return scs;
     }
 
@@ -182,6 +190,8 @@ public class SecurityProviderImpl implements SecurityProvider, WhiteboardAware {
             return (T) privilegeConfiguration;
         } else if (TokenConfiguration.class == configClass) {
             return (T) tokenConfiguration;
+        } else if (TenantConfiguration.class == configClass) {
+            return (T) tenantConfiguration;
         } else {
             throw new IllegalArgumentException("Unsupported security configuration class " + configClass);
         }
@@ -239,6 +249,7 @@ public class SecurityProviderImpl implements SecurityProvider, WhiteboardAware {
                 UserConstants.PARAM_USER_AUTHENTICATION_FACTORY, userAuthenticationFactory);
         initConfiguration(userConfiguration, ConfigurationParameters.of(userMap));
 
+        initConfiguration(tenantConfiguration);
         initConfiguration(authenticationConfiguration);
         initConfiguration(privilegeConfiguration);
     }

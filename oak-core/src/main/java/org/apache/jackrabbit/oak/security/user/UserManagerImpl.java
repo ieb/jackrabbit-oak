@@ -40,6 +40,7 @@ import org.apache.jackrabbit.api.security.user.UserManager;
 import org.apache.jackrabbit.oak.api.Root;
 import org.apache.jackrabbit.oak.api.Tree;
 import org.apache.jackrabbit.oak.api.Type;
+import org.apache.jackrabbit.oak.core.TenantUtil;
 import org.apache.jackrabbit.oak.namepath.NamePathMapper;
 import org.apache.jackrabbit.oak.plugins.nodetype.ReadOnlyNodeTypeManager;
 import org.apache.jackrabbit.oak.security.user.query.UserQueryManager;
@@ -79,8 +80,11 @@ public class UserManagerImpl implements UserManager {
     private UserQueryManager queryManager;
     private ReadOnlyNodeTypeManager ntMgr;
 
+    private String tenantId;
+
     public UserManagerImpl(Root root, NamePathMapper namePathMapper, SecurityProvider securityProvider) {
         this.root = root;
+        this.tenantId = TenantUtil.getTenantId(root);
         this.namePathMapper = namePathMapper;
         this.securityProvider = securityProvider;
 
@@ -434,5 +438,9 @@ public class UserManagerImpl implements UserManager {
             queryManager = new UserQueryManager(this, namePathMapper, config, root);
         }
         return queryManager;
+    }
+
+    public String getTenantId() {
+        return tenantId;
     }
 }

@@ -17,6 +17,8 @@
 package org.apache.jackrabbit.oak.spi.security.authentication;
 
 import org.apache.jackrabbit.oak.api.AuthInfo;
+import org.apache.jackrabbit.oak.core.TenantUtil;
+import org.apache.jackrabbit.oak.security.tenant.TenantCredentials;
 
 import javax.jcr.Credentials;
 
@@ -24,14 +26,17 @@ import javax.jcr.Credentials;
  * Implementation of the JCR {@code Credentials} interface used to distinguish
  * a regular login request from {@link javax.jcr.Session#impersonate(javax.jcr.Credentials)}.
  */
-public class ImpersonationCredentials implements Credentials {
+public class ImpersonationCredentials implements Credentials, TenantCredentials {
 
+    private static final long serialVersionUID = 9067645908446635211L;
     private final Credentials baseCredentials;
     private final AuthInfo authInfo;
+    private String tenantId;
 
     public ImpersonationCredentials(Credentials baseCredentials, AuthInfo authInfo) {
         this.baseCredentials = baseCredentials;
         this.authInfo = authInfo;
+        this.tenantId = TenantUtil.getTenantId(baseCredentials);
     }
 
     /**
@@ -55,5 +60,10 @@ public class ImpersonationCredentials implements Credentials {
      */
     public AuthInfo getImpersonatorInfo() {
         return authInfo;
+    }
+
+    @Override
+    public String getTenantId() {
+        return tenantId;
     }
 }

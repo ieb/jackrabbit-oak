@@ -89,9 +89,9 @@ class UserImpl extends AuthorizableImpl implements User {
     public Credentials getCredentials() {
         String pwHash = getPasswordHash();
         if (pwHash == null) {
-            return new UserIdCredentials(getID());
+            return new UserIdCredentials(getID(), getUserManager().getTenantId());
         } else {
-            return new CredentialsImpl(getID(), pwHash);
+            return new CredentialsImpl(getID(), pwHash, getUserManager().getTenantId());
         }
     }
 

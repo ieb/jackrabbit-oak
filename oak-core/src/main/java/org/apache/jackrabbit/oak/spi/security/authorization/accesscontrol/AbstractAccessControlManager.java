@@ -34,12 +34,15 @@ import org.apache.jackrabbit.api.security.authorization.PrivilegeManager;
 import org.apache.jackrabbit.oak.api.Root;
 import org.apache.jackrabbit.oak.api.Tree;
 import org.apache.jackrabbit.oak.commons.PathUtils;
+import org.apache.jackrabbit.oak.core.TenantUtil;
 import org.apache.jackrabbit.oak.namepath.NamePathMapper;
 import org.apache.jackrabbit.oak.spi.security.SecurityProvider;
 import org.apache.jackrabbit.oak.spi.security.authorization.AuthorizationConfiguration;
 import org.apache.jackrabbit.oak.spi.security.authorization.permission.PermissionProvider;
 import org.apache.jackrabbit.oak.spi.security.authorization.permission.Permissions;
 import org.apache.jackrabbit.oak.spi.security.privilege.PrivilegeConfiguration;
+import org.apache.jackrabbit.oak.spi.security.tenant.TenantConfiguration;
+import org.apache.jackrabbit.oak.spi.security.tenant.TenantControlManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,6 +59,7 @@ public abstract class AbstractAccessControlManager implements JackrabbitAccessCo
     private final String workspaceName;
     private final NamePathMapper namePathMapper;
     private final AuthorizationConfiguration config;
+    private final TenantControlManager tenantControlManager;
     private final PrivilegeManager privilegeManager;
 
     private PermissionProvider permissionProvider;
@@ -69,6 +73,7 @@ public abstract class AbstractAccessControlManager implements JackrabbitAccessCo
 
         privilegeManager = securityProvider.getConfiguration(PrivilegeConfiguration.class).getPrivilegeManager(root, namePathMapper);
         config = securityProvider.getConfiguration(AuthorizationConfiguration.class);
+        tenantControlManager = securityProvider.getConfiguration(TenantConfiguration.class).getTenantControlManager(TenantUtil.getTenantId(root));
     }
 
     //-----------------------------------------------< AccessControlManager >---
@@ -169,6 +174,10 @@ public abstract class AbstractAccessControlManager implements JackrabbitAccessCo
         // check if the tree defines access controlled content
         if (checkAcContent && config.getContext().definesTree(tree)) {
             throw new AccessControlException("Tree " + tree.getPath() + " defines access control content.");
+        }
+        // check if the tree doesnt belong to this tenant access
+        if (!tenantControlManager.canAccess(tree)) {
+            throw new AccessControlException("Tree " + tree.getPath() + " is not part of current tenant.");
         }
         return tree;
     }

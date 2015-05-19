@@ -160,7 +160,15 @@ public class ContentRepositoryImpl implements ContentRepository, Closeable {
         LoginContext loginContext = lcProvider.getLoginContext(credentials, workspaceName);
         loginContext.login();
 
-        return new ContentSessionImpl(loginContext, securityProvider, workspaceName, nodeStore,
+        // this is the most pragmatic way of getting the tenantId at the moment. It could be null if the credentials
+        // dont have a tenant. 
+        // The other route is loginContext, but loginContext doesn't support tenants at present and after login
+        // the callbacks are not available.
+        // eventually loginContext will need to be able to get the tenant to validate that the user is a member of the tenant,
+        // but that could be considered to be part of the credentials.
+        String tenantId = TenantUtil.getTenantId(credentials);
+        
+        return new ContentSessionImpl(loginContext, securityProvider, workspaceName, tenantId, nodeStore,
                 commitHook, queryEngineSettings, indexProvider);
     }
 

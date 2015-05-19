@@ -29,11 +29,18 @@ public final class PreAuthenticatedLogin {
 
     private final String userId;
 
-    public PreAuthenticatedLogin(String userId) {
+    private final String tenantId;
+
+    public PreAuthenticatedLogin(String userId, String tenantId) {
         this.userId = userId;
+        this.tenantId = tenantId;
     }
 
     public String getUserId() {
         return userId;
+    }
+
+    public String getTenantId() {
+        return tenantId;
     }
 }

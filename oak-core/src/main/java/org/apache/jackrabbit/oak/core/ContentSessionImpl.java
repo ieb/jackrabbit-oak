@@ -57,6 +57,7 @@ class ContentSessionImpl implements ContentSession {
     private final QueryEngineSettings queryEngineSettings;
     private final QueryIndexProvider indexProvider;
     private final String sessionName;
+    private String tenantId;
 
     /**
      * Flag to indicate whether this session is still alive.
@@ -64,9 +65,11 @@ class ContentSessionImpl implements ContentSession {
      */
     private boolean live = true;
 
+
     public ContentSessionImpl(@Nonnull LoginContext loginContext,
                               @Nonnull SecurityProvider securityProvider,
                               @Nonnull String workspaceName,
+                              @Nonnull String tenantId,
                               @Nonnull NodeStore store,
                               @Nonnull CommitHook hook,
                               QueryEngineSettings queryEngineSettings,
@@ -74,6 +77,15 @@ class ContentSessionImpl implements ContentSession {
         this.loginContext = loginContext;
         this.securityProvider = securityProvider;
         this.workspaceName = workspaceName;
+        this.tenantId = tenantId;
+        if (tenantId == null) {
+            log.warn("Content session without tenant detected, see debug logging for source");
+            if (log.isDebugEnabled()) {
+                log.debug("Source of tenant less login ",new Exception("traceback"));
+            }
+        } else {
+            log.info("Content session with tenant {} ", tenantId);
+        }
         this.store = store;
         this.hook = hook;
         this.queryEngineSettings = queryEngineSettings;
@@ -125,6 +137,10 @@ class ContentSessionImpl implements ContentSession {
     @Override
     public String toString() {
         return sessionName;
+    }
+
+    public String getTenantId() {
+        return tenantId;
     }
 
 }

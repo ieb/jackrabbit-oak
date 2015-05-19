@@ -62,7 +62,7 @@ public class SystemRoot extends MutableRoot {
                       @Nonnull final QueryIndexProvider indexProvider) {
         this(store, hook, workspaceName, securityProvider, queryEngineSettings, indexProvider,
                 new ContentSessionImpl(
-                        LOGIN_CONTEXT, securityProvider, workspaceName,
+                        LOGIN_CONTEXT, securityProvider, workspaceName, TenantUtil.SYSTEM_TENANT,
                         store, hook, queryEngineSettings, indexProvider) {
                     @Nonnull
                     @Override

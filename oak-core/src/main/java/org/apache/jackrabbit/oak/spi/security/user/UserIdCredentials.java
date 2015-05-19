@@ -19,22 +19,32 @@ package org.apache.jackrabbit.oak.spi.security.user;
 import javax.annotation.Nonnull;
 import javax.jcr.Credentials;
 
+import org.apache.jackrabbit.oak.security.tenant.TenantCredentials;
+
 /**
  * Credentials implementation that only contains a {@code userId} but no password.
  * It can be used for {@link org.apache.jackrabbit.api.security.user.User#getCredentials()},
  * where the corresponding user doesn't have a password set.
  */
-public final class UserIdCredentials implements Credentials {
+public final class UserIdCredentials implements Credentials, TenantCredentials {
 
+    private static final long serialVersionUID = -3568487785581562804L;
     private final String userId;
+    private String tenantId;
 
-    public UserIdCredentials(@Nonnull String userId) {
+    public UserIdCredentials(@Nonnull String userId, @Nonnull String tenantId) {
         this.userId = userId;
+        this.tenantId = tenantId;
     }
 
     @Nonnull
     public String getUserId() {
         return userId;
+    }
+
+    @Override
+    public String getTenantId() {
+        return tenantId;
     }
 
 }

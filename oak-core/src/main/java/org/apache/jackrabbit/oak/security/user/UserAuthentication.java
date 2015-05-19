@@ -114,6 +114,8 @@ class UserAuthentication implements Authentication, UserConstants {
             if (credentials instanceof SimpleCredentials) {
                 SimpleCredentials creds = (SimpleCredentials) credentials;
                 Credentials userCreds = user.getCredentials();
+                // NB: The credentials in userCreds will have a SystemTenant as the user manager that created them was the login session.
+                // userCreds must not be used to login, only to validate credentials.
                 if (userId.equals(creds.getUserID()) && userCreds instanceof CredentialsImpl) {
                     success = PasswordUtil.isSame(((CredentialsImpl) userCreds).getPasswordHash(), creds.getPassword());
                 }

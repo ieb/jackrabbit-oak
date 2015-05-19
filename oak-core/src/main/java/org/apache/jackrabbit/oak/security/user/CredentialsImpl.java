@@ -21,18 +21,24 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.jcr.Credentials;
 
+import org.apache.jackrabbit.oak.security.tenant.TenantCredentials;
+
 /**
  * Credentials implementation to cover
  * {@link org.apache.jackrabbit.api.security.user.User#getCredentials()}
  */
-public class CredentialsImpl implements Credentials {
+public class CredentialsImpl implements Credentials, TenantCredentials {
+
+    private static final long serialVersionUID = 8817273895276829373L;
 
     private final String userId;
     private final String pwHash;
+    private String tenantId;
 
-    CredentialsImpl(@Nonnull String userId, @Nullable String pwHash) {
+    CredentialsImpl(@Nonnull String userId, @Nullable String pwHash, @Nonnull String tenantId) {
         this.userId = userId;
         this.pwHash = pwHash;
+        this.tenantId = tenantId;
     }
 
     @Nonnull
@@ -43,5 +49,10 @@ public class CredentialsImpl implements Credentials {
     @CheckForNull
     public String getPasswordHash() {
         return pwHash;
+    }
+
+    @Override
+    public String getTenantId() {
+        return tenantId;
     }
 }
