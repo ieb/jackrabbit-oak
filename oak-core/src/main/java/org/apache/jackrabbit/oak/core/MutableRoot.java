@@ -126,7 +126,8 @@ class MutableRoot implements Root {
             return getAcConfig().getPermissionProvider(
                     MutableRoot.this,
                     getContentSession().getWorkspaceName(),
-                    subject.getPrincipals());
+                    subject.getPrincipals(),
+                    getContentSession().getTenantId());
         }
     };
 
@@ -269,7 +270,7 @@ class MutableRoot implements Root {
         List<CommitHook> hooks = newArrayList();
 
         hooks.add(hook);
-
+        String tenantId = session.getTenantId();
         List<CommitHook> postValidationHooks = new ArrayList<CommitHook>();
         for (SecurityConfiguration sc : securityProvider.getConfigurations()) {
             for (CommitHook ch : sc.getCommitHooks(workspaceName)) {
@@ -280,7 +281,7 @@ class MutableRoot implements Root {
                 }
             }
 
-            List<? extends ValidatorProvider> validators = sc.getValidators(workspaceName, subject.getPrincipals(), moveTracker);
+            List<? extends ValidatorProvider> validators = sc.getValidators(workspaceName, subject.getPrincipals(), tenantId, moveTracker);
             if (!validators.isEmpty()) {
                 hooks.add(new EditorHook(CompositeEditorProvider.compose(validators)));
             }

@@ -98,7 +98,7 @@ public class PermissionProviderImplTest extends AbstractSecurityTest implements 
     }
 
     private PermissionProvider createPermissionProvider(ContentSession session) {
-        return config.getPermissionProvider(session.getLatestRoot(), session.getWorkspaceName(), session.getAuthInfo().getPrincipals());
+        return config.getPermissionProvider(session.getLatestRoot(), session.getWorkspaceName(), session.getAuthInfo().getPrincipals(), "testtenant");
     }
 
     @Test

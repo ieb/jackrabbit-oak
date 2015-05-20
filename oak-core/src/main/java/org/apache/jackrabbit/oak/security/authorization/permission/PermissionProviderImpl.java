@@ -18,6 +18,7 @@ package org.apache.jackrabbit.oak.security.authorization.permission;
 
 import java.security.Principal;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Set;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -26,10 +27,12 @@ import org.apache.jackrabbit.JcrConstants;
 import org.apache.jackrabbit.oak.api.PropertyState;
 import org.apache.jackrabbit.oak.api.Root;
 import org.apache.jackrabbit.oak.api.Tree;
+import org.apache.jackrabbit.oak.core.TenantUtil;
 import org.apache.jackrabbit.oak.plugins.tree.RootFactory;
 import org.apache.jackrabbit.oak.plugins.tree.impl.ImmutableTree;
 import org.apache.jackrabbit.oak.plugins.tree.TreeLocation;
 import org.apache.jackrabbit.oak.plugins.version.VersionConstants;
+import org.apache.jackrabbit.oak.spi.security.SecurityProvider;
 import org.apache.jackrabbit.oak.spi.security.authorization.AuthorizationConfiguration;
 import org.apache.jackrabbit.oak.spi.security.authorization.accesscontrol.AccessControlConstants;
 import org.apache.jackrabbit.oak.spi.security.authorization.permission.AggregatedPermissionProvider;
@@ -41,6 +44,9 @@ import org.apache.jackrabbit.oak.spi.security.authorization.permission.TreePermi
 import org.apache.jackrabbit.oak.spi.security.principal.AdminPrincipal;
 import org.apache.jackrabbit.oak.spi.security.principal.SystemPrincipal;
 import org.apache.jackrabbit.oak.spi.security.privilege.PrivilegeBits;
+import org.apache.jackrabbit.oak.spi.security.tenant.TenantConfiguration;
+import org.apache.jackrabbit.oak.spi.security.tenant.TenantControlManager;
+import org.slf4j.LoggerFactory;
 
 public class PermissionProviderImpl implements PermissionProvider, AccessControlConstants, PermissionConstants, AggregatedPermissionProvider {
 
@@ -54,18 +60,21 @@ public class PermissionProviderImpl implements PermissionProvider, AccessControl
 
     private Root immutableRoot;
 
-    public PermissionProviderImpl(@Nonnull Root root, @Nonnull String workspaceName, @Nonnull Set<Principal> principals,
-                                  @Nonnull AuthorizationConfiguration acConfig) {
+    private TenantControlManager tenantControlManager;
+
+    public PermissionProviderImpl(@Nonnull Root root, @Nonnull String workspaceName, @Nonnull Set<Principal> principals, @Nonnull String tenantId,
+                                  @Nonnull AuthorizationConfiguration acConfig, SecurityProvider securityProvider) {
         this.root = root;
         this.workspaceName = workspaceName;
         this.acConfig = acConfig;
 
         immutableRoot = RootFactory.createReadOnlyRoot(root);
+        tenantControlManager = securityProvider.getConfiguration(TenantConfiguration.class).getTenantControlManager(tenantId);
 
         if (principals.contains(SystemPrincipal.INSTANCE) || isAdmin(principals)) {
             compiledPermissions = AllPermissions.getInstance();
         } else {
-            compiledPermissions = CompiledPermissionImpl.create(immutableRoot, workspaceName, principals, acConfig);
+            compiledPermissions = CompiledPermissionImpl.create(immutableRoot, workspaceName, principals, tenantControlManager, acConfig);
         }
     }
 
@@ -78,11 +87,19 @@ public class PermissionProviderImpl implements PermissionProvider, AccessControl
     @Nonnull
     @Override
     public Set<String> getPrivileges(@Nullable Tree tree) {
+        if (!tenantControlManager.canAccess(tree)) {
+            LoggerFactory.getLogger(PermissionProviderImpl.class).info("getPrivileges: Path {} denied by tenantID ", tree.getPath());
+            return new HashSet<String>();
+        }
         return compiledPermissions.getPrivileges(getImmutableTree(tree));
     }
 
     @Override
     public boolean hasPrivileges(@Nullable Tree tree, @Nonnull String... privilegeNames) {
+        if (!tenantControlManager.canAccess(tree)) {
+            LoggerFactory.getLogger(PermissionProviderImpl.class).info("hasPrivileges: Path {} denied by tenantID ", tree.getPath());
+            return false;
+        }
         return compiledPermissions.hasPrivileges(getImmutableTree(tree), privilegeNames);
     }
 
@@ -95,11 +112,21 @@ public class PermissionProviderImpl implements PermissionProvider, AccessControl
     @Nonnull
     @Override
     public TreePermission getTreePermission(@Nonnull Tree tree, @Nonnull TreePermission parentPermission) {
+        if (!tenantControlManager.canAccess(tree)) {
+            LoggerFactory.getLogger(PermissionProviderImpl.class).info("getTreePermission: Path {} denied by tenantID ", tree.getPath());
+            return TreePermission.EMPTY;
+        }
+        LoggerFactory.getLogger(PermissionProviderImpl.class).info("getTreePermission: Path {} granted by tenantID ", tree.getPath());
         return compiledPermissions.getTreePermission(getImmutableTree(tree), parentPermission);
     }
 
     @Override
     public boolean isGranted(@Nonnull Tree tree, @Nullable PropertyState property, long permissions) {
+        if (!tenantControlManager.canAccess(tree)) {
+            LoggerFactory.getLogger(PermissionProviderImpl.class).info("getPrivileges: Path {} denied by tenantID ", tree.getPath());
+            return false;
+        }
+        LoggerFactory.getLogger(PermissionProviderImpl.class).info("getTreePermission: Path {} granted by tenantID ", tree.getPath());
         return compiledPermissions.isGranted(getImmutableTree(tree), property, permissions);
     }
 
@@ -115,7 +142,12 @@ public class PermissionProviderImpl implements PermissionProvider, AccessControl
         if (tree != null) {
             isGranted = isGranted(tree, property, permissions);
         } else if (!isVersionStorePath(oakPath)) {
-            isGranted = compiledPermissions.isGranted(oakPath, permissions);
+            if (!tenantControlManager.canAccessOak(oakPath)) {
+                LoggerFactory.getLogger(PermissionProviderImpl.class).info("isGranted: Oak Path {} denied by tenantID ", oakPath);
+                isGranted = false;
+            } else {
+                isGranted = compiledPermissions.isGranted(oakPath, permissions);                
+            }
         }
         return isGranted;
     }

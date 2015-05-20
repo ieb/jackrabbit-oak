@@ -21,6 +21,7 @@ import java.util.Set;
 
 import javax.annotation.Nonnull;
 
+import org.apache.jackrabbit.oak.core.TenantUtil;
 import org.apache.jackrabbit.oak.plugins.tree.RootFactory;
 import org.apache.jackrabbit.oak.spi.commit.CommitInfo;
 import org.apache.jackrabbit.oak.spi.commit.MoveTracker;
@@ -52,8 +53,9 @@ public class PermissionValidatorProvider extends ValidatorProvider {
 
     private Context acCtx;
     private Context userCtx;
+    private String tenantId;
 
-    public PermissionValidatorProvider(SecurityProvider securityProvider, String workspaceName, Set<Principal> principals, MoveTracker moveTracker) {
+    public PermissionValidatorProvider(SecurityProvider securityProvider, String workspaceName, String tenantId, Set<Principal> principals, MoveTracker moveTracker) {
         this.securityProvider = securityProvider;
         this.acConfig = securityProvider.getConfiguration(AuthorizationConfiguration.class);
 
@@ -62,6 +64,7 @@ public class PermissionValidatorProvider extends ValidatorProvider {
         jr2Permissions = Permissions.getPermissions(compatValue);
 
         this.workspaceName = workspaceName;
+        this.tenantId = tenantId;
         this.principals = principals;
         this.moveTracker = moveTracker;
     }
@@ -71,7 +74,7 @@ public class PermissionValidatorProvider extends ValidatorProvider {
     @Override @Nonnull
     public Validator getRootValidator(
             NodeState before, NodeState after, CommitInfo info) {
-        PermissionProvider pp = acConfig.getPermissionProvider(RootFactory.createReadOnlyRoot(before), workspaceName, principals);
+        PermissionProvider pp = acConfig.getPermissionProvider(RootFactory.createReadOnlyRoot(before), workspaceName, principals, tenantId);
         if (moveTracker.isEmpty()) {
             return new PermissionValidator(before, after, pp, this);
         } else {

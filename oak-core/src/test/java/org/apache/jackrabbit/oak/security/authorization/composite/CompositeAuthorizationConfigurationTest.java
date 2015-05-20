@@ -43,7 +43,7 @@ public class CompositeAuthorizationConfigurationTest extends AbstractSecurityTes
 
     @Test(expected = IllegalStateException.class)
     public void testEmptyGetPermissionProvider() {
-        compositeConfiguration.getPermissionProvider(root, adminSession.getWorkspaceName(), Collections.<Principal>emptySet());
+        compositeConfiguration.getPermissionProvider(root, adminSession.getWorkspaceName(), Collections.<Principal>emptySet(), "testtenant");
     }
 
     @Test

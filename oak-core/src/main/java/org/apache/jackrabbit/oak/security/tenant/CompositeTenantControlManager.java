@@ -21,8 +21,12 @@ import java.util.List;
 
 import org.apache.jackrabbit.oak.api.Tree;
 import org.apache.jackrabbit.oak.spi.security.tenant.TenantControlManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class CompositeTenantControlManager implements TenantControlManager {
+
+    private static final Logger log = LoggerFactory.getLogger(TenantControlManagerImpl.class);
 
     private List<TenantControlManager> mgrs;
 
@@ -34,10 +38,34 @@ public class CompositeTenantControlManager implements TenantControlManager {
     public boolean canAccess(Tree tree) {
         for(TenantControlManager tcm : mgrs) {
             if (tcm.canAccess(tree)) {
+                log.info("TCM {} granted ", tcm);
                 return true;
             }
         }
         return false;
     }
+
+    @Override
+    public boolean canAccess(String absPath) {
+        for(TenantControlManager tcm : mgrs) {
+            if (tcm.canAccess(absPath)) {
+                log.info("TCM {} granted ", tcm);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Override
+    public boolean canAccessOak(String oakPath) {
+        for(TenantControlManager tcm : mgrs) {
+            if (tcm.canAccessOak(oakPath)) {
+                log.info("TCM {} granted ", tcm);
+                return true;
+            }
+        }
+        return false;
+    }
+
 
 }

@@ -84,15 +84,16 @@ public class CompositeAuthorizationConfiguration extends CompositeConfiguration<
     @Override
     public PermissionProvider getPermissionProvider(@Nonnull final Root root,
                                                     @Nonnull final String workspaceName,
-                                                    @Nonnull final Set<Principal> principals) {
+                                                    @Nonnull final Set<Principal> principals,
+                                                    @Nonnull final String tenantId) {
         List<AuthorizationConfiguration> configurations = getConfigurations();
         switch (configurations.size()) {
             case 0: throw new IllegalStateException();
-            case 1: return configurations.get(0).getPermissionProvider(root, workspaceName, principals);
+            case 1: return configurations.get(0).getPermissionProvider(root, workspaceName, principals, tenantId);
             default:
                 List<AggregatedPermissionProvider> aggrPermissionProviders = Lists.newArrayListWithCapacity(configurations.size());
                 for (AuthorizationConfiguration conf : configurations) {
-                    PermissionProvider pProvider = conf.getPermissionProvider(root, workspaceName, principals);
+                    PermissionProvider pProvider = conf.getPermissionProvider(root, workspaceName, principals, tenantId);
                     if (pProvider instanceof AggregatedPermissionProvider) {
                         aggrPermissionProviders.add((AggregatedPermissionProvider) pProvider);
                     }

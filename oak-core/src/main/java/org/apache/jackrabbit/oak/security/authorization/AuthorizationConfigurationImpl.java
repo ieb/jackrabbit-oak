@@ -147,10 +147,10 @@ public class AuthorizationConfigurationImpl extends ConfigurationBase implements
 
     @Nonnull
     @Override
-    public List<ValidatorProvider> getValidators(@Nonnull String workspaceName, @Nonnull Set<Principal> principals, @Nonnull MoveTracker moveTracker) {
+    public List<ValidatorProvider> getValidators(@Nonnull String workspaceName, @Nonnull Set<Principal> principals, @Nonnull String tenantId, @Nonnull MoveTracker moveTracker) {
         return ImmutableList.of(
                 new PermissionStoreValidatorProvider(),
-                new PermissionValidatorProvider(getSecurityProvider(), workspaceName, principals, moveTracker),
+                new PermissionValidatorProvider(getSecurityProvider(), workspaceName, tenantId, principals, moveTracker),
                 new AccessControlValidatorProvider(getSecurityProvider()));
     }
 
@@ -180,8 +180,8 @@ public class AuthorizationConfigurationImpl extends ConfigurationBase implements
 
     @Nonnull
     @Override
-    public PermissionProvider getPermissionProvider(@Nonnull Root root, @Nonnull String workspaceName, @Nonnull Set<Principal> principals) {
-        return new PermissionProviderImpl(root, workspaceName, principals, this);
+    public PermissionProvider getPermissionProvider(@Nonnull Root root, @Nonnull String workspaceName, @Nonnull Set<Principal> principals, @Nonnull String tenantId) {
+        return new PermissionProviderImpl(root, workspaceName, principals, tenantId, this, getSecurityProvider());
     }
 
 }

@@ -379,7 +379,7 @@ public class PermissionHookTest extends AbstractAccessControlTest implements Acc
         // (jcr:all) for the given childPath irrespective of the dynamic nature of
         // the privilege bits in the persisted permission entry.
         Set<Principal> principalSet = ImmutableSet.<Principal>of(EveryonePrincipal.getInstance());
-        PermissionProvider permissionProvider = getConfig(AuthorizationConfiguration.class).getPermissionProvider(root, root.getContentSession().getWorkspaceName(), principalSet);
+        PermissionProvider permissionProvider = getConfig(AuthorizationConfiguration.class).getPermissionProvider(root, root.getContentSession().getWorkspaceName(), principalSet, "testenant");
         Tree childTree = root.getTree(childPath);
         assertTrue(permissionProvider.hasPrivileges(childTree, PrivilegeConstants.JCR_ALL));
         assertTrue(permissionProvider.getPrivileges(childTree).contains(PrivilegeConstants.JCR_ALL));

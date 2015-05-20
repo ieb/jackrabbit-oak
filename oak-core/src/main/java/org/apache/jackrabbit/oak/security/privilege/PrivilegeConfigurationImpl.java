@@ -81,7 +81,7 @@ public class PrivilegeConfigurationImpl extends ConfigurationBase implements Pri
 
     @Nonnull
     @Override
-    public List<? extends ValidatorProvider> getValidators(@Nonnull String workspaceName, @Nonnull Set<Principal> principals, @Nonnull MoveTracker moveTracker) {
+    public List<? extends ValidatorProvider> getValidators(@Nonnull String workspaceName, @Nonnull Set<Principal> principals, @Nonnull String tenantId, @Nonnull MoveTracker moveTracker) {
         return Collections.singletonList(new PrivilegeValidatorProvider());
     }
 

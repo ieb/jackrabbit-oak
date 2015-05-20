@@ -122,7 +122,7 @@ public class CugConfiguration extends ConfigurationBase implements Authorization
 
     @Nonnull
     @Override
-    public PermissionProvider getPermissionProvider(@Nonnull Root root, @Nonnull String workspaceName, @Nonnull Set<Principal> principals) {
+    public PermissionProvider getPermissionProvider(@Nonnull Root root, @Nonnull String workspaceName, @Nonnull Set<Principal> principals, @Nonnull String tenantId) {
         ConfigurationParameters params = getParameters();
         boolean enabled = params.getConfigValue(CugConstants.PARAM_CUG_ENABLED, false);
 
@@ -162,7 +162,7 @@ public class CugConfiguration extends ConfigurationBase implements Authorization
 
     @Nonnull
     @Override
-    public List<? extends ValidatorProvider> getValidators(@Nonnull String workspaceName, @Nonnull Set<Principal> principals, @Nonnull MoveTracker moveTracker) {
+    public List<? extends ValidatorProvider> getValidators(@Nonnull String workspaceName, @Nonnull Set<Principal> principals, @Nonnull String tenantId, @Nonnull MoveTracker moveTracker) {
         return ImmutableList.of(new CugValidatorProvider());
     }
 

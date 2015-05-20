@@ -52,7 +52,7 @@ public class CugConfigurationTest extends AbstractSecurityTest {
     public void testGetPermissionProviderDisabled() {
         CugConfiguration cc = createConfiguration(ConfigurationParameters.of(CugConstants.PARAM_CUG_ENABLED, false));
 
-        PermissionProvider pp = cc.getPermissionProvider(root, root.getContentSession().getWorkspaceName(), ImmutableSet.<Principal>of(EveryonePrincipal.getInstance()));
+        PermissionProvider pp = cc.getPermissionProvider(root, root.getContentSession().getWorkspaceName(), ImmutableSet.<Principal>of(EveryonePrincipal.getInstance()), root.getContentSession().getTenantId());
         assertSame(EmptyPermissionProvider.getInstance(), pp);
     }
 
@@ -62,7 +62,7 @@ public class CugConfigurationTest extends AbstractSecurityTest {
                 CugConstants.PARAM_CUG_ENABLED, false,
                 CugConstants.PARAM_CUG_SUPPORTED_PATHS, "/content");
         CugConfiguration cc = createConfiguration(params);
-        PermissionProvider pp = cc.getPermissionProvider(root, "default", ImmutableSet.<Principal>of(EveryonePrincipal.getInstance()));
+        PermissionProvider pp = cc.getPermissionProvider(root, "default", ImmutableSet.<Principal>of(EveryonePrincipal.getInstance()),  root.getContentSession().getTenantId());
         assertSame(EmptyPermissionProvider.getInstance(), pp);
     }
 
@@ -70,7 +70,7 @@ public class CugConfigurationTest extends AbstractSecurityTest {
     public void testGetPermissionProviderDisabled3() {
         CugConfiguration cc = createConfiguration(ConfigurationParameters.EMPTY);
 
-        PermissionProvider pp = cc.getPermissionProvider(root, "default", ImmutableSet.<Principal>of(EveryonePrincipal.getInstance()));
+        PermissionProvider pp = cc.getPermissionProvider(root, "default", ImmutableSet.<Principal>of(EveryonePrincipal.getInstance()),  root.getContentSession().getTenantId());
         assertSame(EmptyPermissionProvider.getInstance(), pp);
     }
 
@@ -79,7 +79,7 @@ public class CugConfigurationTest extends AbstractSecurityTest {
         // enabled but no supported paths specified
         CugConfiguration cc = createConfiguration(ConfigurationParameters.of(CugConstants.PARAM_CUG_ENABLED, true));
 
-        PermissionProvider pp = cc.getPermissionProvider(root, "default", ImmutableSet.<Principal>of(EveryonePrincipal.getInstance()));
+        PermissionProvider pp = cc.getPermissionProvider(root, "default", ImmutableSet.<Principal>of(EveryonePrincipal.getInstance()),  root.getContentSession().getTenantId());
         assertSame(EmptyPermissionProvider.getInstance(), pp);
     }
 
@@ -90,7 +90,7 @@ public class CugConfigurationTest extends AbstractSecurityTest {
                 CugConstants.PARAM_CUG_SUPPORTED_PATHS, "/content");
         CugConfiguration cc = createConfiguration(params);
 
-        PermissionProvider pp = cc.getPermissionProvider(root, "default", ImmutableSet.<Principal>of(EveryonePrincipal.getInstance()));
+        PermissionProvider pp = cc.getPermissionProvider(root, "default", ImmutableSet.<Principal>of(EveryonePrincipal.getInstance()),  root.getContentSession().getTenantId());
         assertTrue(pp instanceof CugPermissionProvider);
     }
 
@@ -145,7 +145,7 @@ public class CugConfigurationTest extends AbstractSecurityTest {
 
         for (Principal p : excluded) {
             Set<Principal> principals = ImmutableSet.of(p, EveryonePrincipal.getInstance());
-            PermissionProvider pp = cc.getPermissionProvider(root, "default", principals);
+            PermissionProvider pp = cc.getPermissionProvider(root, "default", principals,  root.getContentSession().getTenantId());
 
             assertSame(EmptyPermissionProvider.getInstance(), pp);
         }

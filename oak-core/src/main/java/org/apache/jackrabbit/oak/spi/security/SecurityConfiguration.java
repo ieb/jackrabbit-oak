@@ -96,6 +96,7 @@ public interface SecurityConfiguration {
     @Nonnull
     List<? extends ValidatorProvider> getValidators(@Nonnull String workspaceName,
                                                     @Nonnull Set<Principal> principals,
+                                                    @Nonnull String tenantId,
                                                     @Nonnull MoveTracker moveTracker);
 
     /**
@@ -149,7 +150,7 @@ public interface SecurityConfiguration {
         @Nonnull
         @Override
         public List<? extends ValidatorProvider> getValidators(
-                @Nonnull String workspaceName, @Nonnull Set<Principal> principals, @Nonnull MoveTracker moveTracker) {
+                @Nonnull String workspaceName, @Nonnull Set<Principal> principals, @Nonnull String tenantId, @Nonnull MoveTracker moveTracker) {
             return Collections.emptyList();
         }
 

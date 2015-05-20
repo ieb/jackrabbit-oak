@@ -64,6 +64,8 @@ public abstract class AbstractAccessControlManager implements JackrabbitAccessCo
 
     private PermissionProvider permissionProvider;
 
+    private String tenantId;
+
     protected AbstractAccessControlManager(@Nonnull Root root,
                                            @Nonnull NamePathMapper namePathMapper,
                                            @Nonnull SecurityProvider securityProvider) {
@@ -73,7 +75,8 @@ public abstract class AbstractAccessControlManager implements JackrabbitAccessCo
 
         privilegeManager = securityProvider.getConfiguration(PrivilegeConfiguration.class).getPrivilegeManager(root, namePathMapper);
         config = securityProvider.getConfiguration(AuthorizationConfiguration.class);
-        tenantControlManager = securityProvider.getConfiguration(TenantConfiguration.class).getTenantControlManager(TenantUtil.getTenantId(root));
+        tenantId = TenantUtil.getTenantId(root);
+        tenantControlManager = securityProvider.getConfiguration(TenantConfiguration.class).getTenantControlManager(tenantId);
     }
 
     //-----------------------------------------------< AccessControlManager >---
@@ -107,7 +110,7 @@ public abstract class AbstractAccessControlManager implements JackrabbitAccessCo
         if (getPrincipals().equals(principals)) {
             return hasPrivileges(absPath, privileges);
         } else {
-            PermissionProvider provider = config.getPermissionProvider(root, workspaceName, principals);
+            PermissionProvider provider = config.getPermissionProvider(root, workspaceName, principals, tenantId );
             return hasPrivileges(absPath, privileges, provider, Permissions.READ_ACCESS_CONTROL, false);
         }
     }
@@ -117,7 +120,7 @@ public abstract class AbstractAccessControlManager implements JackrabbitAccessCo
         if (getPrincipals().equals(principals)) {
             return getPrivileges(absPath);
         } else {
-            PermissionProvider provider = config.getPermissionProvider(root, workspaceName, principals);
+            PermissionProvider provider = config.getPermissionProvider(root, workspaceName, principals, tenantId);
             return getPrivileges(absPath, provider, Permissions.READ_ACCESS_CONTROL);
         }
     }
@@ -177,6 +180,7 @@ public abstract class AbstractAccessControlManager implements JackrabbitAccessCo
         }
         // check if the tree doesnt belong to this tenant access
         if (!tenantControlManager.canAccess(tree)) {
+            log.info("getTree: Denied access to {} ",tree.getPath());
             throw new AccessControlException("Tree " + tree.getPath() + " is not part of current tenant.");
         }
         return tree;
@@ -185,7 +189,7 @@ public abstract class AbstractAccessControlManager implements JackrabbitAccessCo
     @Nonnull
     protected PermissionProvider getPermissionProvider() {
         if (permissionProvider == null) {
-            permissionProvider = config.getPermissionProvider(root, workspaceName, getPrincipals());
+            permissionProvider = config.getPermissionProvider(root, workspaceName, getPrincipals(), tenantId);
         } else {
             permissionProvider.refresh();
         }
@@ -214,6 +218,10 @@ public abstract class AbstractAccessControlManager implements JackrabbitAccessCo
     private Privilege[] getPrivileges(@Nullable String absPath,
                                       @Nonnull PermissionProvider provider,
                                       long permissions) throws RepositoryException {
+        if (!tenantControlManager.canAccess(absPath)) {
+            log.info("getPrivileges: Path {} denied by tenantID ",absPath);
+            return new Privilege[0];
+        }
         Tree tree;
         if (absPath == null) {
             tree = null;
@@ -238,6 +246,10 @@ public abstract class AbstractAccessControlManager implements JackrabbitAccessCo
     private boolean hasPrivileges(@Nullable String absPath, @Nullable Privilege[] privileges,
                                   @Nonnull PermissionProvider provider, long permissions,
                                   boolean checkAcContent) throws RepositoryException {
+        if (!tenantControlManager.canAccess(absPath)) {
+            log.info("hasPrivileges: Path {} denied by tenantID ",absPath);
+            return false;
+        }
         Tree tree;
         if (absPath == null) {
             tree = null;

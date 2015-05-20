@@ -569,7 +569,7 @@ public class SessionDelegate {
         if (permissionProvider == null) {
             permissionProvider = checkNotNull(securityProvider)
                     .getConfiguration(AuthorizationConfiguration.class)
-                    .getPermissionProvider(root, getWorkspaceName(), getAuthInfo().getPrincipals());
+                    .getPermissionProvider(root, getWorkspaceName(), getAuthInfo().getPrincipals(), contentSession.getTenantId());
         }
         return permissionProvider;
     }

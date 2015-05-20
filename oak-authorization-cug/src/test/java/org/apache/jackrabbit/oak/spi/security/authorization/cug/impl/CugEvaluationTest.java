@@ -123,7 +123,7 @@ public class CugEvaluationTest extends AbstractCugTest implements NodeTypeConsta
     }
 
     private PermissionProvider createPermissionProvider(Set<Principal> principals) {
-        return getSecurityProvider().getConfiguration(AuthorizationConfiguration.class).getPermissionProvider(root, adminSession.getWorkspaceName(), principals);
+        return getSecurityProvider().getConfiguration(AuthorizationConfiguration.class).getPermissionProvider(root, adminSession.getWorkspaceName(), principals, adminSession.getTenantId());
     }
 
     @Test

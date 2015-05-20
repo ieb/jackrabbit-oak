@@ -17,6 +17,7 @@
 package org.apache.jackrabbit.oak.api;
 
 import java.io.Closeable;
+
 import javax.annotation.Nonnull;
 
 /**
@@ -69,4 +70,6 @@ public interface ContentSession extends Closeable {
      */
     @Nonnull
     Root getLatestRoot();
+
+    String getTenantId();
 }

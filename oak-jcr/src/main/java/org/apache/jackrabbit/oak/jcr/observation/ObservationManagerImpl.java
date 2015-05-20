@@ -121,7 +121,7 @@ public class ObservationManagerImpl implements JackrabbitObservationManager {
             @Override
             public PermissionProvider create(Root root) {
                 return authorizationConfig.getPermissionProvider(root,
-                        sessionDelegate.getWorkspaceName(), principals);
+                        sessionDelegate.getWorkspaceName(), principals, sessionDelegate.getContentSession().getTenantId());
             }
         };
     }

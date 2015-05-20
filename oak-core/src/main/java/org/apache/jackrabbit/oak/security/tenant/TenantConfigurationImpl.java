@@ -90,7 +90,7 @@ public class TenantConfigurationImpl extends ConfigurationBase implements Tenant
 
     @Nonnull
     @Override
-    public List<ValidatorProvider> getValidators(@Nonnull String workspaceName, @Nonnull Set<Principal> principals, @Nonnull MoveTracker moveTracker) {
+    public List<ValidatorProvider> getValidators(@Nonnull String workspaceName, @Nonnull Set<Principal> principals, @Nonnull String tenantId, @Nonnull MoveTracker moveTracker) {
         return ImmutableList.of(
             (ValidatorProvider)new TenantValidatorProvider());
         

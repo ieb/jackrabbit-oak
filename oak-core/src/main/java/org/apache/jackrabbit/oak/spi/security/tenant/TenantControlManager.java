@@ -24,6 +24,10 @@ public interface TenantControlManager {
 
     boolean canAccess(Tree tree);
 
+    boolean canAccess(String absPath);
+
+    boolean canAccessOak(String oakPath);
+
 
     public class Default implements TenantControlManager {
 
@@ -32,7 +36,19 @@ public interface TenantControlManager {
             return true;
         }
 
+        @Override
+        public boolean canAccess(String tree) {
+            return true;
+        }
+
+        @Override
+        public boolean canAccessOak(String oakPath) {
+            return true;
+        }
+
     }
+
+
 
 
 

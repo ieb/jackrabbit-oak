@@ -51,6 +51,7 @@ import org.apache.jackrabbit.oak.spi.security.authorization.restriction.Restrict
 import org.apache.jackrabbit.oak.spi.security.privilege.PrivilegeBits;
 import org.apache.jackrabbit.oak.spi.security.privilege.PrivilegeBitsProvider;
 import org.apache.jackrabbit.oak.spi.security.privilege.PrivilegeConstants;
+import org.apache.jackrabbit.oak.spi.security.tenant.TenantControlManager;
 import org.apache.jackrabbit.oak.spi.state.NodeState;
 import org.apache.jackrabbit.oak.util.TreeUtil;
 import org.slf4j.Logger;
@@ -84,16 +85,20 @@ final class CompiledPermissionImpl implements CompiledPermissions, PermissionCon
 
     private final TreeTypeProvider typeProvider;
 
+    private TenantControlManager tenantControlManager;
+
     private CompiledPermissionImpl(@Nonnull Set<Principal> principals,
                                    @Nonnull Root root, @Nonnull String workspaceName,
                                    @Nonnull RestrictionProvider restrictionProvider,
+                                   @Nonnull TenantControlManager tenantControlManager, 
                                    @Nonnull AuthorizationConfiguration acConfig) {
         this.root = root;
         this.workspaceName = workspaceName;
+        this.tenantControlManager = tenantControlManager;
 
         bitsProvider = new PrivilegeBitsProvider(root);
         Set<String> readPaths = acConfig.getParameters().getConfigValue(PARAM_READ_PATHS, DEFAULT_READ_PATHS);
-        readPolicy = (readPaths.isEmpty()) ? EmptyReadPolicy.INSTANCE : new DefaultReadPolicy(readPaths);
+        readPolicy = (readPaths.isEmpty()) ? EmptyReadPolicy.INSTANCE : new DefaultReadPolicy(readPaths, tenantControlManager);
 
         // setup
         store = new PermissionStoreImpl(root, workspaceName, restrictionProvider);
@@ -117,12 +122,13 @@ final class CompiledPermissionImpl implements CompiledPermissions, PermissionCon
 
     static CompiledPermissions create(@Nonnull Root root, @Nonnull String workspaceName,
                                       @Nonnull Set<Principal> principals,
+                                      @Nonnull TenantControlManager tenantControlManager, 
                                       @Nonnull AuthorizationConfiguration acConfig) {
         Tree permissionsTree = PermissionUtil.getPermissionsRoot(root, workspaceName);
         if (!permissionsTree.exists() || principals.isEmpty()) {
             return NoPermissions.getInstance();
         } else {
-            return new CompiledPermissionImpl(principals, root, workspaceName, acConfig.getRestrictionProvider(), acConfig);
+            return new CompiledPermissionImpl(principals, root, workspaceName, acConfig.getRestrictionProvider(), tenantControlManager, acConfig);
         }
     }
 
@@ -187,12 +193,22 @@ final class CompiledPermissionImpl implements CompiledPermissions, PermissionCon
             case TreeTypeProvider.TYPE_INTERNAL:
                 return EMPTY;
             default:
+                if(!tenantControlManager.canAccess(tree)) {
+                    log.info("getTreePermission:  denied by tenant {}, EMPTY tree provided ",(tree==null)?null:tree.getPath());
+                    return EMPTY;
+                }
+                log.info("getTreePermission:  granted by tenant {} ",(tree==null)?null:tree.getPath());
                 return new TreePermissionImpl(tree, type, parentPermission);
         }
     }
 
     @Nonnull
     private TreePermission getParentPermission(@Nonnull Tree tree, int type) {
+        if (!tenantControlManager.canAccess(tree.getParent())) {
+            log.info("getParentPermission:  denied by tenant parent of {}, EMPTY tree provided ",tree.getPath());
+            return EMPTY;
+        }
+        log.info("getParentPermission:  granted by tenant {} ",tree.getPath());
         List<Tree> trees = new ArrayList<Tree>();
         while (!tree.isRoot()) {
             tree = tree.getParent();
@@ -233,12 +249,23 @@ final class CompiledPermissionImpl implements CompiledPermissions, PermissionCon
             case TreeTypeProvider.TYPE_INTERNAL:
                 return false;
             default:
+                if (!tenantControlManager.canAccess(tree)) {
+                    log.info("isGranted:  denied by tenant {} ",(tree==null)?null:tree.getPath());
+                    return false;
+                }
+                log.info("isGranted:  granted by tenant {} ",(tree==null)?null:tree.getPath());
                 return internalIsGranted(tree, property, permissions);
         }
     }
 
     @Override
     public boolean isGranted(@Nonnull String path, long permissions) {
+        if (!tenantControlManager.canAccess(path)) {
+            log.info("isGranted:  denied by tenant {} ",path);
+            return false;
+        }
+        log.info("isGranted:  granted by tenant {} ",path);
+
         Iterator<PermissionEntry> it = getEntryIterator(new EntryPredicate(path, Permissions.respectParentPermissions(permissions)));
         return hasPermissions(it, permissions, path);
     }
@@ -246,11 +273,21 @@ final class CompiledPermissionImpl implements CompiledPermissions, PermissionCon
     @Nonnull
     @Override
     public Set<String> getPrivileges(@Nullable Tree tree) {
+        if (!tenantControlManager.canAccess(tree)) {
+            log.info("getPrivileges:  denied by tenant {} ",(tree==null)?null:tree.getPath());
+            return new HashSet<String>();
+        }
+        log.info("getPrivileges:  granted by tenant {} ",(tree==null)?null:tree.getPath());
         return bitsProvider.getPrivilegeNames(internalGetPrivileges(tree));
     }
 
     @Override
     public boolean hasPrivileges(@Nullable Tree tree, @Nonnull String... privilegeNames) {
+        if (!tenantControlManager.canAccess(tree)) {
+            log.info("hasPrivileges:  denied by tenant {} ",(tree==null)?null:tree.getPath());
+            return false;
+        }
+        log.info("hasPrivileges:  denied by tenant {} ",(tree==null)?null:tree.getPath());
         return internalGetPrivileges(tree).includes(bitsProvider.getBits(privilegeNames));
     }
 
@@ -268,6 +305,11 @@ final class CompiledPermissionImpl implements CompiledPermissions, PermissionCon
         if (!entries.hasNext() && !isReadable) {
             return false;
         }
+        if (!tenantControlManager.canAccess(path)) {
+            log.info("hasPermissions:  denied by tenant {} ",path);
+            return false;
+        }
+        log.info("hasPermissions:  granted by tenant {} ",path);
 
         boolean respectParent = (path != null) && Permissions.respectParentPermissions(permissions);
 
@@ -452,6 +494,8 @@ final class CompiledPermissionImpl implements CompiledPermissions, PermissionCon
                 parent = null;
             }
             readableTree = readPolicy.isReadableTree(tree, parent);
+            log.info("TreePermissionImpl.readableTree is {} at {} ", readableTree, (tree==null)?null:tree.getPath());
+
             type = treeType;
         }
 
@@ -632,8 +676,10 @@ final class CompiledPermissionImpl implements CompiledPermissions, PermissionCon
         private final String[] readPaths;
         private final String[] altReadPaths;
         private final boolean isDefaultPaths;
+        private TenantControlManager tenantControlManager;
 
-        private DefaultReadPolicy(Set<String> readPaths) {
+        private DefaultReadPolicy(Set<String> readPaths, TenantControlManager tenantControlManager) {
+            this.tenantControlManager = tenantControlManager;
             this.readPaths = readPaths.toArray(new String[readPaths.size()]);
             altReadPaths = new String[readPaths.size()];
             int i = 0;
@@ -643,9 +689,15 @@ final class CompiledPermissionImpl implements CompiledPermissions, PermissionCon
             // optimize evaluation for default setup where all readable paths
             // are located underneath /jcr:system
             isDefaultPaths = (readPaths.size() == DEFAULT_READ_PATHS.size()) && readPaths.containsAll(DEFAULT_READ_PATHS);
+           
         }
 
         public boolean isReadableTree(@Nonnull Tree tree, @Nullable TreePermissionImpl parent) {
+            if (!tenantControlManager.canAccess(tree)) {
+                log.info("DefaultReadPolicy.isReadableTree, said false due to tenant before parent. ");
+                return false;
+            }
+            log.info("DefaultReadPolicy.isReadableTree, ok for tenant {} ", (tree==null)?null:tree.getPath());
             if (parent != null) {
                 if (parent.readableTree) {
                     return true;
@@ -661,6 +713,11 @@ final class CompiledPermissionImpl implements CompiledPermissions, PermissionCon
 
         public boolean isReadableTree(@Nonnull Tree tree, boolean exactMatch) {
             String targetPath = tree.getPath();
+            if (!tenantControlManager.canAccess(targetPath)) {
+                log.info("DefaultReadPolicy.isReadableTree, said false due to tenant on tree ");
+                return false;
+            }
+            log.info("DefaultReadPolicy.isReadableTree, ok for tenant {} ", tree.getPath());
             for (String path : readPaths) {
                 if (targetPath.equals(path)) {
                     return true;
@@ -677,6 +734,11 @@ final class CompiledPermissionImpl implements CompiledPermissions, PermissionCon
         }
 
         public boolean isReadablePath(@Nullable String treePath, boolean exactMatch) {
+            if (!tenantControlManager.canAccess(treePath)) {
+                log.info("DefaultReadPolicy.isReadableTree, said false due to tenant on path ");
+                return false;
+            }
+            log.info("DefaultReadPolicy.isReadableTree, ok for tenant {} ", treePath);
             if (treePath != null) {
                 for (String path : readPaths) {
                     if (treePath.equals(path)) {

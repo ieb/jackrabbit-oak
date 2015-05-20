@@ -139,6 +139,7 @@ class ContentSessionImpl implements ContentSession {
         return sessionName;
     }
 
+    @Override
     public String getTenantId() {
         return tenantId;
     }

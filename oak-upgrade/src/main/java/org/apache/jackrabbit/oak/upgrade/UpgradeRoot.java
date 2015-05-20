@@ -33,6 +33,7 @@ import org.apache.jackrabbit.oak.api.ContentSession;
 import org.apache.jackrabbit.oak.api.QueryEngine;
 import org.apache.jackrabbit.oak.api.Root;
 import org.apache.jackrabbit.oak.api.Tree;
+import org.apache.jackrabbit.oak.core.TenantUtil;
 import org.apache.jackrabbit.oak.plugins.tree.impl.NodeBuilderTree;
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
 
@@ -130,6 +131,11 @@ class UpgradeRoot implements Root {
             @Override
             public void close() throws IOException {
                 // nothing to do
+            }
+            
+            @Override
+            public String getTenantId() {
+                return TenantUtil.SYSTEM_TENANT;
             }
         };
     }
