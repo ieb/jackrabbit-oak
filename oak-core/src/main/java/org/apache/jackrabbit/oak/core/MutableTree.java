@@ -33,6 +33,7 @@ import org.apache.jackrabbit.oak.api.Type;
 import org.apache.jackrabbit.oak.core.MutableRoot.Move;
 import org.apache.jackrabbit.oak.plugins.tree.impl.AbstractMutableTree;
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
 
 final class MutableTree extends AbstractMutableTree {
 
@@ -56,6 +57,8 @@ final class MutableTree extends AbstractMutableTree {
     /** Pointer into the list of pending moves */
     private Move pendingMoves;
 
+    private Tenant tenant;
+
     MutableTree(@Nonnull MutableRoot root, @Nonnull NodeBuilder nodeBuilder,
             @Nonnull Move pendingMoves) {
         this(root, pendingMoves, null, nodeBuilder, "");
@@ -68,6 +71,7 @@ final class MutableTree extends AbstractMutableTree {
         this.name = checkNotNull(name);
         this.nodeBuilder = nodeBuilder;
         this.pendingMoves = checkNotNull(pendingMoves);
+        this.tenant = root.getTenant();
     }
 
     //------------------------------------------------------------< AbstractMutableTree >---
@@ -83,12 +87,19 @@ final class MutableTree extends AbstractMutableTree {
     protected NodeBuilder getNodeBuilder() {
         return nodeBuilder;
     }
+    
+    @Nonnull
+    @Override
+    protected Tenant getTenant() {
+        return tenant;
+    }
 
     //-----------------------------------------------------< AbstractTree >---
 
     @Override
     @Nonnull
     protected MutableTree createChild(@Nonnull String name) throws IllegalArgumentException {
+        checkArgument(tenant.containsChild(this, name));
         return new MutableTree(root, pendingMoves, this,
                 nodeBuilder.getChildNode(checkNotNull(name)), name);
     }
@@ -268,6 +279,9 @@ final class MutableTree extends AbstractMutableTree {
     boolean moveTo(@Nonnull MutableTree newParent, @Nonnull String newName) {
         name = checkNotNull(newName);
         parent = checkNotNull(newParent);
+        if (!tenant.containsChild(newParent, newName) ) {
+            return false;
+        }
         boolean success = nodeBuilder.moveTo(newParent.nodeBuilder, newName);
         if (success) {
             parent.updateChildOrder(false);
@@ -284,6 +298,7 @@ final class MutableTree extends AbstractMutableTree {
     @CheckForNull
     MutableTree getTree(@Nonnull String path) {
         checkArgument(isAbsolute(checkNotNull(path)));
+        checkArgument(tenant.contains(path));
         beforeRead();
         MutableTree child = this;
         for (String name : elements(path)) {

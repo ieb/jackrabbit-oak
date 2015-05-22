@@ -34,6 +34,8 @@ import org.apache.jackrabbit.oak.spi.query.QueryIndexProvider;
 import org.apache.jackrabbit.oak.spi.security.SecurityProvider;
 import org.apache.jackrabbit.oak.spi.security.authentication.LoginContext;
 import org.apache.jackrabbit.oak.spi.state.NodeStore;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
+import org.apache.jackrabbit.oak.spi.tenant.TenantProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,13 +66,16 @@ class ContentSessionImpl implements ContentSession {
      */
     private boolean live = true;
 
+    private Tenant tenant;
+
     public ContentSessionImpl(@Nonnull LoginContext loginContext,
                               @Nonnull SecurityProvider securityProvider,
                               @Nonnull String workspaceName,
                               @Nonnull NodeStore store,
                               @Nonnull CommitHook hook,
                               QueryEngineSettings queryEngineSettings,
-                              @Nonnull QueryIndexProvider indexProvider) {
+                              @Nonnull QueryIndexProvider indexProvider, 
+                              @Nonnull TenantProvider tenantProvider) {
         this.loginContext = loginContext;
         this.securityProvider = securityProvider;
         this.workspaceName = workspaceName;
@@ -78,6 +83,7 @@ class ContentSessionImpl implements ContentSession {
         this.hook = hook;
         this.queryEngineSettings = queryEngineSettings;
         this.indexProvider = indexProvider;
+        this.tenant = tenantProvider.createTenant(this);
         this.sessionName = "session-" + SESSION_COUNTER.incrementAndGet();
     }
 
@@ -108,7 +114,7 @@ class ContentSessionImpl implements ContentSession {
     public Root getLatestRoot() {
         checkLive();
         return new MutableRoot(store, hook, workspaceName, loginContext.getSubject(),
-                securityProvider, queryEngineSettings, indexProvider, this);
+                securityProvider, queryEngineSettings, indexProvider, tenant, this);
     }
 
     //-----------------------------------------------------------< Closable >---

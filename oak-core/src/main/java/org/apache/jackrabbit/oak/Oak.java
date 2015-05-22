@@ -94,12 +94,14 @@ import org.apache.jackrabbit.oak.spi.security.SecurityProvider;
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
 import org.apache.jackrabbit.oak.spi.state.NodeState;
 import org.apache.jackrabbit.oak.spi.state.NodeStore;
+import org.apache.jackrabbit.oak.spi.tenant.TenantProvider;
 import org.apache.jackrabbit.oak.spi.whiteboard.CompositeRegistration;
 import org.apache.jackrabbit.oak.spi.whiteboard.DefaultWhiteboard;
 import org.apache.jackrabbit.oak.spi.whiteboard.Registration;
 import org.apache.jackrabbit.oak.spi.whiteboard.Whiteboard;
 import org.apache.jackrabbit.oak.spi.whiteboard.WhiteboardAware;
 import org.apache.jackrabbit.oak.spi.whiteboard.WhiteboardUtils;
+import org.apache.jackrabbit.oak.tenant.PoCTenantProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -314,6 +316,9 @@ public class Oak {
      */
     private Map<String, Long> asyncTasks;
 
+    // Use the path based TenantProvider by default.
+    private TenantProvider tenantProvider = new PoCTenantProvider();
+
     public Oak(NodeStore store) {
         this.store = checkNotNull(store);
     }
@@ -502,6 +507,12 @@ public class Oak {
         observers.add(checkNotNull(observer));
         return this;
     }
+    
+    @Nonnull
+    public Oak with(@Nonnull TenantProvider tenantProvider) {
+        this.tenantProvider = checkNotNull(tenantProvider);
+        return this;
+    }
 
     /**
      * <p>
@@ -617,7 +628,8 @@ public class Oak {
                 defaultWorkspaceName,
                 queryEngineSettings,
                 indexProvider,
-                securityProvider) {
+                securityProvider,
+                tenantProvider) {
             @Override
             public void close() throws IOException {
                 super.close();

@@ -27,6 +27,8 @@ import org.apache.jackrabbit.oak.spi.security.SecurityProvider;
 import org.apache.jackrabbit.oak.spi.security.authentication.LoginContext;
 import org.apache.jackrabbit.oak.spi.security.authentication.SystemSubject;
 import org.apache.jackrabbit.oak.spi.state.NodeStore;
+import org.apache.jackrabbit.oak.spi.tenant.TenantProvider;
+import org.apache.jackrabbit.oak.tenant.SystemTenantImpl;
 
 /**
  *  Internal extension of the {@link MutableRoot} to be used
@@ -53,17 +55,18 @@ public class SystemRoot extends MutableRoot {
                        @Nonnull QueryIndexProvider indexProvider,
                        @Nonnull ContentSessionImpl session) {
         super(store, hook, workspaceName, SystemSubject.INSTANCE,
-                securityProvider, queryEngineSettings, indexProvider, session);
+                securityProvider, queryEngineSettings, indexProvider, new SystemTenantImpl(session), session);
     }
 
     public SystemRoot(@Nonnull final NodeStore store, @Nonnull final CommitHook hook,
                       @Nonnull final String workspaceName, @Nonnull final SecurityProvider securityProvider,
                       @Nonnull final QueryEngineSettings queryEngineSettings,
-                      @Nonnull final QueryIndexProvider indexProvider) {
+                      @Nonnull final QueryIndexProvider indexProvider,
+                      @Nonnull final TenantProvider tenantProvider) {
         this(store, hook, workspaceName, securityProvider, queryEngineSettings, indexProvider,
                 new ContentSessionImpl(
                         LOGIN_CONTEXT, securityProvider, workspaceName,
-                        store, hook, queryEngineSettings, indexProvider) {
+                        store, hook, queryEngineSettings, indexProvider, tenantProvider) {
                     @Nonnull
                     @Override
                     public Root getLatestRoot() {

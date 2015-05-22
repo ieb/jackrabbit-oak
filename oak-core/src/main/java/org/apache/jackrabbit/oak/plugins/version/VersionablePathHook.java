@@ -37,6 +37,7 @@ import org.apache.jackrabbit.oak.spi.commit.CommitInfo;
 import org.apache.jackrabbit.oak.spi.state.DefaultNodeStateDiff;
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
 import org.apache.jackrabbit.oak.spi.state.NodeState;
+import org.apache.jackrabbit.oak.tenant.SystemTenantImpl;
 
 import static org.apache.jackrabbit.oak.plugins.memory.EmptyNodeState.EMPTY_NODE;
 
@@ -154,7 +155,7 @@ public class VersionablePathHook implements CommitHook {
         }
 
         private boolean isVersionable(ReadWriteVersionManager versionManager) {
-            Tree tree = new ImmutableTree(ImmutableTree.ParentProvider.UNSUPPORTED, PathUtils.getName(path), builder.getNodeState());
+            Tree tree = new ImmutableTree(ImmutableTree.ParentProvider.UNSUPPORTED, PathUtils.getName(path), builder.getNodeState(), new SystemTenantImpl());
             return versionManager.isVersionable(tree);
         }
     }

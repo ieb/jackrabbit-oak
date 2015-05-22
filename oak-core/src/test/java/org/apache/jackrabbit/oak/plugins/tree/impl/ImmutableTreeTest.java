@@ -32,6 +32,7 @@ import org.apache.jackrabbit.oak.api.Tree;
 import org.apache.jackrabbit.oak.spi.commit.CommitInfo;
 import org.apache.jackrabbit.oak.spi.commit.EmptyHook;
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
+import org.apache.jackrabbit.oak.tenant.PocTenant;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -76,7 +77,7 @@ public class ImmutableTreeTest extends OakBaseTest {
         root = session.getLatestRoot();
         Tree mutableTree = root.getTree("/");
 
-        immutable = new ImmutableTree(((AbstractTree) mutableTree).getNodeState());
+        immutable = new ImmutableTree(((AbstractTree) mutableTree).getNodeState(), ((AbstractTree) mutableTree).getTenant());
     }
 
     @After
@@ -128,7 +129,7 @@ public class ImmutableTreeTest extends OakBaseTest {
     @Test(expected = UnsupportedOperationException.class)
     public void testGetParentDisconnected() {
         ImmutableTree child = immutable.getChild("x");
-        ImmutableTree disconnected = new ImmutableTree(ImmutableTree.ParentProvider.UNSUPPORTED, child.getName(), child.getNodeState());
+        ImmutableTree disconnected = new ImmutableTree(ImmutableTree.ParentProvider.UNSUPPORTED, child.getName(), child.getNodeState(), child.getTenant());
         disconnected.getParent();
     }
 
@@ -257,19 +258,19 @@ public class ImmutableTreeTest extends OakBaseTest {
 
         root.commit();
 
-        ImmutableTree tree = new ImmutableTree(((AbstractTree) t).getNodeState());
+        ImmutableTree tree = new ImmutableTree(((AbstractTree) t).getNodeState(), ((AbstractTree) t).getTenant());
         assertSequence(tree.getChildren(), "node1", "node2", "node3");
 
         t.getChild("node3").orderBefore("node2");
         root.commit();
 
-        tree = new ImmutableTree(((AbstractTree) t).getNodeState());
+        tree = new ImmutableTree(((AbstractTree) t).getNodeState(), ((AbstractTree) t).getTenant());
         assertSequence(tree.getChildren(), "node1", "node3", "node2");
 
         t.getChild("node1").orderBefore(null);
         root.commit();
 
-        tree = new ImmutableTree(((AbstractTree) t).getNodeState());
+        tree = new ImmutableTree(((AbstractTree) t).getNodeState(), ((AbstractTree) t).getTenant());
         assertSequence(tree.getChildren(), "node3", "node2", "node1");
     }
 }

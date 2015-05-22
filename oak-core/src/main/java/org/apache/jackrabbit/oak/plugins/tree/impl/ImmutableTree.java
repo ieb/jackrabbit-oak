@@ -29,6 +29,7 @@ import org.apache.jackrabbit.oak.api.Type;
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
 import org.apache.jackrabbit.oak.spi.state.NodeState;
 import org.apache.jackrabbit.oak.spi.state.ReadOnlyBuilder;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
 
 /**
  * Immutable implementation of the {@code Tree} interface in order to provide
@@ -94,25 +95,31 @@ public final class ImmutableTree extends AbstractTree {
 
     private String path;
 
-    public ImmutableTree(@Nonnull NodeState rootState) {
-        this(ParentProvider.ROOT_PROVIDER, "", rootState);
+    private Tenant tenant;
+
+    public ImmutableTree(@Nonnull NodeState rootState, @Nonnull Tenant tenant) {
+        this(ParentProvider.ROOT_PROVIDER, "", rootState, tenant);
     }
 
     public ImmutableTree(@Nonnull ImmutableTree parent, @Nonnull String name, @Nonnull NodeState state) {
-        this(new DefaultParentProvider(parent), name, state);
+        this(new DefaultParentProvider(parent), name, state,  parent.getTenant());
     }
 
-    public ImmutableTree(@Nonnull ParentProvider parentProvider, @Nonnull String name, @Nonnull NodeState state) {
+    public ImmutableTree(@Nonnull ParentProvider parentProvider, @Nonnull String name, @Nonnull NodeState state, @Nonnull Tenant tenant) {
         this.nodeBuilder = new ReadOnlyBuilder(state);
         this.name = name;
         this.parentProvider = checkNotNull(parentProvider);
+        this.tenant = tenant;
     }
 
     //-------------------------------------------------------< AbstractTree >---
     @Override
     @Nonnull
     protected ImmutableTree createChild(@Nonnull String name) {
-        return new ImmutableTree(this, name, nodeBuilder.getNodeState().getChildNode(name));
+        if (tenant.containsChild(this, name)) {
+            return new ImmutableTree(this, name, nodeBuilder.getNodeState().getChildNode(name));
+        }
+        return null;
     }
 
     @Override
@@ -136,6 +143,12 @@ public final class ImmutableTree extends AbstractTree {
     @Override
     protected String[] getInternalNodeNames() {
         return new String[0];
+    }
+    
+    @Nonnull
+    @Override
+    public Tenant getTenant() {
+        return tenant;
     }
 
     //---------------------------------------------------------------< Tree >---

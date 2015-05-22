@@ -71,6 +71,7 @@ import org.apache.jackrabbit.oak.plugins.tree.impl.TreeConstants;
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
 import org.apache.jackrabbit.oak.spi.state.NodeState;
 import org.apache.jackrabbit.oak.spi.state.NodeStateUtils;
+import org.apache.jackrabbit.oak.tenant.SystemTenantImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -578,7 +579,8 @@ class VersionableState {
         if (childName.startsWith(":")) {
             return IGNORE;
         }
-        ImmutableTree parentTree = new ImmutableTree(parent.getNodeState());
+        // FIXME: This may be ok as all that is being returned in an int ?
+        ImmutableTree parentTree = new ImmutableTree(parent.getNodeState(), new SystemTenantImpl());
         NodeState childState;
         if (NT_FROZENNODE.equals(child.getName(JCR_PRIMARYTYPE))) {
             // need to translate into a regular node to get proper OPV value

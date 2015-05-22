@@ -45,6 +45,8 @@ public abstract class AbstractMutableTree extends AbstractTree {
 
     @Override
     public boolean remove() {
+        // FIXME: removing a node within the tenant that contains other nodes outside the tenant will delete outside the tenant.
+        // not possible to address this issue if the user can delete content under this node without deleting decendent nodes first.
         String name = getName();
         AbstractTree parent = getParentOrNull();
         if (parent != null && parent.hasChild(name)) {
@@ -70,6 +72,7 @@ public abstract class AbstractMutableTree extends AbstractTree {
     @Override
     public Tree addChild(@Nonnull String name) throws IllegalArgumentException {
         checkArgument(!isHidden(name));
+        checkArgument(getTenant().containsChild(this, name));
         if (!hasChild(name)) {
             NodeBuilder nodeBuilder = getNodeBuilder();
             nodeBuilder.setChildNode(name);
@@ -114,6 +117,9 @@ public abstract class AbstractMutableTree extends AbstractTree {
 
     @Override
     public boolean orderBefore(@Nullable String name) {
+        if (!getTenant().containsChild(this, name)) {
+            return false;
+        }
         String thisName = getName();
         AbstractTree parent = getParentOrNull();
         if (parent == null) {

@@ -18,6 +18,7 @@
  */
 package org.apache.jackrabbit.oak.core;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.collect.Lists.newArrayList;
 import static org.apache.jackrabbit.oak.commons.PathUtils.getName;
@@ -62,6 +63,8 @@ import org.apache.jackrabbit.oak.spi.security.authorization.permission.Permissio
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
 import org.apache.jackrabbit.oak.spi.state.NodeState;
 import org.apache.jackrabbit.oak.spi.state.NodeStore;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
+import org.apache.jackrabbit.oak.spi.tenant.TenantProvider;
 
 class MutableRoot implements Root {
 
@@ -130,6 +133,8 @@ class MutableRoot implements Root {
         }
     };
 
+    private Tenant tenant;
+
     /**
      * New instance bases on a given {@link NodeStore} and a workspace
      *
@@ -139,6 +144,7 @@ class MutableRoot implements Root {
      * @param subject          the subject.
      * @param securityProvider the security configuration.
      * @param indexProvider    the query index provider.
+     * @param tenantProvider 
      */
     MutableRoot(NodeStore store,
                  CommitHook hook,
@@ -147,12 +153,15 @@ class MutableRoot implements Root {
                  SecurityProvider securityProvider,
                  QueryEngineSettings queryEngineSettings,
                  QueryIndexProvider indexProvider,
+                 Tenant tenant, 
                  ContentSessionImpl session) {
+        this.tenant = checkNotNull(tenant);
         this.store = checkNotNull(store);
         this.hook = checkNotNull(hook);
         this.workspaceName = checkNotNull(workspaceName);
         this.subject = checkNotNull(subject);
         this.securityProvider = checkNotNull(securityProvider);
+        this.tenant = checkNotNull(tenant);
         this.queryEngineSettings = queryEngineSettings;
         this.indexProvider = indexProvider;
         this.session = checkNotNull(session);
@@ -186,6 +195,8 @@ class MutableRoot implements Root {
             return false;
         } else if (sourcePath.equals(destPath)) {
             return true;
+        } else if ( !tenant.contains(sourcePath) || !tenant.contains(destPath) ) {
+            return false;
         }
 
         checkLive();
@@ -214,6 +225,7 @@ class MutableRoot implements Root {
     @Override
     public MutableTree getTree(@Nonnull String path) {
         checkLive();
+        checkArgument(getTenant().contains(path));
         return rootTree.getTree(path);
     }
 
@@ -430,6 +442,10 @@ class MutableRoot implements Root {
                     ? "NIL"
                     : '>' + source + ':' + PathUtils.concat(destParent.getPathInternal(), destName);
         }
+    }
+
+    public Tenant getTenant() {
+        return tenant;
     }
 
 }

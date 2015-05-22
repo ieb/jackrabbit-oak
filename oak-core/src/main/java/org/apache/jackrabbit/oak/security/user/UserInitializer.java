@@ -43,6 +43,7 @@ import org.apache.jackrabbit.oak.spi.security.user.UserConstants;
 import org.apache.jackrabbit.oak.spi.state.ApplyDiff;
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
 import org.apache.jackrabbit.oak.spi.state.NodeState;
+import org.apache.jackrabbit.oak.tenant.SystemTenantProvider;
 import org.apache.jackrabbit.oak.util.NodeUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -97,7 +98,8 @@ class UserInitializer implements WorkspaceInitializer, UserConstants {
         Root root = RootFactory.createSystemRoot(store, EmptyHook.INSTANCE, workspaceName,
                 securityProvider, new QueryEngineSettings(),
                 new CompositeQueryIndexProvider(new PropertyIndexProvider(),
-                        new NodeTypeIndexProvider()));
+                        new NodeTypeIndexProvider()),
+                        new SystemTenantProvider());
 
         UserConfiguration userConfiguration = securityProvider.getConfiguration(UserConfiguration.class);
         UserManager userManager = userConfiguration.getUserManager(root, NamePathMapper.DEFAULT);

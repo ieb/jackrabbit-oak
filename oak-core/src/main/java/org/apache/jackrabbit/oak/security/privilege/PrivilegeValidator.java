@@ -36,6 +36,7 @@ import org.apache.jackrabbit.oak.spi.security.privilege.PrivilegeDefinition;
 import org.apache.jackrabbit.oak.spi.security.privilege.PrivilegeUtil;
 import org.apache.jackrabbit.oak.spi.state.NodeState;
 import org.apache.jackrabbit.oak.spi.state.NodeStateUtils;
+import org.apache.jackrabbit.oak.tenant.SystemTenantImpl;
 import org.apache.jackrabbit.util.Text;
 
 import static org.apache.jackrabbit.oak.api.CommitFailedException.CONSTRAINT;
@@ -93,8 +94,8 @@ class PrivilegeValidator extends DefaultValidator implements PrivilegeConstants 
                 throw new CommitFailedException("Privilege", 1, msg);
             }
 
-            // validate the definition
-            Tree tree = new ImmutableTree(ImmutableTree.ParentProvider.UNSUPPORTED, name, after);
+            // validate the definition  
+            Tree tree = new ImmutableTree(ImmutableTree.ParentProvider.UNSUPPORTED, name, after, new SystemTenantImpl());
             validateDefinition(tree);
         }
 

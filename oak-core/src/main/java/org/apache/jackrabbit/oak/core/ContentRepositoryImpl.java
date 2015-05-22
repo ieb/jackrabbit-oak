@@ -102,6 +102,7 @@ import org.apache.jackrabbit.oak.spi.security.principal.PrincipalConfiguration;
 import org.apache.jackrabbit.oak.spi.security.privilege.PrivilegeConfiguration;
 import org.apache.jackrabbit.oak.spi.security.user.UserConfiguration;
 import org.apache.jackrabbit.oak.spi.state.NodeStore;
+import org.apache.jackrabbit.oak.spi.tenant.TenantProvider;
 import org.apache.jackrabbit.oak.util.GenericDescriptors;
 
 /**
@@ -118,6 +119,7 @@ public class ContentRepositoryImpl implements ContentRepository, Closeable {
     private final QueryEngineSettings queryEngineSettings;
 
     private GenericDescriptors descriptors;
+    private TenantProvider tenantProvider;
     
     /**
      * Creates an content repository instance based on the given, already
@@ -128,17 +130,20 @@ public class ContentRepositoryImpl implements ContentRepository, Closeable {
      * @param defaultWorkspaceName the default workspace name;
      * @param indexProvider        index provider
      * @param securityProvider     The configured security provider.
+     * @param tenantProvider 
      */
     public ContentRepositoryImpl(@Nonnull NodeStore nodeStore,
                                  @Nonnull CommitHook commitHook,
                                  @Nonnull String defaultWorkspaceName,
                                  QueryEngineSettings queryEngineSettings,
                                  @Nullable QueryIndexProvider indexProvider,
-                                 @Nonnull SecurityProvider securityProvider) {
+                                 @Nonnull SecurityProvider securityProvider, 
+                                 @Nonnull TenantProvider tenantProvider) {
         this.nodeStore = checkNotNull(nodeStore);
         this.commitHook = checkNotNull(commitHook);
         this.defaultWorkspaceName = checkNotNull(defaultWorkspaceName);
         this.securityProvider = checkNotNull(securityProvider);
+        this.tenantProvider = checkNotNull(tenantProvider);
         this.queryEngineSettings = queryEngineSettings != null ? queryEngineSettings : new QueryEngineSettings();
         this.indexProvider = indexProvider != null ? indexProvider : new CompositeQueryIndexProvider();
     }
@@ -161,7 +166,7 @@ public class ContentRepositoryImpl implements ContentRepository, Closeable {
         loginContext.login();
 
         return new ContentSessionImpl(loginContext, securityProvider, workspaceName, nodeStore,
-                commitHook, queryEngineSettings, indexProvider);
+                commitHook, queryEngineSettings, indexProvider, tenantProvider);
     }
 
     @Nonnull

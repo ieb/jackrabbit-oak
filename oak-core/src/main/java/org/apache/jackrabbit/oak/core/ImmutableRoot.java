@@ -37,6 +37,7 @@ import org.apache.jackrabbit.oak.query.ExecutionContext;
 import org.apache.jackrabbit.oak.query.QueryEngineImpl;
 import org.apache.jackrabbit.oak.query.QueryEngineSettings;
 import org.apache.jackrabbit.oak.spi.state.NodeState;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
 
 /**
  * Simple implementation of the Root interface that only supports simple read
@@ -47,23 +48,31 @@ import org.apache.jackrabbit.oak.spi.state.NodeState;
 public final class ImmutableRoot implements Root {
 
     private final ImmutableTree rootTree;
+    private Tenant tenant;
 
-    public ImmutableRoot(@Nonnull NodeState rootState) {
-        this(new ImmutableTree(rootState));
+    public ImmutableRoot(@Nonnull NodeState rootState, @Nonnull Tenant tenant) {
+        this(new ImmutableTree(rootState, tenant));
     }
 
     public ImmutableRoot(@Nonnull Root root) {
         if (root instanceof MutableRoot) {
-            rootTree = new ImmutableTree(((MutableRoot) root).getBaseState());
+            tenant = ((MutableRoot) root).getTenant();
+            rootTree = new ImmutableTree(((MutableRoot) root).getBaseState(), tenant);
         } else if (root instanceof ImmutableRoot) {
+            tenant = ((ImmutableRoot) root).getTenant();
             rootTree = ((ImmutableRoot) root).getTree("/");
         } else {
             throw new IllegalArgumentException("Unsupported Root implementation: " + root.getClass());
         }
     }
 
+    private Tenant getTenant() {
+        return tenant;
+    }
+
     public ImmutableRoot(@Nonnull ImmutableTree rootTree) {
         checkArgument(rootTree.isRoot());
+        this.tenant = rootTree.getTenant();
         this.rootTree = rootTree;
     }
 
@@ -81,6 +90,7 @@ public final class ImmutableRoot implements Root {
     @Override
     public ImmutableTree getTree(@Nonnull String path) {
         checkArgument(PathUtils.isAbsolute(path));
+        checkArgument(tenant.contains(path));
         ImmutableTree child = rootTree;
         for (String name : elements(path)) {
             child = child.getChild(name);

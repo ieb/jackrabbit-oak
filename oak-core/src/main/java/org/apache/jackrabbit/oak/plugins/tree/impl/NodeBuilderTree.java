@@ -19,6 +19,7 @@
 
 package org.apache.jackrabbit.oak.plugins.tree.impl;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 import javax.annotation.CheckForNull;
@@ -26,6 +27,7 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
 
 /**
  * A mutable {@code Tree} implementation based on an underlying
@@ -40,21 +42,25 @@ public final class NodeBuilderTree extends AbstractMutableTree {
 
     private final NodeBuilder nodeBuilder;
 
+    private Tenant tenant;
+
     /**
      * Create a new {@code AbstractTree} instance
      *
      * @param nodeBuilder {@code NodeBuilder} for the underlying node state
      * @param name        name of the tree
      */
-    public NodeBuilderTree(@Nonnull String name, @Nonnull NodeBuilder nodeBuilder) {
-        this(null, nodeBuilder, name);
+    public NodeBuilderTree(@Nonnull String name, @Nonnull NodeBuilder nodeBuilder, @Nonnull Tenant tenant) {
+        this(null, nodeBuilder, name, tenant);
     }
 
     protected NodeBuilderTree(@Nullable NodeBuilderTree parent, @Nonnull NodeBuilder nodeBuilder,
-           @Nonnull String name) {
+           @Nonnull String name, @Nonnull Tenant tenant) {
         this.parent = parent;
         this.name = name;
         this.nodeBuilder = nodeBuilder;
+        this.tenant = tenant;
+        
     }
 
     @Override
@@ -78,7 +84,14 @@ public final class NodeBuilderTree extends AbstractMutableTree {
     @Override
     @Nonnull
     protected NodeBuilderTree createChild(@Nonnull String name) throws IllegalArgumentException {
-        return new NodeBuilderTree(this, nodeBuilder.getChildNode(checkNotNull(name)), name);
+        checkArgument(tenant.containsChild(this, name));
+        return new NodeBuilderTree(this, nodeBuilder.getChildNode(checkNotNull(name)), name, tenant);
+    }
+    
+    
+    @Override
+    protected Tenant getTenant() {
+        return tenant;
     }
 
 }

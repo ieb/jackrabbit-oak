@@ -32,6 +32,9 @@ import org.apache.jackrabbit.oak.spi.security.OpenSecurityProvider;
 import org.apache.jackrabbit.oak.spi.security.SecurityProvider;
 import org.apache.jackrabbit.oak.spi.state.NodeState;
 import org.apache.jackrabbit.oak.spi.state.NodeStore;
+import org.apache.jackrabbit.oak.spi.tenant.TenantProvider;
+import org.apache.jackrabbit.oak.tenant.SystemTenantImpl;
+import org.apache.jackrabbit.oak.tenant.SystemTenantProvider;
 
 /**
  * Factory to obtain immutable {@code Root} objects.
@@ -42,7 +45,7 @@ public final class RootFactory {
 
     @Nonnull
     public static Root createReadOnlyRoot(@Nonnull NodeState rootState) {
-        return new ImmutableRoot(rootState);
+        return new ImmutableRoot(rootState,  new SystemTenantImpl());
     }
 
     @Nonnull
@@ -56,13 +59,27 @@ public final class RootFactory {
                                         @Nullable String workspaceName,
                                         @Nullable SecurityProvider securityProvider,
                                         @Nullable QueryEngineSettings queryEngineSettings,
-                                        @Nullable QueryIndexProvider indexProvider) {
+                                        @Nullable QueryIndexProvider indexProvider,
+                                        @Nullable TenantProvider tenantProvider) {
         return new SystemRoot(store,
                 (hook == null) ? EmptyHook.INSTANCE : hook,
                 (workspaceName == null) ? Oak.DEFAULT_WORKSPACE_NAME : workspaceName,
                 (securityProvider == null) ? new OpenSecurityProvider() : securityProvider,
                 (queryEngineSettings == null) ? new QueryEngineSettings() : queryEngineSettings,
-                (indexProvider == null) ? new CompositeQueryIndexProvider(): indexProvider);
+                (indexProvider == null) ? new CompositeQueryIndexProvider(): indexProvider,
+                (tenantProvider == null) ? new SystemTenantProvider(): tenantProvider);
 
     }
+    
+    @Nonnull
+    public static Root createSystemRoot(@Nonnull NodeStore store,
+                                        @Nullable CommitHook hook,
+                                        @Nullable String workspaceName,
+                                        @Nullable SecurityProvider securityProvider,
+                                        @Nullable QueryEngineSettings queryEngineSettings,
+                                        @Nullable QueryIndexProvider indexProvider) {
+        return createSystemRoot(store, hook, workspaceName, securityProvider, queryEngineSettings, indexProvider, null);
+
+    }
+
 }

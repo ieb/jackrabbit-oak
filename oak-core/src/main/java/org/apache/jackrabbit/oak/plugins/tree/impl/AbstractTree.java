@@ -18,6 +18,7 @@
  */
 package org.apache.jackrabbit.oak.plugins.tree.impl;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.base.Predicates.notNull;
@@ -40,6 +41,7 @@ import javax.annotation.Nonnull;
 
 import com.google.common.base.Function;
 import com.google.common.base.Predicate;
+import com.google.common.collect.Iterables;
 
 import org.apache.jackrabbit.oak.api.PropertyState;
 import org.apache.jackrabbit.oak.api.Tree;
@@ -49,6 +51,7 @@ import org.apache.jackrabbit.oak.spi.state.ConflictAnnotatingRebaseDiff;
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
 import org.apache.jackrabbit.oak.spi.state.NodeState;
 import org.apache.jackrabbit.oak.spi.state.NodeStateUtils;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
 
 /**
  * {@code AbstractTree} provides default implementations for most
@@ -86,6 +89,10 @@ public abstract class AbstractTree implements Tree {
     @Nonnull
     protected abstract NodeBuilder getNodeBuilder();
 
+    
+    @Nonnull
+    protected abstract Tenant getTenant();
+    
     /**
      * Determine whether an item should be hidden. I.e. not exposed through this
      * tree.
@@ -126,14 +133,17 @@ public abstract class AbstractTree implements Tree {
      */
     @Nonnull
     protected Iterable<String> getChildNames() {
+        
+        // TODO: filter for child names not contained within this tenant.
         NodeBuilder nodeBuilder = getNodeBuilder();
         PropertyState order = nodeBuilder.getProperty(OAK_CHILD_ORDER);
+        final Tenant tenant = getTenant();
         if (order != null && order.getType() == NAMES) {
             Set<String> names = newLinkedHashSet(nodeBuilder.getChildNodeNames());
             List<String> ordered = newArrayListWithCapacity(names.size());
             for (String name : order.getValue(NAMES)) {
                 // only include names of child nodes that actually exist
-                if (names.remove(name)) {
+                if (names.remove(name) && tenant.containsChild(this, name)) {
                     ordered.add(name);
                 }
             }
@@ -141,7 +151,12 @@ public abstract class AbstractTree implements Tree {
             ordered.addAll(names);
             return ordered;
         } else {
-            return nodeBuilder.getChildNodeNames();
+            return Iterables.filter(nodeBuilder.getChildNodeNames(), new Predicate<String>() {
+                @Override
+                public boolean apply(String name) {
+                    return tenant.containsChild(AbstractTree.this, name);
+                }
+            });
         }
     }
 
@@ -223,7 +238,7 @@ public abstract class AbstractTree implements Tree {
     @Override
     @Nonnull
     public Tree getChild(@Nonnull String name) throws IllegalArgumentException {
-        if (!isHidden(checkNotNull(name))) {
+        if (!isHidden(checkNotNull(name)) && getTenant().containsChild(this, name)) {
             return createChild(name);
         } else {
             return new HiddenTree(this, name);
@@ -277,7 +292,7 @@ public abstract class AbstractTree implements Tree {
 
     @Override
     public boolean hasChild(@Nonnull String name) {
-        return getNodeBuilder().hasChildNode(checkNotNull(name)) && !isHidden(name);
+        return getTenant().containsChild(this, name) && getNodeBuilder().hasChildNode(checkNotNull(name)) && !isHidden(name);
     }
 
     @Override
@@ -292,6 +307,7 @@ public abstract class AbstractTree implements Tree {
             max += len;
         }
         NodeBuilder nodeBuilder = getNodeBuilder();
+        // FIXME: child that are not in the tenant cant be removed from teh count without changing nodeBuilder.
         long count = nodeBuilder.getChildNodeCount(max);
         if (count > 0) {
             for (String name : internalNodeNames) {
@@ -310,6 +326,7 @@ public abstract class AbstractTree implements Tree {
             new Function<String, Tree>() {
                 @Override
                 public Tree apply(String name) {
+                    // createChild wont return children not in this tenant.
                     AbstractTree child = createChild(name);
                     return child.exists() ? child : null;
                 }

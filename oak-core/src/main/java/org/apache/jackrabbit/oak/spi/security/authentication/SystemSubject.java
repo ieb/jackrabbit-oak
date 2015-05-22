@@ -39,6 +39,7 @@ public final class SystemSubject {
 
     private static Subject createSystemSubject() {
         Set<? extends Principal> principals = Collections.singleton(SystemPrincipal.INSTANCE);
+        // TODO: Add tenant id to auth info attributes.
         AuthInfo info = new AuthInfoImpl(SystemPrincipal.INSTANCE.getName(), null, principals);
         return new Subject(true, principals, Collections.singleton(info), Collections.<Object>emptySet());
     }

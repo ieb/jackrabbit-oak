@@ -35,6 +35,7 @@ import org.apache.jackrabbit.oak.api.Root;
 import org.apache.jackrabbit.oak.api.Tree;
 import org.apache.jackrabbit.oak.plugins.tree.impl.NodeBuilderTree;
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
+import org.apache.jackrabbit.oak.tenant.SystemTenantImpl;
 
 /**
  * Simplistic 'Root' implementation around the {@code NodeBuilder} used for the
@@ -46,7 +47,7 @@ class UpgradeRoot implements Root {
     private final NodeBuilderTree rootTree;
 
     UpgradeRoot(NodeBuilder nodeBuilder) {
-        rootTree = new NodeBuilderTree("", nodeBuilder);
+        rootTree = new NodeBuilderTree("", nodeBuilder, new SystemTenantImpl());
     }
 
     @Override
