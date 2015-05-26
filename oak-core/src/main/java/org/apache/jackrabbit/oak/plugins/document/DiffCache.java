@@ -21,6 +21,7 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 import org.apache.jackrabbit.oak.cache.CacheStats;
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
 
 /**
  * A cache for child node diffs.
@@ -47,7 +48,7 @@ public interface DiffCache {
     @CheckForNull
     String getChanges(@Nonnull Revision from,
                       @Nonnull Revision to,
-                      @Nonnull String path,
+                      @Nonnull TenantPath path,
                       @Nullable Loader loader);
 
     /**
@@ -73,10 +74,10 @@ public interface DiffCache {
         /**
          * Appends changes about children of the node at the given path.
          *
-         * @param path the path of the parent node.
+         * @param tenantPath the path of the parent node.
          * @param changes the child node changes.
          */
-        void append(@Nonnull String path,
+        void append(@Nonnull TenantPath tenantPath,
                     @Nonnull String changes);
 
         /**

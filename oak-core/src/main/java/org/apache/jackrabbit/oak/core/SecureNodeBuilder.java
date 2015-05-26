@@ -34,6 +34,7 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 import com.google.common.base.Predicate;
+
 import org.apache.jackrabbit.oak.api.Blob;
 import org.apache.jackrabbit.oak.api.PropertyState;
 import org.apache.jackrabbit.oak.api.Tree;
@@ -44,6 +45,7 @@ import org.apache.jackrabbit.oak.spi.security.authorization.permission.Permissio
 import org.apache.jackrabbit.oak.spi.security.authorization.permission.TreePermission;
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
 import org.apache.jackrabbit.oak.spi.state.NodeState;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
 
 class SecureNodeBuilder implements NodeBuilder {
 
@@ -94,6 +96,8 @@ class SecureNodeBuilder implements NodeBuilder {
      */
     private TreePermission rootPermission = null; // initialized lazily
 
+    private Tenant tenant;
+
     SecureNodeBuilder(
             @Nonnull NodeBuilder builder,
             @Nonnull LazyValue<PermissionProvider> permissionProvider,
@@ -104,6 +108,7 @@ class SecureNodeBuilder implements NodeBuilder {
         this.permissionProvider = checkNotNull(permissionProvider);
         this.acContext = checkNotNull(acContext);
         this.builder = checkNotNull(builder);
+        this.tenant = builder.getTenant();
     }
 
     private SecureNodeBuilder(SecureNodeBuilder parent, String name) {
@@ -377,6 +382,11 @@ class SecureNodeBuilder implements NodeBuilder {
                 return false;
             }
         }
+    }
+
+    @Override
+    public Tenant getTenant() {
+        return tenant;
     }
 
 }

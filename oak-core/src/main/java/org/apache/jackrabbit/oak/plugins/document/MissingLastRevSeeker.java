@@ -21,6 +21,7 @@ package org.apache.jackrabbit.oak.plugins.document;
 
 import org.apache.jackrabbit.oak.plugins.document.ClusterNodeInfo.RecoverLockState;
 import org.apache.jackrabbit.oak.plugins.document.util.Utils;
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
 
 import com.google.common.base.Predicate;
 import com.google.common.collect.Iterables;
@@ -97,7 +98,7 @@ public class MissingLastRevSeeker {
     }
 
     public NodeDocument getRoot() {
-        return store.find(Collection.NODES, Utils.getIdFromPath(ROOT_PATH));
+        return store.find(Collection.NODES, Utils.getIdFromPath(TenantPath.SYSTEM_ROOT));
     }
 
     public boolean isRecoveryNeeded(long currentTime) {

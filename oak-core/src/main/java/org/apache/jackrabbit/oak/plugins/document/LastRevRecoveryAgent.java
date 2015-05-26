@@ -38,6 +38,8 @@ import org.apache.jackrabbit.oak.plugins.document.mongo.MongoDocumentStore;
 import org.apache.jackrabbit.oak.plugins.document.mongo.MongoMissingLastRevSeeker;
 import org.apache.jackrabbit.oak.plugins.document.util.MapFactory;
 import org.apache.jackrabbit.oak.plugins.document.util.Utils;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -84,6 +86,7 @@ public class LastRevRecoveryAgent {
                 long leaseEnd = nodeInfo.getLeaseEndTime();
 
                 // retrieve the root document's _lastRev
+                
                 NodeDocument root = missingLastRevUtil.getRoot();
                 Revision lastRev = root.getLastRev().get(clusterId);
 
@@ -165,17 +168,19 @@ public class LastRevRecoveryAgent {
             //2. Update lastRev for parent paths aka rollup
             if (lastRevForParents != null) {
                 String path = doc.getPath();
+                TenantPath tenantPath = new TenantPath(new Tenant(lastRevForParents.getTenantId()), path);
+                
                 while (true) {
                     if (PathUtils.denotesRoot(path)) {
                         break;
                     }
                     path = PathUtils.getParentPath(path);
-                    unsavedParents.put(path, lastRevForParents);
+                    unsavedParents.put(tenantPath, lastRevForParents);
                 }
             }
         }
 
-        for (String parentPath : unsavedParents.getPaths()) {
+        for (TenantPath parentPath : unsavedParents.getPaths()) {
             Revision calcLastRev = unsavedParents.get(parentPath);
             Revision knownLastRev = knownLastRevs.get(parentPath);
 

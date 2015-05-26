@@ -55,6 +55,8 @@ import org.apache.jackrabbit.oak.plugins.document.util.StringValue;
 import org.apache.jackrabbit.oak.spi.blob.BlobStore;
 import org.apache.jackrabbit.oak.spi.blob.GarbageCollectableBlobStore;
 import org.apache.jackrabbit.oak.spi.blob.MemoryBlobStore;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
 import org.apache.jackrabbit.oak.stats.Clock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -160,38 +162,38 @@ public class DocumentMK {
 
     public String diff(String fromRevisionId,
                        String toRevisionId,
-                       String path,
+                       TenantPath tenantPath,
                        int depth) throws DocumentStoreException {
         if (depth != 0) {
             throw new DocumentStoreException("Only depth 0 is supported, depth is " + depth);
         }
-        if (path == null || path.equals("")) {
-            path = "/";
+        if (tenantPath.getPath() == null || tenantPath.getPath().equals("")) {
+            tenantPath = new TenantPath(tenantPath.getTenant(), "/");
         }
         try {
-            return nodeStore.diff(fromRevisionId, toRevisionId, path);
+            return nodeStore.diff(fromRevisionId, toRevisionId, tenantPath);
         } catch (DocumentStoreException e) {
             throw new DocumentStoreException(e);
         }
     }
 
-    public boolean nodeExists(String path, String revisionId)
+    public boolean nodeExists(TenantPath tenantPath, String revisionId)
             throws DocumentStoreException {
-        if (!PathUtils.isAbsolute(path)) {
-            throw new DocumentStoreException("Path is not absolute: " + path);
+        if (!PathUtils.isAbsolute(tenantPath.getPath())) {
+            throw new DocumentStoreException("Path is not absolute: " + tenantPath.getPath());
         }
         revisionId = revisionId != null ? revisionId : nodeStore.getHeadRevision().toString();
         Revision rev = Revision.fromString(revisionId);
         DocumentNodeState n;
         try {
-            n = nodeStore.getNode(path, rev);
+            n = nodeStore.getNode(tenantPath, rev);
         } catch (DocumentStoreException e) {
             throw new DocumentStoreException(e);
         }
         return n != null;
     }
 
-    public String getNodes(String path, String revisionId, int depth,
+    public String getNodes(TenantPath tenantPath, String revisionId, int depth,
             long offset, int maxChildNodes, String filter)
             throws DocumentStoreException {
         if (depth != 0) {
@@ -200,7 +202,7 @@ public class DocumentMK {
         revisionId = revisionId != null ? revisionId : nodeStore.getHeadRevision().toString();
         Revision rev = Revision.fromString(revisionId);
         try {
-            DocumentNodeState n = nodeStore.getNode(path, rev);
+            DocumentNodeState n = nodeStore.getNode(tenantPath, rev);
             if (n == null) {
                 return null;
             }
@@ -279,7 +281,7 @@ public class DocumentMK {
             throw new DocumentStoreException("Not a branch: " + branchRevisionId);
         }
         try {
-            return nodeStore.merge(revision, null).toString();
+            return nodeStore.merge(revision, null, new Tenant(revision.getTenantId())).toString();
         } catch (DocumentStoreException e) {
             throw new DocumentStoreException(e);
         } catch (CommitFailedException e) {
@@ -311,7 +313,7 @@ public class DocumentMK {
             throw new DocumentStoreException("Not a branch revision: " + ancestorRevisionId);
         }
         try {
-            return nodeStore.reset(branch, ancestor, null).toString();
+            return nodeStore.reset(branch, ancestor, null, new Tenant(branch.getTenantId())).toString();
         } catch (DocumentStoreException e) {
             throw new DocumentStoreException(e);
         }
@@ -353,6 +355,7 @@ public class DocumentMK {
 
     private void parseJsonDiff(Commit commit, String json, String rootPath) {
         Revision baseRev = commit.getBaseRevision();
+        Tenant tenant = new Tenant(baseRev.getTenantId());
         String baseRevId = baseRev != null ? baseRev.toString() : null;
         Set<String> added = Sets.newHashSet();
         JsopReader t = new JsopTokenizer(json);
@@ -370,11 +373,12 @@ public class DocumentMK {
                     added.add(path);
                     break;
                 case '-':
-                    DocumentNodeState toRemove = nodeStore.getNode(path, commit.getBaseRevision());
+                    TenantPath tenantPath = new TenantPath(tenant,path);
+                    DocumentNodeState toRemove = nodeStore.getNode(tenantPath, commit.getBaseRevision());
                     if (toRemove == null) {
                         throw new DocumentStoreException("Node not found: " + path + " in revision " + baseRevId);
                     }
-                    commit.removeNode(path);
+                    commit.removeNode(tenantPath);
                     nodeStore.markAsDeleted(toRemove, commit, true);
                     commit.removeNodeDiff(path);
                     break;
@@ -387,12 +391,13 @@ public class DocumentMK {
                         value = t.readRawValue().trim();
                     }
                     String p = PathUtils.getParentPath(path);
-                    if (!added.contains(p) && nodeStore.getNode(p, commit.getBaseRevision()) == null) {
+                    if (!added.contains(p) && nodeStore.getNode(new TenantPath(tenant, p), commit.getBaseRevision()) == null) {
                         throw new DocumentStoreException("Node not found: " + path + " in revision " + baseRevId);
                     }
                     String propertyName = PathUtils.getName(path);
-                    commit.updateProperty(p, propertyName, value);
-                    commit.updatePropertyDiff(p, propertyName, value);
+                    TenantPath tenantPropertyPath = new TenantPath(tenant,p);
+                    commit.updateProperty(tenantPropertyPath, propertyName, value);
+                    commit.updatePropertyDiff(tenantPropertyPath, propertyName, value);
                     break;
                 case '>': {
                     // TODO support moving nodes that were modified within this commit
@@ -401,10 +406,10 @@ public class DocumentMK {
                     if (!PathUtils.isAbsolute(targetPath)) {
                         targetPath = PathUtils.concat(rootPath, targetPath);
                     }
-                    DocumentNodeState source = nodeStore.getNode(path, baseRev);
+                    DocumentNodeState source = nodeStore.getNode(new TenantPath(tenant, path), baseRev);
                     if (source == null) {
                         throw new DocumentStoreException("Node not found: " + path + " in revision " + baseRevId);
-                    } else if (nodeExists(targetPath, baseRevId)) {
+                    } else if (nodeExists(new TenantPath(tenant,targetPath), baseRevId)) {
                         throw new DocumentStoreException("Node already exists: " + targetPath + " in revision " + baseRevId);
                     }
                     commit.moveNode(path, targetPath);
@@ -418,10 +423,10 @@ public class DocumentMK {
                     if (!PathUtils.isAbsolute(targetPath)) {
                         targetPath = PathUtils.concat(rootPath, targetPath);
                     }
-                    DocumentNodeState source = nodeStore.getNode(path, baseRev);
+                    DocumentNodeState source = nodeStore.getNode(new TenantPath(tenant,path), baseRev);
                     if (source == null) {
                         throw new DocumentStoreException("Node not found: " + path + " in revision " + baseRevId);
-                    } else if (nodeExists(targetPath, baseRevId)) {
+                    } else if (nodeExists(new TenantPath(tenant,targetPath), baseRevId)) {
                         throw new DocumentStoreException("Node already exists: " + targetPath + " in revision " + baseRevId);
                     }
                     commit.copyNode(path, targetPath);
@@ -435,7 +440,8 @@ public class DocumentMK {
     }
 
     private void parseAddNode(Commit commit, JsopReader t, String path) {
-        DocumentNodeState n = new DocumentNodeState(nodeStore, path, commit.getRevision());
+        Tenant tenant = new Tenant(commit.getRevision().getTenantId());
+        DocumentNodeState n = new DocumentNodeState(nodeStore, new TenantPath(tenant, path), commit.getRevision());
         if (!t.matches('}')) {
             do {
                 String key = t.readString();

@@ -27,6 +27,7 @@ import java.util.Set;
 
 import org.apache.jackrabbit.oak.plugins.document.NodeDocument.SplitDocType;
 import org.apache.jackrabbit.oak.plugins.document.VersionGarbageCollector.VersionGCStats;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
 
 import com.google.common.base.Predicate;
 
@@ -51,7 +52,7 @@ public class VersionGCSupport {
                                      long oldestRevTimeStamp,
                                      VersionGCStats stats) {
         stats.splitDocGCCount += createCleanUp(gcTypes, oldestRevTimeStamp, stats)
-                .disconnect()
+                .disconnect(Tenant.SYSTEM_TENANT)
                 .deleteSplitDocuments();
     }
 

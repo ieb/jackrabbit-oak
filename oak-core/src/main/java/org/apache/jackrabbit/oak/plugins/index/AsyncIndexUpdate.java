@@ -67,6 +67,7 @@ import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
 import org.apache.jackrabbit.oak.spi.state.NodeState;
 import org.apache.jackrabbit.oak.spi.state.NodeStateDiff;
 import org.apache.jackrabbit.oak.spi.state.NodeStore;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
 import org.apache.jackrabbit.stats.TimeSeriesRecorder;
 import org.apache.jackrabbit.stats.TimeSeriesStatsUtil;
 import org.apache.jackrabbit.util.ISO8601;
@@ -181,14 +182,17 @@ public class AsyncIndexUpdate implements Runnable {
 
         private final String leaseName;
 
-        public AsyncUpdateCallback(String checkpoint, String afterCheckpoint)
+        private Tenant tenant;
+
+        public AsyncUpdateCallback(@Nonnull Tenant tenant, String checkpoint, String afterCheckpoint)
                 throws CommitFailedException {
+            this.tenant = checkNotNull(tenant);
             long now = System.currentTimeMillis();
             this.checkpoint = checkpoint;
             this.lease = now + 2 * ASYNC_TIMEOUT;
             this.leaseName = name + "-lease";
-
-            NodeState root = store.getRoot();
+            // FIXME: Indexes are in the system tenant. Should the be ?
+            NodeState root = store.getRoot(tenant);
             long beforeLease = root.getChildNode(ASYNC).getLong(leaseName);
             if (beforeLease > now) {
                 throw CONCURRENT_UPDATE;
@@ -233,7 +237,7 @@ public class AsyncIndexUpdate implements Runnable {
         }
 
         void close() throws CommitFailedException {
-            NodeBuilder builder = store.getRoot().builder();
+            NodeBuilder builder = store.getRoot(tenant).builder();
             NodeBuilder async = builder.child(ASYNC);
             async.removeProperty(leaseName);
             mergeWithConcurrencyCheck(builder, async.getString(name), lease);
@@ -247,7 +251,7 @@ public class AsyncIndexUpdate implements Runnable {
                 long now = System.currentTimeMillis();
                 if (now + ASYNC_TIMEOUT > lease) {
                     long newLease = now + 2 * ASYNC_TIMEOUT;
-                    NodeBuilder builder = store.getRoot().builder();
+                    NodeBuilder builder = store.getRoot(tenant).builder();
                     builder.child(ASYNC).setProperty(leaseName, newLease);
                     mergeWithConcurrencyCheck(builder, checkpoint, lease);
                     lease = newLease;
@@ -264,7 +268,7 @@ public class AsyncIndexUpdate implements Runnable {
         }
         log.debug("[{}] Running background index task", name);
 
-        NodeState root = store.getRoot();
+        NodeState root = store.getRoot(Tenant.SYSTEM_TENANT);
 
         // check for concurrent updates
         NodeState async = root.getChildNode(ASYNC);
@@ -281,7 +285,7 @@ public class AsyncIndexUpdate implements Runnable {
         NodeState before;
         String beforeCheckpoint = async.getString(name);
         if (beforeCheckpoint != null) {
-            NodeState state = store.retrieve(beforeCheckpoint);
+            NodeState state = store.retrieve(Tenant.SYSTEM_TENANT, beforeCheckpoint);
             if (state == null) {
                 log.warn(
                         "[{}] Failed to retrieve previously indexed checkpoint {}; re-running the initial index update",
@@ -307,7 +311,7 @@ public class AsyncIndexUpdate implements Runnable {
                 "creator", AsyncIndexUpdate.class.getSimpleName(),
                 "thread", Thread.currentThread().getName(),
                 "name", name));
-        NodeState after = store.retrieve(afterCheckpoint);
+        NodeState after = store.retrieve(Tenant.SYSTEM_TENANT, afterCheckpoint);
         if (after == null) {
             log.debug(
                     "[{}] Unable to retrieve newly created checkpoint {}, skipping the index update",
@@ -368,15 +372,16 @@ public class AsyncIndexUpdate implements Runnable {
 
         // create an update callback for tracking index updates
         // and maintaining the update lease
+        Tenant tenant = before.getTenantPath().getTenant();
         AsyncUpdateCallback callback =
-                new AsyncUpdateCallback(beforeCheckpoint, afterCheckpoint);
+                new AsyncUpdateCallback(tenant, beforeCheckpoint, afterCheckpoint);
 
         // check for index tasks split requests, if a split happened, make
         // sure to not delete the reference checkpoint, as the other index
         // task will take care of it
         taskSplitter.maybeSplit(beforeCheckpoint, callback.lease);
         try {
-            NodeBuilder builder = store.getRoot().builder();
+            NodeBuilder builder = store.getRoot(tenant).builder();
 
             IndexUpdate indexUpdate =
                     new IndexUpdate(provider, name, after, builder, callback)
@@ -545,7 +550,7 @@ public class AsyncIndexUpdate implements Runnable {
 
         @Override
         public String getLastIndexedTime() {
-            PropertyState ps = store.getRoot().getChildNode(ASYNC).getProperty(lastIndexedTo);
+            PropertyState ps = store.getRoot(Tenant.SYSTEM_TENANT).getChildNode(ASYNC).getProperty(lastIndexedTo);
             return ps != null ? ps.getValue(Type.STRING) : null;
         }
 
@@ -810,7 +815,7 @@ public class AsyncIndexUpdate implements Runnable {
         }
 
         private void split(@CheckForNull String refCheckpoint, long lease) throws CommitFailedException {
-            NodeBuilder builder = store.getRoot().builder();
+            NodeBuilder builder = store.getRoot(Tenant.SYSTEM_TENANT).builder();
             if (refCheckpoint != null) {
                 NodeBuilder async = builder.child(ASYNC);
                 // add new reference

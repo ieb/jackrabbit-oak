@@ -19,6 +19,8 @@ package org.apache.jackrabbit.oak.plugins.document;
 import javax.annotation.Nonnull;
 
 import org.apache.jackrabbit.oak.plugins.document.util.Utils;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -120,7 +122,8 @@ class Collision {
             }
         }
         // at this point we have a commitRootPath
-        UpdateOp op = new UpdateOp(Utils.getIdFromPath(commitRootPath), false);
+        TenantPath tenantPath = new TenantPath(new Tenant(revision.getTenantId()),commitRootPath);
+        UpdateOp op = new UpdateOp(Utils.getIdFromPath(tenantPath), false);
         NodeDocument commitRoot = store.find(Collection.NODES, op.getId());
         // check commit status of revision
         if (commitRoot.isCommitted(revision)) {

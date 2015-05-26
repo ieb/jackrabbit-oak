@@ -33,6 +33,8 @@ import javax.annotation.Nonnull;
 
 import org.apache.jackrabbit.oak.plugins.document.memory.MemoryDocumentStore;
 import org.apache.jackrabbit.oak.plugins.document.util.Utils;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -109,11 +111,11 @@ class SplitOperations {
             throw new IllegalArgumentException(
                     "Not a main document: " + doc.getId());
         }
-        return new SplitOperations(doc, context).create();
+        return new SplitOperations(doc, context).create(new Tenant(context.getHeadRevision().getTenantId()));
 
     }
 
-    private List<UpdateOp> create() {
+    private List<UpdateOp> create(Tenant tenant) {
         if (!considerSplit()) {
             return Collections.emptyList();
         }
@@ -135,7 +137,7 @@ class SplitOperations {
         collectRevisionsAndCommitRoot();
 
         // create split ops out of the split values
-        main = createSplitOps();
+        main = createSplitOps(tenant);
 
         // create intermediate docs if needed
         createIntermediateDocs();
@@ -262,7 +264,8 @@ class SplitOperations {
                     throw new IllegalStateException();
                 }
                 String prevPath = Utils.getPreviousPathFor(path, h, entry.getKey() + 1);
-                String prevId = Utils.getIdFromPath(prevPath);
+                TenantPath tenantPath = new TenantPath(new Tenant(l.getTenantId()), prevPath);
+                String prevId = Utils.getIdFromPath(tenantPath);
                 UpdateOp intermediate = new UpdateOp(prevId, true);
                 intermediate.set(Document.ID, prevId);
                 if (Utils.isLongPath(prevPath)) {
@@ -288,7 +291,7 @@ class SplitOperations {
      *          not enough data to split.
      */
     @CheckForNull
-    private UpdateOp createSplitOps() {
+    private UpdateOp createSplitOps(Tenant tenant) {
         UpdateOp main = null;
         // check if we have enough data to split off
         if (high != null && low != null
@@ -299,7 +302,7 @@ class SplitOperations {
             main = new UpdateOp(id, false);
             setPrevious(main, new Range(high, low, 0));
             String oldPath = Utils.getPreviousPathFor(path, high, 0);
-            UpdateOp old = new UpdateOp(Utils.getIdFromPath(oldPath), true);
+            UpdateOp old = new UpdateOp(Utils.getIdFromPath(new TenantPath(tenant,oldPath)), true);
             old.set(Document.ID, old.getId());
             if (Utils.isLongPath(oldPath)) {
                 old.set(NodeDocument.PATH, oldPath);

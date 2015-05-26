@@ -38,6 +38,7 @@ import com.google.common.collect.AbstractIterator;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.Queues;
+
 import org.apache.jackrabbit.oak.cache.CacheValue;
 import org.apache.jackrabbit.oak.commons.PathUtils;
 import org.apache.jackrabbit.oak.commons.json.JsopBuilder;
@@ -46,6 +47,8 @@ import org.apache.jackrabbit.oak.commons.json.JsopTokenizer;
 import org.apache.jackrabbit.oak.commons.json.JsopWriter;
 import org.apache.jackrabbit.oak.plugins.document.memory.MemoryDocumentStore;
 import org.apache.jackrabbit.oak.plugins.document.util.Utils;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -796,6 +799,7 @@ public final class NodeDocument extends Document implements CachedNodeDocument{
                                                @Nonnull Revision readRevision,
                                                @Nullable Revision lastModified) {
         Map<Revision, String> validRevisions = Maps.newHashMap();
+        // revisions should be unique to a tenant, perhaps the tenant should be part of the revision rather than seperate.
         Branch branch = nodeStore.getBranches().getBranch(readRevision);
         LastRevs lastRevs = new LastRevs(getLastRev(), readRevision, branch);
         // overlay with unsaved last modified from this instance
@@ -807,7 +811,7 @@ public final class NodeDocument extends Document implements CachedNodeDocument{
             return null;
         }
         String path = getPath();
-        DocumentNodeState n = new DocumentNodeState(nodeStore, path, readRevision, hasChildren());
+        DocumentNodeState n = new DocumentNodeState(nodeStore, new TenantPath(new Tenant(readRevision.getTenantId()), path), readRevision, hasChildren());
         Revision lastRevision = min;
         for (String key : keySet()) {
             if (!Utils.isPropertyName(key)) {
@@ -890,7 +894,8 @@ public final class NodeDocument extends Document implements CachedNodeDocument{
         if (branch != null) {
             // read from a branch
             // -> possibly overlay with unsaved last revs from branch
-            lastRevs.updateBranch(branch.getUnsavedLastRevision(path, readRevision));
+            TenantPath tenantPath = new TenantPath(new Tenant(readRevision.getTenantId()), path);
+            lastRevs.updateBranch(branch.getUnsavedLastRevision(tenantPath, readRevision));
             Revision r = lastRevs.getBranchRevision();
             if (r != null) {
                 lastRevision = r;
@@ -927,6 +932,7 @@ public final class NodeDocument extends Document implements CachedNodeDocument{
 
         return "false".equals(value.value) ? value.revision : null;
     }
+
 
     /**
      * Returns <code>true</code> if the given operation is conflicting with this
@@ -1236,7 +1242,7 @@ public final class NodeDocument extends Document implements CachedNodeDocument{
                 NodeDocument prev = store.find(NODES, prevId);
                 if (prev == null) {
                     LOG.warn("Split document {} does not exist anymore. Main document is {}",
-                            prevId, Utils.getIdFromPath(getMainPath()));
+                            prevId, Utils.getIdFromPath(new TenantPath(new Tenant(revision.getTenantId()),getMainPath())));
                     continue;
                 }
                 // recurse into the split hierarchy
@@ -1343,7 +1349,7 @@ public final class NodeDocument extends Document implements CachedNodeDocument{
     public static void setLastRev(@Nonnull UpdateOp op,
                                   @Nonnull Revision revision) {
         checkNotNull(op).setMapEntry(LAST_REV,
-                new Revision(0, 0, revision.getClusterId()),
+                new Revision(revision.getTenantId(), 0, 0, revision.getClusterId()),
                 revision.toString());
     }
 
@@ -1468,7 +1474,7 @@ public final class NodeDocument extends Document implements CachedNodeDocument{
             }
         }
         // get root of commit
-        return store.find(Collection.NODES, Utils.getIdFromPath(commitRootPath));
+        return store.find(Collection.NODES, Utils.getIdFromPath(new TenantPath(new Tenant(rev.getTenantId()) ,commitRootPath)));
     }
 
     /**
@@ -1864,4 +1870,5 @@ public final class NodeDocument extends Document implements CachedNodeDocument{
             this.value = value;
         }
     }
+
 }

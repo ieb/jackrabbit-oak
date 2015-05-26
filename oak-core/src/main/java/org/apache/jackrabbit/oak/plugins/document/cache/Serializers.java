@@ -46,6 +46,7 @@ public class Serializers {
     public static class RevisionSerizlizer extends Serializer<Revision> {
         @Override
         public void write(Kryo kryo, Output o, Revision r) {
+            o.writeString(r.getTenantId());
             o.writeLong(r.getTimestamp(), true);
             o.writeInt(r.getCounter(), true);
             o.writeInt(r.getClusterId(), true);
@@ -55,6 +56,7 @@ public class Serializers {
         @Override
         public Revision read(Kryo kryo, Input i, Class<Revision> revisionClass) {
             return new Revision(
+                    i.readString(),
                     i.readLong(true), //timestamp
                     i.readInt(true),  //counter
                     i.readInt(true),  //clusterId

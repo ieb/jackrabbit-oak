@@ -46,6 +46,7 @@ import org.apache.jackrabbit.oak.spi.state.ApplyDiff;
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
 import org.apache.jackrabbit.oak.spi.state.NodeState;
 import org.apache.jackrabbit.oak.spi.state.NodeStore;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
 
 /**
  * {@code InitialContent} implements a {@link RepositoryInitializer} and
@@ -113,7 +114,7 @@ public class InitialContent implements RepositoryInitializer, NodeTypeConstants 
                 store, new EditorHook(new CompositeEditorProvider(
                 new NamespaceEditorProvider(),
                 new TypeEditorProvider())), null, null, null, null));
-        NodeState target = store.getRoot();
+        NodeState target = store.getRoot(Tenant.SYSTEM_TENANT);
         target.compareAgainstBaseState(base, new ApplyDiff(builder));
     }
 

@@ -23,6 +23,8 @@ import com.google.common.collect.Lists;
 
 import org.apache.jackrabbit.oak.plugins.document.VersionGarbageCollector.VersionGCStats;
 import org.apache.jackrabbit.oak.plugins.document.util.Utils;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,9 +53,9 @@ public class SplitDocumentCleanUp {
         this.splitDocGarbage = splitDocGarbage;
     }
 
-    protected SplitDocumentCleanUp disconnect() {
+    protected SplitDocumentCleanUp disconnect(Tenant tenant) {
         for (NodeDocument splitDoc : splitDocGarbage) {
-            disconnect(splitDoc);
+            disconnect(tenant.getTenantId(), splitDoc);
         }
         return this;
     }
@@ -70,9 +72,10 @@ public class SplitDocumentCleanUp {
         return docsToDelete.size();
     }
 
-    private void disconnect(NodeDocument splitDoc) {
+    private void disconnect(String tenantId, NodeDocument splitDoc) {
         String splitId = splitDoc.getId();
-        String mainId = Utils.getIdFromPath(splitDoc.getMainPath());
+        TenantPath tenantPath = new TenantPath(new Tenant(tenantId), splitDoc.getMainPath());
+        String mainId = Utils.getIdFromPath(tenantPath);
         NodeDocument doc = store.find(NODES, mainId);
         if (doc == null) {
             LOG.warn("Main document {} already removed. Split document is {}",
@@ -109,7 +112,7 @@ public class SplitDocumentCleanUp {
                 && old.getPreviousRanges().size() == 1
                 && old.getPreviousRanges().containsKey(rev)) {
             // this was the last reference on an intermediate split doc
-            disconnect(old);
+            disconnect(rev.getTenantId(), old);
             store.remove(NODES, old.getId());
             stats.intermediateSplitDocGCCount++;
         }

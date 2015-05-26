@@ -65,7 +65,7 @@ public class FileStoreRestore {
     private static void restore(NodeState source, NodeStore store,
             SegmentWriter writer) throws CommitFailedException {
         long s = System.currentTimeMillis();
-        NodeState current = store.getRoot();
+        NodeState current = store.getRoot(source.getTenantPath().getTenant());
         RestoreCompactor compactor = new RestoreCompactor(writer);
         SegmentNodeBuilder builder = compactor.process(current, source);
         store.merge(builder, EmptyHook.INSTANCE, CommitInfo.EMPTY);

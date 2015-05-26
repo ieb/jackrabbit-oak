@@ -22,6 +22,7 @@ import javax.annotation.Nullable;
 import com.google.common.collect.Iterables;
 
 import org.apache.jackrabbit.oak.cache.CacheStats;
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
 
 /**
  * Implements a tiered diff cache which consists of a {@link LocalDiffCache} and
@@ -40,7 +41,7 @@ class TieredDiffCache implements DiffCache {
     @Override
     public String getChanges(@Nonnull Revision from,
                              @Nonnull Revision to,
-                             @Nonnull String path,
+                             @Nonnull TenantPath path,
                              @Nullable Loader loader) {
         // check local first without loader
         String changes = localCache.getChanges(from, to, path, null);

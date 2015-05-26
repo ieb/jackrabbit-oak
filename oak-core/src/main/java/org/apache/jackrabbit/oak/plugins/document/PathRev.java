@@ -21,6 +21,8 @@ package org.apache.jackrabbit.oak.plugins.document;
 import javax.annotation.Nonnull;
 
 import org.apache.jackrabbit.oak.cache.CacheValue;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -30,20 +32,20 @@ import static com.google.common.base.Preconditions.checkNotNull;
  */
 public final class PathRev implements CacheValue {
 
-    private final String path;
+    private final TenantPath tenantPath;
 
     private final Revision revision;
 
-    public PathRev(@Nonnull String path, @Nonnull Revision revision) {
-        this.path = checkNotNull(path);
+    public PathRev(@Nonnull TenantPath tenantPath, @Nonnull Revision revision) {
+        this.tenantPath = checkNotNull(tenantPath);
         this.revision = checkNotNull(revision);
     }
 
     @Override
     public int getMemory() {
         return 24                           // shallow size
-                + 40 + path.length() * 2    // path
-                + 32;                       // revision
+                + tenantPath.getMemory()    // path
+                + 32;                      // revision
     }
 
     //----------------------------< Object >------------------------------------
@@ -51,7 +53,7 @@ public final class PathRev implements CacheValue {
 
     @Override
     public int hashCode() {
-        return path.hashCode() ^ revision.hashCode();
+        return (tenantPath.hashCode() ^ revision.hashCode());
     }
 
     @Override
@@ -60,14 +62,14 @@ public final class PathRev implements CacheValue {
             return true;
         } else if (obj instanceof PathRev) {
             PathRev other = (PathRev) obj;
-            return revision.equals(other.revision) && path.equals(other.path);
+            return revision.equals(other.revision) && tenantPath.equals(other.tenantPath);
         }
         return false;
     }
 
     @Override
     public String toString() {
-        return path + "@" + revision;
+        return tenantPath.toPathString() + "@" + revision;
     }
 
     public String asString() {
@@ -75,17 +77,17 @@ public final class PathRev implements CacheValue {
     }
 
     public static PathRev fromString(String s) {
-        int index = s.lastIndexOf('@');
-        return new PathRev(s.substring(0, index), Revision.fromString(s.substring(index + 1)));
+        TenantPath t = TenantPath.fromString(s);
+        return new PathRev(t, Revision.fromString(Tenant.getRevisionPart(s)));
     }
 
     public int compareTo(PathRev b) {
         if (this == b) {
             return 0;
         }
-        int compare = path.compareTo(b.path);
+        int compare = tenantPath.compareTo(b.tenantPath);
         if (compare == 0) {
-            compare = revision.compareTo(b.revision);
+              compare = revision.compareTo(b.revision);
         }
         return compare;
     }

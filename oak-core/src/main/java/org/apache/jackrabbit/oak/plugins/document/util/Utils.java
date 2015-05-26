@@ -46,6 +46,8 @@ import org.apache.jackrabbit.oak.plugins.document.NodeDocument;
 import org.apache.jackrabbit.oak.plugins.document.Revision;
 import org.apache.jackrabbit.oak.plugins.document.RevisionContext;
 import org.apache.jackrabbit.oak.plugins.document.StableRevisionComparator;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
 import org.bson.types.ObjectId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -63,7 +65,7 @@ public class Utils {
      * Approximate length of a Revision string.
      */
     private static final int REVISION_LENGTH =
-            new Revision(System.currentTimeMillis(), 0, 0).toString().length();
+            new Revision(Tenant.SYSTEM_TENANT.getTenantId(), System.currentTimeMillis(), 0, 0).toString().length();
 
     /**
      * The length of path (in characters), whose UTF-8 representation can not
@@ -251,22 +253,18 @@ public class Utils {
         return !key.startsWith("_") || key.startsWith("__") || key.startsWith("_$");
     }
 
-    public static String getIdFromPath(String path) {
-        if (isLongPath(path)) {
-            MessageDigest digest;
-            try {
-                digest = MessageDigest.getInstance("SHA-256");
-            } catch (NoSuchAlgorithmException e) {
-                throw new RuntimeException(e);
-            }
-            int depth = Utils.pathDepth(path);
-            String parent = PathUtils.getParentPath(path);
-            byte[] hash = digest.digest(parent.getBytes(UTF_8));
-            String name = PathUtils.getName(path);
-            return depth + ":h" + Hex.encodeHexString(hash) + "/" + name;
+    public static String getIdFromPath(TenantPath tenantPath) {
+        MessageDigest digest;
+        try {
+            digest = MessageDigest.getInstance("SHA-256");
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
         }
-        int depth = Utils.pathDepth(path);
-        return depth + ":" + path;
+        int depth = Utils.pathDepth(tenantPath.getPath());
+        TenantPath parent = new TenantPath(tenantPath.getTenant(), PathUtils.getParentPath(tenantPath.getPath()));
+        byte[] hash = digest.digest(parent.toPathString().getBytes(UTF_8));
+        String name = PathUtils.getName(tenantPath.getPath());
+        return depth + ":h" + Hex.encodeHexString(hash) + "/" + name;
     }
 
     /**
@@ -295,7 +293,7 @@ public class Utils {
             return null;
         }
         String parentPath = PathUtils.getParentPath(path);
-        return Utils.getIdFromPath(parentPath);
+        return Utils.getIdFromPath(new TenantPath(Tenant.SYSTEM_TENANT, parentPath));
     }
 
     public static boolean isLongPath(String path) {
@@ -349,7 +347,7 @@ public class Utils {
     }
 
     public static String getPreviousIdFor(String path, Revision r, int height) {
-        return getIdFromPath(getPreviousPathFor(path, r, height));
+        return getIdFromPath(new TenantPath(new Tenant(r.getTenantId()),getPreviousPathFor(path, r, height)));
     }
 
     /**
@@ -388,7 +386,8 @@ public class Utils {
      */
     public static String getKeyLowerLimit(String path) {
         String from = PathUtils.concat(path, "a");
-        from = getIdFromPath(from);
+        // this should still work as the encoding of the ID appends tenant ID, however all paths are encoded as long paths, so it might fail
+        from = getIdFromPath(new TenantPath(Tenant.SYSTEM_TENANT, from));
         from = from.substring(0, from.length() - 1);
         return from;
     }
@@ -402,7 +401,8 @@ public class Utils {
      */
     public static String getKeyUpperLimit(String path) {
         String to = PathUtils.concat(path, "z");
-        to = getIdFromPath(to);
+        // this should still work as the encoding of the ID appends tenant ID, however all paths are encoded as long paths, so it might fail
+        to = getIdFromPath(new TenantPath(Tenant.SYSTEM_TENANT, to));
         to = to.substring(0, to.length() - 2) + "0";
         return to;
     }

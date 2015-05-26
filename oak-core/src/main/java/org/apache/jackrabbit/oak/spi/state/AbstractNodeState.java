@@ -32,6 +32,7 @@ import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
 
 import org.apache.jackrabbit.oak.api.PropertyState;
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
 
 import com.google.common.base.Function;
 import com.google.common.collect.Iterables;
@@ -50,6 +51,8 @@ import com.google.common.collect.Iterables;
  * alternatives.
  */
 public abstract class AbstractNodeState implements NodeState {
+
+    private TenantPath tenantPath;
 
     public static boolean isValidName(String name) {
         return name != null && !name.isEmpty() && name.indexOf('/') == -1;
@@ -214,6 +217,15 @@ public abstract class AbstractNodeState implements NodeState {
         }
         builder.append(" }");
         return builder.toString();
+    }
+    
+    public AbstractNodeState(TenantPath tenantPath) {
+        this.tenantPath = tenantPath;
+    }
+    
+    @Override
+    public TenantPath getTenantPath() {
+        return tenantPath;
     }
 
     @Override

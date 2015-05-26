@@ -30,6 +30,7 @@ import org.apache.jackrabbit.oak.plugins.index.counter.NodeCounterEditor;
 import org.apache.jackrabbit.oak.spi.state.ChildNodeEntry;
 import org.apache.jackrabbit.oak.spi.state.NodeState;
 import org.apache.jackrabbit.oak.spi.state.NodeStore;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
 import org.apache.jackrabbit.oak.util.ApproximateCounter;
 
 /**
@@ -61,7 +62,8 @@ public class NodeCounter implements NodeCounterMBean {
     
     @Override
     public long getEstimatedNodeCount(String path) {
-        return getEstimatedNodeCount(store.getRoot(), path, false);
+        // FIXME: probably should be in a tenant and not over all tenants.
+        return getEstimatedNodeCount(store.getRoot(Tenant.SYSTEM_TENANT), path, false);
     }
 
     /**
@@ -153,7 +155,8 @@ public class NodeCounter implements NodeCounterMBean {
         if (level <= 0) {
             return;
         }
-        NodeState s = child(store.getRoot(),
+        // FIXME: Probably should in a tenant.
+        NodeState s = child(store.getRoot(Tenant.SYSTEM_TENANT),
                 PathUtils.elements(path));
         if (!s.exists()) {
             return;

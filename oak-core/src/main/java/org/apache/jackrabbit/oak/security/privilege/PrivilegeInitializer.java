@@ -64,7 +64,7 @@ class PrivilegeInitializer implements RepositoryInitializer, PrivilegeConstants 
                 log.error("Failed to register built-in privileges", e);
                 throw new RuntimeException(e);
             }
-            NodeState target = store.getRoot();
+            NodeState target = store.getRoot(builder.getTenant());
             target.compareAgainstBaseState(base, new ApplyDiff(builder));
         }
     }

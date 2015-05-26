@@ -27,6 +27,7 @@ import javax.annotation.Nonnull;
 import org.apache.jackrabbit.oak.api.Blob;
 import org.apache.jackrabbit.oak.api.PropertyState;
 import org.apache.jackrabbit.oak.api.Type;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
 
 /**
  * A node builder that throws an {@link UnsupportedOperationException} on
@@ -204,6 +205,11 @@ public class ReadOnlyBuilder implements NodeBuilder {
     @Override
     public Blob createBlob(InputStream stream) throws IOException {
         throw unsupported();
+    }
+
+    @Override
+    public Tenant getTenant() {
+        return state.getTenantPath().getTenant();
     }
 
 }

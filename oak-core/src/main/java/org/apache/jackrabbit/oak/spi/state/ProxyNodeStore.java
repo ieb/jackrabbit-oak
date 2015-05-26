@@ -26,14 +26,15 @@ import org.apache.jackrabbit.oak.api.Blob;
 import org.apache.jackrabbit.oak.api.CommitFailedException;
 import org.apache.jackrabbit.oak.spi.commit.CommitHook;
 import org.apache.jackrabbit.oak.spi.commit.CommitInfo;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
 
 public abstract class ProxyNodeStore implements NodeStore {
 
     protected abstract NodeStore getNodeStore();
 
     @Override
-    public NodeState getRoot() {
-        return getNodeStore().getRoot();
+    public NodeState getRoot(Tenant tenant) {
+        return getNodeStore().getRoot(tenant);
     }
 
     @Override
@@ -81,8 +82,8 @@ public abstract class ProxyNodeStore implements NodeStore {
     }
 
     @Override
-    public NodeState retrieve(String checkpoint) {
-        return getNodeStore().retrieve(checkpoint);
+    public NodeState retrieve(Tenant tenant, String checkpoint) {
+        return getNodeStore().retrieve(tenant, checkpoint);
     }
 
     @Override

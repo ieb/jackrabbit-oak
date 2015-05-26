@@ -21,10 +21,11 @@ import java.util.Map;
 import javax.annotation.Nonnull;
 
 import org.apache.jackrabbit.oak.api.PropertyState;
-import org.apache.jackrabbit.oak.commons.PathUtils;
 import org.apache.jackrabbit.oak.plugins.document.util.Utils;
 import org.apache.jackrabbit.oak.spi.state.NodeState;
 import org.apache.jackrabbit.oak.spi.state.NodeStateDiff;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static org.apache.jackrabbit.oak.plugins.memory.EmptyNodeState.EMPTY_NODE;
@@ -37,20 +38,21 @@ import static org.apache.jackrabbit.oak.plugins.memory.EmptyNodeState.MISSING_NO
 class ResetDiff implements NodeStateDiff {
 
     private final Revision revision;
-    private final String path;
-    private final Map<String, UpdateOp> operations;
+    private final TenantPath tenantPath;
+    private final Map<TenantPath, UpdateOp> operations;
     private UpdateOp update;
 
     ResetDiff(@Nonnull Revision revision,
-              @Nonnull Map<String, UpdateOp> operations) {
-        this(revision, "/", operations);
+              @Nonnull Tenant tenant,
+              @Nonnull Map<TenantPath, UpdateOp> operations2) {
+        this(revision, new TenantPath(checkNotNull(tenant), "/"), operations2);
     }
 
     private ResetDiff(@Nonnull Revision revision,
-                      @Nonnull String path,
-                      @Nonnull Map<String, UpdateOp> operations) {
+                      @Nonnull TenantPath tenantPath,
+                      @Nonnull Map<TenantPath, UpdateOp> operations) {
         this.revision = checkNotNull(revision);
-        this.path = checkNotNull(path);
+        this.tenantPath = checkNotNull(tenantPath);
         this.operations = checkNotNull(operations);
     }
 
@@ -74,7 +76,7 @@ class ResetDiff implements NodeStateDiff {
 
     @Override
     public boolean childNodeAdded(String name, NodeState after) {
-        String p = PathUtils.concat(path, name);
+        TenantPath p = tenantPath.getChild(name);
         ResetDiff diff = new ResetDiff(revision, p, operations);
         UpdateOp op = diff.getUpdateOp();
         NodeDocument.removeDeleted(op, revision);
@@ -85,30 +87,30 @@ class ResetDiff implements NodeStateDiff {
     public boolean childNodeChanged(String name,
                                     NodeState before,
                                     NodeState after) {
-        String p = PathUtils.concat(path, name);
+        TenantPath p = tenantPath.getChild(name);
         return after.compareAgainstBaseState(before,
                 new ResetDiff(revision, p, operations));
     }
 
     @Override
     public boolean childNodeDeleted(String name, NodeState before) {
-        String p = PathUtils.concat(path, name);
+        TenantPath p = tenantPath.getChild(name);
         ResetDiff diff = new ResetDiff(revision, p, operations);
         NodeDocument.removeDeleted(diff.getUpdateOp(), revision);
         return MISSING_NODE.compareAgainstBaseState(before, diff);
     }
 
-    Map<String, UpdateOp> getOperations() {
+    Map<TenantPath, UpdateOp> getOperations() {
         return operations;
     }
 
     private UpdateOp getUpdateOp() {
         if (update == null) {
-            update = operations.get(path);
+            update = operations.get(tenantPath);
             if (update == null) {
-                String id = Utils.getIdFromPath(path);
+                String id = Utils.getIdFromPath(tenantPath);
                 update = new UpdateOp(id, false);
-                operations.put(path, update);
+                operations.put(tenantPath, update);
             }
             NodeDocument.removeRevision(update, revision);
             NodeDocument.removeCommitRoot(update, revision);

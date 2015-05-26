@@ -32,6 +32,7 @@ import org.apache.jackrabbit.oak.commons.json.JsopReader;
 import org.apache.jackrabbit.oak.commons.json.JsopTokenizer;
 import org.apache.jackrabbit.oak.plugins.document.util.RevisionsKey;
 import org.apache.jackrabbit.oak.plugins.document.util.StringValue;
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
 
 /**
  * A diff cache, which is pro-actively filled after a commit.
@@ -56,12 +57,12 @@ public class LocalDiffCache implements DiffCache {
     @Override
     public String getChanges(@Nonnull Revision from,
                              @Nonnull Revision to,
-                             @Nonnull String path,
+                             @Nonnull TenantPath tenantPath,
                              @Nullable Loader loader) {
         RevisionsKey key = new RevisionsKey(from, to);
         Diff diff = diffCache.getIfPresent(key);
         if (diff != null) {
-            String result = diff.get(path);
+            String result = diff.get(tenantPath);
             return result != null ? result : "";
         }
         if (loader != null) {
@@ -75,15 +76,15 @@ public class LocalDiffCache implements DiffCache {
     public Entry newEntry(final @Nonnull Revision from,
                           final @Nonnull Revision to) {
         return new Entry() {
-            private final Map<String, String> changesPerPath = Maps.newHashMap();
+            private final Map<TenantPath, String> changesPerPath = Maps.newHashMap();
             private int size;
             @Override
-            public void append(@Nonnull String path, @Nonnull String changes) {
+            public void append(@Nonnull TenantPath tenantPath, @Nonnull String changes) {
                 if (exceedsSize()){
                     return;
                 }
-                size += size(path) + size(changes);
-                changesPerPath.put(path, changes);
+                size += tenantPath.getMemory() + size(changes);
+                changesPerPath.put(tenantPath, changes);
             }
 
             @Override
@@ -113,16 +114,16 @@ public class LocalDiffCache implements DiffCache {
 
     public static final class Diff implements CacheValue {
 
-        private final Map<String, String> changes;
+        private final Map<TenantPath, String> changes;
         private int memory;
 
-        public Diff(Map<String, String> changes, int memory) {
+        public Diff(Map<TenantPath, String> changes, int memory) {
             this.changes = changes;
             this.memory = memory;
         }
 
         public static Diff fromString(String value) {
-            Map<String, String> map = Maps.newHashMap();
+            Map<TenantPath, String> map = Maps.newHashMap();
             JsopReader reader = new JsopTokenizer(value);
             while (true) {
                 if (reader.matches(JsopReader.END)) {
@@ -131,7 +132,7 @@ public class LocalDiffCache implements DiffCache {
                 String k = reader.readString();
                 reader.read(':');
                 String v = reader.readString();
-                map.put(k, v);
+                map.put(TenantPath.fromString(k), v);
                 if (reader.matches(JsopReader.END)) {
                     break;
                 }
@@ -142,14 +143,14 @@ public class LocalDiffCache implements DiffCache {
 
         public String asString(){
             JsopBuilder builder = new JsopBuilder();
-            for (Map.Entry<String, String> entry : changes.entrySet()) {
-                builder.key(entry.getKey());
+            for (Map.Entry<TenantPath, String> entry : changes.entrySet()) {
+                builder.key(entry.getKey().toPathString());
                 builder.value(entry.getValue());
             }
             return builder.toString();
         }
 
-        public Map<String, String> getChanges() {
+        public Map<TenantPath, String> getChanges() {
             return Collections.unmodifiableMap(changes);
         }
 
@@ -157,16 +158,16 @@ public class LocalDiffCache implements DiffCache {
         public int getMemory() {
             if (memory == 0) {
                 int m = 0;
-                for (Map.Entry<String, String> e : changes.entrySet()){
-                    m += size(e.getKey()) + size(e.getValue());
+                for (Map.Entry<TenantPath, String> e : changes.entrySet()){
+                    m += e.getKey().getMemory() + size(e.getValue());
                 }
                 memory = m;
             }
             return memory;
         }
 
-        String get(String path) {
-            return changes.get(path);
+        String get(TenantPath tenantPath) {
+            return changes.get(tenantPath);
         }
 
         @Override

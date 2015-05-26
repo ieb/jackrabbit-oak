@@ -28,6 +28,7 @@ import org.apache.jackrabbit.oak.spi.commit.CommitInfo;
 import org.apache.jackrabbit.oak.spi.commit.EditorHook;
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
 import org.apache.jackrabbit.oak.spi.state.NodeStore;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
 
 public final class OakInitializer {
 
@@ -38,7 +39,7 @@ public final class OakInitializer {
                                   @Nonnull RepositoryInitializer initializer,
                                   @Nonnull IndexEditorProvider indexEditor) {
         try {
-            NodeBuilder builder = store.getRoot().builder();
+            NodeBuilder builder = store.getRoot(Tenant.SYSTEM_TENANT).builder();
             initializer.initialize(builder);
             CommitHook hook = new EditorHook(new IndexUpdateProvider(indexEditor));
             CommitInfo info = new CommitInfo("OakInitializer", null);
@@ -52,7 +53,7 @@ public final class OakInitializer {
                                   @Nonnull NodeStore store,
                                   @Nonnull String workspaceName,
                                   @Nonnull IndexEditorProvider indexEditor) {
-        NodeBuilder builder = store.getRoot().builder();
+        NodeBuilder builder = store.getRoot(Tenant.SYSTEM_TENANT).builder();
         for (WorkspaceInitializer wspInit : initializer) {
             wspInit.initialize(builder, workspaceName);
         }

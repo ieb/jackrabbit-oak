@@ -33,6 +33,8 @@ import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
+
 import com.google.common.base.Function;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
@@ -230,7 +232,7 @@ class Branch {
      *         there is none in this branch.
      */
     @CheckForNull
-    public Revision getUnsavedLastRevision(String path,
+    public Revision getUnsavedLastRevision(TenantPath path,
                                            Revision readRevision) {
         readRevision = readRevision.asBranchRevision();
         for (Revision r : commits.descendingKeySet()) {
@@ -275,9 +277,9 @@ class Branch {
 
         abstract void applyTo(UnsavedModifications trunk, Revision commit);
 
-        abstract boolean isModified(String path);
+        abstract boolean isModified(TenantPath path);
 
-        abstract Iterable<String> getModifiedPaths();
+        abstract Iterable<TenantPath> getModifiedPaths();
 
         protected abstract boolean isRebase();
     }
@@ -287,7 +289,7 @@ class Branch {
      */
     private static class BranchCommitImpl extends BranchCommit {
 
-        private final Set<String> modifications = Sets.newHashSet();
+        private final Set<TenantPath> modifications = Sets.newHashSet();
 
         BranchCommitImpl(Revision base, Revision commit) {
             super(base, commit);
@@ -295,18 +297,18 @@ class Branch {
 
         @Override
         void applyTo(UnsavedModifications trunk, Revision commit) {
-            for (String p : modifications) {
+            for (TenantPath p : modifications) {
                 trunk.put(p, commit);
             }
         }
 
         @Override
-        boolean isModified(String path) { // TODO: rather pass NodeDocument?
+        boolean isModified(TenantPath path) { // TODO: rather pass NodeDocument?
             return modifications.contains(path);
         }
 
         @Override
-        Iterable<String> getModifiedPaths() {
+        Iterable<TenantPath> getModifiedPaths() {
             return modifications;
         }
 
@@ -318,7 +320,7 @@ class Branch {
         //------------------< LastRevTracker >----------------------------------
 
         @Override
-        public void track(String path) {
+        public void track(TenantPath path) {
             modifications.add(path);
         }
 
@@ -346,7 +348,7 @@ class Branch {
         }
 
         @Override
-        boolean isModified(String path) {
+        boolean isModified(TenantPath path) {
             for (BranchCommit c : previous.values()) {
                 if (c.isModified(path)) {
                     return true;
@@ -361,11 +363,11 @@ class Branch {
         }
 
         @Override
-        Iterable<String> getModifiedPaths() {
-            Iterable<Iterable<String>> paths = transform(previous.values(),
-                    new Function<BranchCommit, Iterable<String>>() {
+        Iterable<TenantPath> getModifiedPaths() {
+            Iterable<Iterable<TenantPath>> paths = transform(previous.values(),
+                    new Function<BranchCommit, Iterable<TenantPath>>() {
                 @Override
-                public Iterable<String> apply(BranchCommit branchCommit) {
+                public Iterable<TenantPath> apply(BranchCommit branchCommit) {
                     return branchCommit.getModifiedPaths();
                 }
             });
@@ -391,7 +393,7 @@ class Branch {
         //------------------< LastRevTracker >----------------------------------
 
         @Override
-        public void track(String path) {
+        public void track(TenantPath path) {
             throw new UnsupportedOperationException("RebaseCommit is read-only");
         }
 

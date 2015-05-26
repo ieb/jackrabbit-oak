@@ -25,6 +25,7 @@ import javax.annotation.Nullable;
 
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
+
 import org.apache.jackrabbit.oak.commons.PathUtils;
 import org.apache.jackrabbit.oak.commons.json.JsopReader;
 import org.apache.jackrabbit.oak.commons.json.JsopStream;
@@ -35,6 +36,7 @@ import org.apache.jackrabbit.oak.plugins.document.MemoryDiffCache;
 import org.apache.jackrabbit.oak.plugins.document.Revision;
 import org.apache.jackrabbit.oak.plugins.document.StableRevisionComparator;
 import org.apache.jackrabbit.oak.plugins.document.util.Utils;
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -82,7 +84,7 @@ public class MongoDiffCache extends MemoryDiffCache {
     @Override
     public String getChanges(@Nonnull Revision from,
                              @Nonnull Revision to,
-                             @Nonnull String path,
+                             @Nonnull TenantPath path,
                              @Nullable Loader loader) {
         Lock lock = locks.get(from);
         lock.lock();
@@ -132,7 +134,7 @@ public class MongoDiffCache extends MemoryDiffCache {
 
     private String getChangesInternal(@Nonnull Revision from,
                                       @Nonnull Revision to,
-                                      @Nonnull String path) {
+                                      @Nonnull TenantPath path) {
         // first try to serve from cache
         String diff = super.getChanges(from, to, path, null);
         if (diff != null) {
@@ -150,6 +152,7 @@ public class MongoDiffCache extends MemoryDiffCache {
         int numCommits = 0;
         for (;;) {
             // grab from mongo
+            // FIXME: make it tenant aware,ID is the revision ID.
             DBObject obj = changes.findOne(new BasicDBObject("_id", id.toString()));
             if (obj == null) {
                 return null;

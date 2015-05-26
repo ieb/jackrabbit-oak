@@ -30,9 +30,12 @@ import javax.annotation.Nullable;
 
 import com.google.common.base.Function;
 import com.google.common.collect.Sets;
+
 import org.apache.jackrabbit.oak.commons.json.JsopStream;
 import org.apache.jackrabbit.oak.commons.json.JsopWriter;
 import org.apache.jackrabbit.oak.plugins.document.util.Utils;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
 import org.apache.jackrabbit.oak.commons.PathUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,7 +59,7 @@ public class Commit {
     private final DocumentNodeStoreBranch branch;
     private final Revision baseRevision;
     private final Revision revision;
-    private HashMap<String, UpdateOp> operations = new LinkedHashMap<String, UpdateOp>();
+    private HashMap<TenantPath, UpdateOp> operations = new LinkedHashMap<TenantPath, UpdateOp>();
     private JsopWriter diff = new JsopStream();
     private Set<Revision> collisions = new LinkedHashSet<Revision>();
 
@@ -64,13 +67,15 @@ public class Commit {
      * List of all node paths which have been modified in this commit. In addition to the nodes
      * which are actually changed it also contains there parent node paths
      */
-    private HashSet<String> modifiedNodes = new HashSet<String>();
+    private HashSet<TenantPath> modifiedNodes = new HashSet<TenantPath>();
 
-    private HashSet<String> addedNodes = new HashSet<String>();
-    private HashSet<String> removedNodes = new HashSet<String>();
+    private HashSet<TenantPath> addedNodes = new HashSet<TenantPath>();
+    private HashSet<TenantPath> removedNodes = new HashSet<TenantPath>();
 
     /** Set of all nodes which have binary properties. **/
-    private HashSet<String> nodesWithBinaries = Sets.newHashSet();
+    private HashSet<TenantPath> nodesWithBinaries = Sets.newHashSet();
+
+    private Tenant tenant;
 
     /**
      * Create a new Commit.
@@ -91,9 +96,10 @@ public class Commit {
         this.revision = checkNotNull(revision);
         this.baseRevision = baseRevision;
         this.branch = branch;
+        this.tenant = new Tenant(revision.getTenantId());
     }
 
-    UpdateOp getUpdateOperationForNode(String path) {
+    UpdateOp getUpdateOperationForNode(TenantPath path) {
         UpdateOp op = operations.get(path);
         if (op == null) {
             String id = Utils.getIdFromPath(path);
@@ -136,18 +142,18 @@ public class Commit {
         diff.newline();
     }
 
-    void updateProperty(String path, String propertyName, String value) {
-        UpdateOp op = getUpdateOperationForNode(path);
+    void updateProperty(TenantPath tenantPath, String propertyName, String value) {
+        UpdateOp op = getUpdateOperationForNode(tenantPath);
         String key = Utils.escapePropertyName(propertyName);
         op.setMapEntry(key, revision, value);
     }
 
-    void markNodeHavingBinary(String path) {
+    void markNodeHavingBinary(TenantPath path) {
         this.nodesWithBinaries.add(path);
     }
 
     void addNode(DocumentNodeState n) {
-        String path = n.getPath();
+        TenantPath path = n.getTenantPath();
         if (operations.containsKey(path)) {
             String msg = "Node already added: " + path;
             LOG.error(msg);
@@ -230,7 +236,7 @@ public class Commit {
     private void updateBinaryStatus() {
         DocumentStore store = this.nodeStore.getDocumentStore();
 
-        for (String path : this.nodesWithBinaries) {
+        for (TenantPath path : this.nodesWithBinaries) {
             NodeDocument nd = store.getIfCached(Collection.NODES, Utils.getIdFromPath(path));
             if ((nd == null) || !nd.hasBinary()) {
                 UpdateOp updateParentOp = getUpdateOperationForNode(path);
@@ -259,10 +265,10 @@ public class Commit {
         // the visibility of the commit
         String commitValue = baseBranchRevision != null ? baseBranchRevision.toString() : "c";
         DocumentStore store = nodeStore.getDocumentStore();
-        String commitRootPath = null;
+        TenantPath commitRootPath = null;
         if (baseBranchRevision != null) {
             // branch commits always use root node as commit root
-            commitRootPath = "/";
+            commitRootPath = new TenantPath(tenant, "/");
         }
         ArrayList<UpdateOp> newNodes = new ArrayList<UpdateOp>();
         ArrayList<UpdateOp> changedNodes = new ArrayList<UpdateOp>();
@@ -271,25 +277,25 @@ public class Commit {
         ArrayList<UpdateOp> opLog = new ArrayList<UpdateOp>();
 
         //Compute the commit root
-        for (String p : operations.keySet()) {
+        for (TenantPath p : operations.keySet()) {
             markChanged(p);
             if (commitRootPath == null) {
                 commitRootPath = p;
             } else {
-                while (!PathUtils.isAncestor(commitRootPath, p)) {
-                    commitRootPath = PathUtils.getParentPath(commitRootPath);
-                    if (denotesRoot(commitRootPath)) {
+                while (!PathUtils.isAncestor(commitRootPath.getPath(), p.getPath())) {
+                    commitRootPath = new TenantPath(tenant, PathUtils.getParentPath(commitRootPath.getPath()));
+                    if (denotesRoot(commitRootPath.getPath())) {
                         break;
                     }
                 }
             }
         }
-        int commitRootDepth = PathUtils.getDepth(commitRootPath);
+        int commitRootDepth = PathUtils.getDepth(commitRootPath.getPath());
         // check if there are real changes on the commit root
         boolean commitRootHasChanges = operations.containsKey(commitRootPath);
         // create a "root of the commit" if there is none
         UpdateOp commitRoot = getUpdateOperationForNode(commitRootPath);
-        for (String p : operations.keySet()) {
+        for (TenantPath p : operations.keySet()) {
             UpdateOp op = operations.get(p);
             if (op.isNew()) {
                 NodeDocument.setDeleted(op, revision, false);
@@ -391,13 +397,13 @@ public class Commit {
     }
 
     private void updateParentChildStatus() {
-        final Set<String> processedParents = Sets.newHashSet();
-        for (String path : addedNodes) {
-            if (denotesRoot(path)) {
+        final Set<TenantPath> processedParents = Sets.newHashSet();
+        for (TenantPath tenantPath : addedNodes) {
+            if (denotesRoot(tenantPath.getPath())) {
                 continue;
             }
 
-            String parentPath = PathUtils.getParentPath(path);
+            TenantPath parentPath = new TenantPath(tenantPath.getTenant(),PathUtils.getParentPath(tenantPath.getPath()));
 
             if (processedParents.contains(parentPath)) {
                 continue;
@@ -556,31 +562,31 @@ public class Commit {
      * @param isBranchCommit whether this is a commit to a branch
      */
     public void applyToCache(Revision before, boolean isBranchCommit) {
-        HashMap<String, ArrayList<String>> nodesWithChangedChildren = new HashMap<String, ArrayList<String>>();
-        for (String p : modifiedNodes) {
-            if (denotesRoot(p)) {
+        HashMap<TenantPath, List<TenantPath>> nodesWithChangedChildren = new HashMap<TenantPath, List<TenantPath>>();
+        for (TenantPath p : modifiedNodes) {
+            if (denotesRoot(p.getPath())) {
                 continue;
             }
-            String parent = PathUtils.getParentPath(p);
-            ArrayList<String> list = nodesWithChangedChildren.get(parent);
+            TenantPath parent = new TenantPath(tenant,PathUtils.getParentPath(p.getPath()));
+            List<TenantPath> list = nodesWithChangedChildren.get(parent);
             if (list == null) {
-                list = new ArrayList<String>();
+                list = new ArrayList<TenantPath>();
                 nodesWithChangedChildren.put(parent, list);
             }
             list.add(p);
         }
         DiffCache.Entry cacheEntry = nodeStore.getDiffCache().newEntry(before, revision);
         LastRevTracker tracker = nodeStore.createTracker(revision, isBranchCommit);
-        List<String> added = new ArrayList<String>();
-        List<String> removed = new ArrayList<String>();
-        List<String> changed = new ArrayList<String>();
-        for (String path : modifiedNodes) {
+        List<TenantPath> added = new ArrayList<TenantPath>();
+        List<TenantPath> removed = new ArrayList<TenantPath>();
+        List<TenantPath> changed = new ArrayList<TenantPath>();
+        for (TenantPath path : modifiedNodes) {
             added.clear();
             removed.clear();
             changed.clear();
-            ArrayList<String> changes = nodesWithChangedChildren.get(path);
+            List<TenantPath> changes = nodesWithChangedChildren.get(path);
             if (changes != null) {
-                for (String s : changes) {
+                for (TenantPath s : changes) {
                     if (addedNodes.contains(s)) {
                         added.add(s);
                     } else if (removedNodes.contains(s)) {
@@ -592,7 +598,7 @@ public class Commit {
             }
             UpdateOp op = operations.get(path);
             boolean isNew = op != null && op.isNew();
-            if (op == null || !hasContentChanges(op) || denotesRoot(path)) {
+            if (op == null || !hasContentChanges(op) || denotesRoot(path.getPath())) {
                 // track intermediate node and root
                 tracker.track(path);
             }
@@ -610,30 +616,31 @@ public class Commit {
         diff.tag('*').key(sourcePath).value(targetPath);
     }
 
-    private void markChanged(String path) {
-        if (!denotesRoot(path) && !PathUtils.isAbsolute(path)) {
-            throw new IllegalArgumentException("path: " + path);
+    private void markChanged(TenantPath p) {
+        if (!denotesRoot(p.getPath()) && !PathUtils.isAbsolute(p.getPath())) {
+            throw new IllegalArgumentException("path: " + p.getPath());
         }
+        
         while (true) {
-            if (!modifiedNodes.add(path)) {
+            if (!modifiedNodes.add(p)) {
                 break;
             }
-            if (denotesRoot(path)) {
+            if (denotesRoot(p.getPath())) {
                 break;
             }
-            path = PathUtils.getParentPath(path);
+            p = new TenantPath(tenant, PathUtils.getParentPath(p.getPath()));
         }
     }
 
-    public void updatePropertyDiff(String path, String propertyName, String value) {
-        diff.tag('^').key(PathUtils.concat(path, propertyName)).value(value);
+    public void updatePropertyDiff(TenantPath tenantPath, String propertyName, String value) {
+        diff.tag('^').key(PathUtils.concat(tenantPath.getPath(), propertyName)).value(value);
     }
 
     public void removeNodeDiff(String path) {
         diff.tag('-').value(path).newline();
     }
 
-    public void removeNode(String path) {
+    public void removeNode(TenantPath path) {
         removedNodes.add(path);
         UpdateOp op = getUpdateOperationForNode(path);
         op.setDelete(true);

@@ -25,6 +25,7 @@ import org.apache.jackrabbit.oak.spi.commit.EmptyHook;
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
 import org.apache.jackrabbit.oak.spi.state.NodeState;
 import org.apache.jackrabbit.oak.spi.state.NodeStore;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
 
 import javax.annotation.CheckForNull;
 
@@ -43,7 +44,7 @@ public class ClusterRepositoryInfo {
      * @throws CommitFailedException
      */
     public static String createId(NodeStore store) throws CommitFailedException {
-        NodeBuilder root = store.getRoot().builder();
+        NodeBuilder root = store.getRoot(Tenant.SYSTEM_TENANT).builder();
         if (!root.hasChildNode(CLUSTER_CONFIG_NODE)) {
             String id = UUID.randomUUID().toString();
             root.child(CLUSTER_CONFIG_NODE).setProperty(CLUSTER_ID_PROP, id);
@@ -62,7 +63,7 @@ public class ClusterRepositoryInfo {
      */
     @CheckForNull
     public static String getId(NodeStore store) {
-        NodeState state = store.getRoot().getChildNode(CLUSTER_CONFIG_NODE);
+        NodeState state = store.getRoot(Tenant.SYSTEM_TENANT).getChildNode(CLUSTER_CONFIG_NODE);
         if (state.hasProperty(CLUSTER_ID_PROP)) {
             return state.getProperty(CLUSTER_ID_PROP).getValue(Type.STRING);
         }

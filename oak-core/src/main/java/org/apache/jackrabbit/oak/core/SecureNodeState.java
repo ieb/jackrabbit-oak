@@ -53,6 +53,7 @@ class SecureNodeState extends AbstractNodeState {
     private long propertyCount = -1;
 
     SecureNodeState(@Nonnull NodeState state, @Nonnull TreePermission treePermission) {
+        super(state.getTenantPath());
         this.state = checkNotNull(state);
         this.treePermission = checkNotNull(treePermission);
     }

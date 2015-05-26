@@ -29,6 +29,7 @@ import javax.annotation.Nonnull;
 
 import org.apache.jackrabbit.oak.plugins.document.util.MapFactory;
 import org.apache.jackrabbit.oak.plugins.document.util.Utils;
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
 import org.apache.jackrabbit.oak.stats.Clock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,7 +57,7 @@ class UnsavedModifications {
      */
     static final int BACKGROUND_MULTI_UPDATE_LIMIT = 10000;
 
-    private final ConcurrentMap<String, Revision> map = MapFactory.getInstance().create();
+    private final ConcurrentMap<TenantPath, Revision> map = MapFactory.getInstance().create();
 
     /**
      * Puts a revision for the given path. The revision for the given path is
@@ -69,7 +70,7 @@ class UnsavedModifications {
      *          was none or the current revision is newer.
      */
     @CheckForNull
-    public Revision put(@Nonnull String path, @Nonnull Revision revision) {
+    public Revision put(@Nonnull TenantPath path, @Nonnull Revision revision) {
         checkNotNull(path);
         checkNotNull(revision);
         for (;;) {
@@ -92,12 +93,12 @@ class UnsavedModifications {
     }
 
     @CheckForNull
-    public Revision get(String path) {
-        return map.get(path);
+    public Revision get(TenantPath tenantPath) {
+        return map.get(tenantPath);
     }
 
     @Nonnull
-    public Collection<String> getPaths() {
+    public Collection<TenantPath> getPaths() {
         return map.keySet();
     }
 
@@ -109,19 +110,19 @@ class UnsavedModifications {
      * @return matching paths with pending modifications.
      */
     @Nonnull
-    public Iterable<String> getPaths(@Nonnull final Revision start) {
+    public Iterable<TenantPath> getPaths(@Nonnull final Revision start) {
         if (map.isEmpty()) {
             return Collections.emptyList();
         } else {
             return Iterables.transform(Iterables.filter(map.entrySet(),
-                    new Predicate<Map.Entry<String, Revision>>() {
+                    new Predicate<Map.Entry<TenantPath, Revision>>() {
                 @Override
-                public boolean apply(Map.Entry<String, Revision> input) {
+                public boolean apply(Map.Entry<TenantPath, Revision> input) {
                     return start.compareRevisionTime(input.getValue()) < 1;
                 }
-            }), new Function<Map.Entry<String, Revision>, String>() {
+            }), new Function<Map.Entry<TenantPath, Revision>, TenantPath>() {
                 @Override
-                public String apply(Map.Entry<String, Revision> input) {
+                public TenantPath apply(Map.Entry<TenantPath, Revision> input) {
                     return input.getKey();
                 }
             });
@@ -154,7 +155,7 @@ class UnsavedModifications {
         lock.lock();
         stats.lock = clock.getTime() - time;
         time = clock.getTime();
-        Map<String, Revision> pending;
+        Map<TenantPath, Revision> pending;
         try {
             pending = Maps.newTreeMap(PathComparator.INSTANCE);
             pending.putAll(map);
@@ -164,12 +165,12 @@ class UnsavedModifications {
         stats.num = pending.size();
         UpdateOp updateOp = null;
         Revision lastRev = null;
-        PeekingIterator<String> paths = Iterators.peekingIterator(
+        PeekingIterator<TenantPath> paths = Iterators.peekingIterator(
                 pending.keySet().iterator());
         int i = 0;
-        ArrayList<String> pathList = new ArrayList<String>();
+        ArrayList<TenantPath> pathList = new ArrayList<TenantPath>();
         while (paths.hasNext()) {
-            String p = paths.peek();
+            TenantPath p = paths.peek();
             Revision r = pending.get(p);
 
             int size = pathList.size();
@@ -197,12 +198,12 @@ class UnsavedModifications {
                     || size == pathList.size()
                     || pathList.size() >= BACKGROUND_MULTI_UPDATE_LIMIT) {
                 List<String> ids = new ArrayList<String>();
-                for (String path : pathList) {
+                for (TenantPath path : pathList) {
                     ids.add(Utils.getIdFromPath(path));
                 }
                 store.getDocumentStore().update(NODES, ids, updateOp);
                 LOG.debug("Updated _lastRev to {} on {}", lastRev, ids);
-                for (String path : pathList) {
+                for (TenantPath path : pathList) {
                     map.remove(path, lastRev);
                 }
                 pathList.clear();

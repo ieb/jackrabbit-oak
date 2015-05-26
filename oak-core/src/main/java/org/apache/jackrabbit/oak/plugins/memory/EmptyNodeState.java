@@ -27,6 +27,8 @@ import org.apache.jackrabbit.oak.spi.state.ChildNodeEntry;
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
 import org.apache.jackrabbit.oak.spi.state.NodeState;
 import org.apache.jackrabbit.oak.spi.state.NodeStateDiff;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
 
 /**
  * Singleton instances of empty and non-existent node states, i.e. ones
@@ -194,6 +196,11 @@ public final class EmptyNodeState implements NodeState {
 
     public int hashCode() {
         return 0;
+    }
+
+    @Override
+    public TenantPath getTenantPath() {
+        return TenantPath.EMPTY_PATH;
     }
 
 }

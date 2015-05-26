@@ -22,27 +22,23 @@ import java.io.Serializable;
 import java.util.Comparator;
 
 import org.apache.jackrabbit.oak.plugins.document.util.Utils;
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
 
 /**
  * Implements a comparator, which sorts path string according to 1) their
  * depth (highest first) and 2) the path string itself.
  */
-public class PathComparator implements Comparator<String>, Serializable {
+public class PathComparator implements Comparator<TenantPath>, Serializable {
 
     private static final long serialVersionUID = -1523171906146067782L;
 
-    public static final Comparator<String> INSTANCE = new PathComparator();
+    public static final Comparator<TenantPath> INSTANCE = new PathComparator();
 
     private PathComparator() {
     }
 
     @Override
-    public int compare(String o1, String o2) {
-        int d1 = Utils.pathDepth(o1);
-        int d2 = Utils.pathDepth(o2);
-        if (d1 != d2) {
-            return Integer.signum(d2 - d1);
-        }
+    public int compare(TenantPath o1, TenantPath o2) {
         return o1.compareTo(o2);
     }
 }

@@ -27,6 +27,7 @@ import java.util.concurrent.ConcurrentMap;
 import javax.annotation.Nonnull;
 
 import org.apache.jackrabbit.oak.plugins.document.util.Utils;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
 import org.apache.jackrabbit.oak.stats.Clock;
 
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -68,6 +69,8 @@ public class Revision {
     /** Only set for testing */
     private static Clock clock;
 
+    private String tenantId;
+
     /**
      * <b>
      * Only to be used for testing.
@@ -87,11 +90,12 @@ public class Revision {
         lastRevisionTimestamp = clock.getTime();
 
     }
-    public Revision(long timestamp, int counter, int clusterId) {
-        this(timestamp, counter, clusterId, false);
+    public Revision(String tenantId, long timestamp, int counter, int clusterId) {
+        this(tenantId, timestamp, counter, clusterId, false);
     }
 
-    public Revision(long timestamp, int counter, int clusterId, boolean branch) {
+    public Revision(@Nonnull String tenantId, long timestamp, int counter, int clusterId,  boolean branch) {
+        this.tenantId = checkNotNull(tenantId);
         this.timestamp = timestamp;
         this.counter = counter;
         this.clusterId = clusterId;
@@ -172,7 +176,7 @@ public class Revision {
      * @param clusterId the unique machineId + processId
      * @return the unique revision id
      */
-    static Revision newRevision(int clusterId) {
+    static Revision newRevision(String tenantId, int clusterId) {
         long timestamp = getCurrentTimestamp();
         int c;
         synchronized (Revision.class) {
@@ -189,7 +193,7 @@ public class Revision {
                 lastRevisionCount = c = 0;
             }
         }
-        return new Revision(timestamp, c, clusterId);
+        return new Revision(tenantId, timestamp, c, clusterId);
     }
 
     /**
@@ -243,13 +247,18 @@ public class Revision {
         if (idxClusterId < 0) {
             throw new IllegalArgumentException(rev);
         }
+        int idxTenantId = rev.indexOf('-', idxClusterId+1);
+        if (idxTenantId < 0) {
+            throw new IllegalArgumentException(rev);
+        }
         String t = rev.substring(1, idxCount);
         long timestamp = Long.parseLong(t, 16);
         t = rev.substring(idxCount + 1, idxClusterId);
         int c = Integer.parseInt(t, 16);
-        t = rev.substring(idxClusterId + 1);
+        t = rev.substring(idxClusterId + 1, idxTenantId);
         int clusterId = Integer.parseInt(t, 16);
-        return new Revision(timestamp, c, clusterId, isBranch);
+        String tenantId = rev.substring(idxTenantId + 1);
+        return new Revision(tenantId, timestamp, c, clusterId, isBranch);
     }
 
     @Override
@@ -281,12 +290,14 @@ public class Revision {
         } else {
             sb.append(Integer.toHexString(clusterId));
         }
+        sb.append('-').append(tenantId);
         return sb;
     }
 
     public String toReadableString() {
         StringBuilder buff = new StringBuilder();
-        buff.append("revision: \"").append(toString()).append("\"");
+        buff.append("tenantId: ").append(tenantId);
+        buff.append(", revision: \"").append(toString()).append("\"");
         buff.append(", clusterId: ").append(clusterId);
         buff.append(", time: \"").
             append(Utils.timestampToString(timestamp)).
@@ -331,7 +342,7 @@ public class Revision {
         if (isBranch()) {
             return this;
         } else {
-            return new Revision(timestamp, counter, clusterId, true);
+            return new Revision(tenantId, timestamp, counter, clusterId, true);
         }
     }
 
@@ -345,13 +356,13 @@ public class Revision {
         if (!isBranch()) {
             return this;
         } else {
-            return new Revision(timestamp, counter, clusterId);
+            return new Revision(tenantId, timestamp, counter, clusterId);
         }
     }
 
     @Override
     public int hashCode() {
-        return (int) (timestamp >>> 32) ^ (int) timestamp ^ counter ^ clusterId;
+        return (int) (timestamp >>> 32) ^ (int) timestamp ^ counter ^ clusterId ^ tenantId.hashCode();
     }
 
     @Override
@@ -367,6 +378,7 @@ public class Revision {
         return r.timestamp == this.timestamp &&
                 r.counter == this.counter &&
                 r.clusterId == this.clusterId &&
+                r.tenantId.equals(this.tenantId) &&
                 r.branch == this.branch;
     }
 
@@ -378,11 +390,16 @@ public class Revision {
         }
         return other.timestamp == this.timestamp &&
                 other.counter == this.counter &&
+                other.tenantId.equals(this.tenantId) &&
                 other.clusterId == this.clusterId;
     }
 
     public int getClusterId() {
         return clusterId;
+    }
+    
+    public String getTenantId() {
+        return tenantId;
     }
 
     /**
@@ -416,9 +433,9 @@ public class Revision {
      */
     public static class RevisionComparator implements Comparator<Revision> {
 
-        static final Revision NEWEST = new Revision(Long.MAX_VALUE, 0, 0);
+        static final Revision NEWEST = new Revision(Tenant.SYSTEM_TENANT.getTenantId(), Long.MAX_VALUE, 0, 0);
 
-        static final Revision FUTURE = new Revision(Long.MAX_VALUE, Integer.MAX_VALUE, 0);
+        static final Revision FUTURE = new Revision(Tenant.SYSTEM_TENANT.getTenantId(), Long.MAX_VALUE, Integer.MAX_VALUE, 0);
 
         /**
          * The map of cluster instances to lists of revision ranges.

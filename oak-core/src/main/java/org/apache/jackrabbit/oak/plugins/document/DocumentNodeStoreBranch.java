@@ -34,6 +34,7 @@ import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
 
 import com.google.common.collect.Maps;
+
 import org.apache.jackrabbit.oak.api.CommitFailedException;
 import org.apache.jackrabbit.oak.commons.PathUtils;
 import org.apache.jackrabbit.oak.spi.commit.CommitHook;
@@ -42,6 +43,8 @@ import org.apache.jackrabbit.oak.spi.state.ConflictAnnotatingRebaseDiff;
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
 import org.apache.jackrabbit.oak.spi.state.NodeState;
 import org.apache.jackrabbit.oak.spi.state.NodeStoreBranch;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
 import org.apache.jackrabbit.oak.util.PerfLogger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -329,7 +332,7 @@ class DocumentNodeStoreBranch implements NodeStoreBranch {
                 store.canceled(c);
             }
         }
-        return store.getRoot(rev);
+        return store.getRoot(new Tenant(rev.getTenantId()), rev);
     }
 
     private NodeState getNode(String path) {
@@ -456,7 +459,7 @@ class DocumentNodeStoreBranch implements NodeStoreBranch {
 
         @Override
         void rebase() {
-            base = store.getRoot();
+            base = store.getRoot(base.getTenantPath().getTenant());
         }
 
         @Override
@@ -511,7 +514,7 @@ class DocumentNodeStoreBranch implements NodeStoreBranch {
 
         @Override
         void rebase() {
-            DocumentNodeState root = store.getRoot();
+            DocumentNodeState root = store.getRoot(base.getTenantPath().getTenant());
             NodeBuilder builder = root.builder();
             head.compareAgainstBaseState(base, new ConflictAnnotatingRebaseDiff(builder));
             head = builder.getNodeState();
@@ -569,12 +572,13 @@ class DocumentNodeStoreBranch implements NodeStoreBranch {
          * @return the branch state.
          */
         final DocumentNodeState createBranch(DocumentNodeState state) {
-            return store.getRoot(state.getRevision().asBranchRevision());
+            return store.getRoot(state.getTenantPath().getTenant(), state.getRevision().asBranchRevision());
         }
 
         void move(String source, final String target) {
-            final DocumentNodeState src = store.getNode(source, head.getRevision());
-            checkNotNull(src, "Source node %s@%s does not exist", source, head.getRevision());
+            TenantPath tenantPath = new TenantPath(new Tenant(head.getRevision().getTenantId()), source);
+            final DocumentNodeState src = store.getNode(tenantPath, head.getRevision());
+            checkNotNull(src, "Source node %s@%s does not exist", tenantPath.toPathString(), head.getRevision());
             head = DocumentNodeStoreBranch.this.persist(new Changes() {
                 @Override
                 public void with(Commit c) {
@@ -584,8 +588,9 @@ class DocumentNodeStoreBranch implements NodeStoreBranch {
         }
 
         void copy(String source, final String target) {
-            final DocumentNodeState src = store.getNode(source, head.getRevision());
-            checkNotNull(src, "Source node %s@%s does not exist", source, head.getRevision());
+            TenantPath tenantPath = new TenantPath(new Tenant(head.getRevision().getTenantId()), source);
+            final DocumentNodeState src = store.getNode(tenantPath, head.getRevision());
+            checkNotNull(src, "Source node %s@%s does not exist", tenantPath.toPathString(), head.getRevision());
             head = DocumentNodeStoreBranch.this.persist(new Changes() {
                 @Override
                 public void with(Commit c) {
@@ -609,9 +614,10 @@ class DocumentNodeStoreBranch implements NodeStoreBranch {
 
         @Override
         void rebase() {
-            DocumentNodeState root = store.getRoot();
+            Tenant tenant = base.getTenantPath().getTenant();
+            DocumentNodeState root = store.getRoot(tenant);
             // perform rebase in store
-            head = store.getRoot(store.rebase(head.getRevision(), root.getRevision()));
+            head = store.getRoot(tenant, store.rebase(head.getRevision(), root.getRevision()));
             base = root;
         }
 
@@ -630,7 +636,7 @@ class DocumentNodeStoreBranch implements NodeStoreBranch {
                     public DocumentNodeState call() throws Exception {
                         NodeState toCommit = checkNotNull(hook).processCommit(base, head, info);
                         head = DocumentNodeStoreBranch.this.persist(toCommit, head, info);
-                        return store.getRoot(store.merge(head.getRevision(), info));
+                        return store.getRoot(base.getTenantPath().getTenant(), store.merge(head.getRevision(), info, base.getTenantPath().getTenant()));
                     }
                 });
                 branchState = new Merged(base);
@@ -654,10 +660,11 @@ class DocumentNodeStoreBranch implements NodeStoreBranch {
 
         private void resetBranch(DocumentNodeState branchHead, DocumentNodeState ancestor) {
             try {
-                head = store.getRoot(
+                head = store.getRoot(base.getTenantPath().getTenant(), 
                         store.reset(branchHead.getRevision(), 
                                 ancestor.getRevision(), 
-                                DocumentNodeStoreBranch.this));
+                                DocumentNodeStoreBranch.this,
+                                base.getTenantPath().getTenant()));
             } catch (Exception e) {
                 CommitFailedException ex = new CommitFailedException(
                         OAK, 100, "Branch reset failed", e);

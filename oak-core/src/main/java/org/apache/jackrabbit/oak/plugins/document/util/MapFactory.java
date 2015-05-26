@@ -31,12 +31,12 @@ import org.apache.jackrabbit.oak.plugins.document.Revision;
 public abstract class MapFactory {
     private static MapFactory DEFAULT = new MapFactory() {
         @Override
-        public ConcurrentMap<String, Revision> create() {
-            return new ConcurrentHashMap<String, Revision>();
+        public <T> ConcurrentMap<T, Revision> create() {
+            return new ConcurrentHashMap<T, Revision>();
         }
     };
 
-    public abstract ConcurrentMap<String, Revision> create();
+    public abstract <T> ConcurrentMap<T, Revision> create();
 
     private static MapFactory instance = DEFAULT;
 

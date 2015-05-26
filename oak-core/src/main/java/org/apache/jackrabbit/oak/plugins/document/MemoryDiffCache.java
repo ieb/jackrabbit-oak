@@ -26,6 +26,7 @@ import javax.annotation.Nullable;
 
 import org.apache.jackrabbit.oak.cache.CacheStats;
 import org.apache.jackrabbit.oak.plugins.document.util.StringValue;
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
 
 import com.google.common.cache.Cache;
 
@@ -55,9 +56,9 @@ public class MemoryDiffCache implements DiffCache {
     @Override
     public String getChanges(@Nonnull Revision from,
                              @Nonnull Revision to,
-                             @Nonnull String path,
+                             @Nonnull TenantPath tenantPath,
                              final @Nullable Loader loader) {
-        PathRev key = diffCacheKey(path, from, to);
+        PathRev key = diffCacheKey(tenantPath, from, to);
         StringValue diff;
         if (loader == null) {
             diff = diffCache.getIfPresent(key);
@@ -101,8 +102,8 @@ public class MemoryDiffCache implements DiffCache {
         }
 
         @Override
-        public void append(@Nonnull String path, @Nonnull String changes) {
-            PathRev key = diffCacheKey(path, from, to);
+        public void append(@Nonnull TenantPath tenantPath, @Nonnull String changes) {
+            PathRev key = diffCacheKey(tenantPath, from, to);
             diffCache.put(key, new StringValue(changes));
         }
 
@@ -112,10 +113,11 @@ public class MemoryDiffCache implements DiffCache {
         }
     }
 
-    private static PathRev diffCacheKey(@Nonnull String path,
+    private static PathRev diffCacheKey(@Nonnull TenantPath tenantPath,
                                         @Nonnull Revision from,
                                         @Nonnull Revision to) {
-        return new PathRev(from + path, to);
+        // NB: this is not a child of tenantPath its a special key
+        return new PathRev(new TenantPath(tenantPath.getTenant(), from + tenantPath.getPath()), to);
     }
 
 }

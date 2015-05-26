@@ -16,6 +16,8 @@
  */
 package org.apache.jackrabbit.oak.plugins.document;
 
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
+
 /**
  * An implementation of this interface receives callbacks about paths
  * that need an update of the _lastRev field on documents.
@@ -27,5 +29,5 @@ public interface LastRevTracker {
      *
      * @param path the path of the document to update.
      */
-    public void track(String path);
+    public void track(TenantPath path);
 }

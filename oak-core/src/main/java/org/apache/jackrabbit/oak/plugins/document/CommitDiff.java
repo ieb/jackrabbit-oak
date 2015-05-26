@@ -21,11 +21,12 @@ import javax.annotation.Nonnull;
 import org.apache.jackrabbit.oak.commons.json.JsopBuilder;
 import org.apache.jackrabbit.oak.api.PropertyState;
 import org.apache.jackrabbit.oak.api.Type;
-import org.apache.jackrabbit.oak.commons.PathUtils;
 import org.apache.jackrabbit.oak.json.BlobSerializer;
 import org.apache.jackrabbit.oak.json.JsonSerializer;
 import org.apache.jackrabbit.oak.spi.state.NodeState;
 import org.apache.jackrabbit.oak.spi.state.NodeStateDiff;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static org.apache.jackrabbit.oak.plugins.memory.EmptyNodeState.EMPTY_NODE;
@@ -41,7 +42,7 @@ class CommitDiff implements NodeStateDiff {
 
     private final Commit commit;
 
-    private final String path;
+    private final TenantPath path;
 
     private final JsopBuilder builder;
 
@@ -49,11 +50,11 @@ class CommitDiff implements NodeStateDiff {
 
     CommitDiff(@Nonnull DocumentNodeStore store, @Nonnull Commit commit,
                @Nonnull BlobSerializer blobs) {
-        this(checkNotNull(store), checkNotNull(commit), "/",
+        this(checkNotNull(store), checkNotNull(commit), new TenantPath(new Tenant(checkNotNull(commit).getBaseRevision().getTenantId()), "/"),
                 new JsopBuilder(), checkNotNull(blobs));
     }
 
-    private CommitDiff(DocumentNodeStore store, Commit commit, String path,
+    private CommitDiff(DocumentNodeStore store, Commit commit, TenantPath path,
                JsopBuilder builder, BlobSerializer blobs) {
         this.store = store;
         this.commit = commit;
@@ -82,7 +83,8 @@ class CommitDiff implements NodeStateDiff {
 
     @Override
     public boolean childNodeAdded(String name, NodeState after) {
-        String p = PathUtils.concat(path, name);
+        TenantPath p = path.getChild(name);
+        // This may not be absolutely right. We really want to get the tenant from the commit and 
         commit.addNode(new DocumentNodeState(store, p, commit.getRevision()));
         return after.compareAgainstBaseState(EMPTY_NODE,
                 new CommitDiff(store, commit, p, builder, blobs));
@@ -92,14 +94,14 @@ class CommitDiff implements NodeStateDiff {
     public boolean childNodeChanged(String name,
                                     NodeState before,
                                     NodeState after) {
-        String p = PathUtils.concat(path, name);
+        TenantPath p = path.getChild(name);
         return after.compareAgainstBaseState(before,
                 new CommitDiff(store, commit, p, builder, blobs));
     }
 
     @Override
     public boolean childNodeDeleted(String name, NodeState before) {
-        String p = PathUtils.concat(path, name);
+        TenantPath p = path.getChild(name);
         commit.removeNode(p);
         return MISSING_NODE.compareAgainstBaseState(before,
                 new CommitDiff(store, commit, p, builder, blobs));

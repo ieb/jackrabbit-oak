@@ -142,7 +142,7 @@ class DocumentRootBuilder extends AbstractDocumentNodeBuilder {
      * state of that branch as the new base state of this builder.
      */
     NodeState reset() {
-        branch = store.createBranch(store.getRoot());
+        branch = store.createBranch(store.getRoot(base.getTenantPath().getTenant()));
         NodeState head = branch.getHead();
         reset(head);
         return head;

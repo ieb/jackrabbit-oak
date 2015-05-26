@@ -31,6 +31,7 @@ import javax.annotation.Nullable;
 import org.apache.jackrabbit.oak.spi.commit.ChangeDispatcher;
 import org.apache.jackrabbit.oak.spi.commit.CommitInfo;
 import org.apache.jackrabbit.oak.spi.state.NodeState;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,18 +55,19 @@ class CommitQueue {
     }
 
     @Nonnull
-    Revision createRevision() {
-        return createRevisions(1).first();
+    Revision createRevision(Revision base) {
+        return createRevisions(base, 1).first();
     }
 
     @Nonnull
-    SortedSet<Revision> createRevisions(int num) {
+    SortedSet<Revision> createRevisions(Revision base, int num) {
         checkArgument(num > 0);
         SortedSet<Revision> revs = new TreeSet<Revision>(StableRevisionComparator.INSTANCE);
         Revision rev = null;
+        Tenant tenant = new Tenant(base.getTenantId());
         synchronized (this) {
             for (int i = 0; i < num; i++) {
-                rev = store.newRevision();
+                rev = store.newRevision(tenant);
                 revs.add(rev);
             }
             commits.put(rev, new Entry(rev));
@@ -127,7 +129,7 @@ class CommitQueue {
                 commit.applyToCache(before, false);
                 // update head revision
                 store.setHeadRevision(rev);
-                NodeState root = store.getRoot();
+                NodeState root = store.getRoot(new Tenant(rev.getTenantId()));
                 dispatcher.contentChanged(root, info);
             } finally {
                 // notify next if there is any

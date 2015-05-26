@@ -34,6 +34,7 @@ import java.util.Map;
 import javax.annotation.Nonnull;
 import javax.security.auth.Subject;
 
+import org.apache.jackrabbit.oak.api.AuthInfo;
 import org.apache.jackrabbit.oak.api.Blob;
 import org.apache.jackrabbit.oak.api.CommitFailedException;
 import org.apache.jackrabbit.oak.api.ContentSession;
@@ -62,6 +63,7 @@ import org.apache.jackrabbit.oak.spi.security.authorization.permission.Permissio
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
 import org.apache.jackrabbit.oak.spi.state.NodeState;
 import org.apache.jackrabbit.oak.spi.state.NodeStore;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
 
 class MutableRoot implements Root {
 
@@ -156,8 +158,9 @@ class MutableRoot implements Root {
         this.queryEngineSettings = queryEngineSettings;
         this.indexProvider = indexProvider;
         this.session = checkNotNull(session);
+        
 
-        builder = store.getRoot().builder();
+        builder = store.getRoot(new Tenant(TenantUtil.getTenantId(subject.getPublicCredentials(AuthInfo.class).iterator().next()))).builder();
         secureBuilder = new SecureNodeBuilder(builder, permissionProvider, getAcContext());
         rootTree = new MutableTree(this, secureBuilder, lastMove);
     }

@@ -31,6 +31,7 @@ import javax.annotation.Nullable;
 import org.apache.jackrabbit.oak.plugins.document.Branch.BranchCommit;
 import org.apache.jackrabbit.oak.plugins.document.Branch.BranchReference;
 import org.apache.jackrabbit.oak.plugins.document.util.Utils;
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -79,11 +80,11 @@ class UnmergedBranches {
      * @param store the document store.
      * @param context the revision context.
      */
-    void init(DocumentStore store, RevisionContext context) {
+    void init(DocumentStore store, RevisionContext context, TenantPath rootPath) {
         if (!initialized.compareAndSet(false, true)) {
             throw new IllegalStateException("already initialized");
         }
-        NodeDocument doc = store.find(Collection.NODES, Utils.getIdFromPath("/"));
+        NodeDocument doc = store.find(Collection.NODES, Utils.getIdFromPath(rootPath));
         if (doc == null) {
             return;
         }

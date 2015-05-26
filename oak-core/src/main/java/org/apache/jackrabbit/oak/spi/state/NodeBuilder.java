@@ -25,6 +25,7 @@ import javax.annotation.Nonnull;
 import org.apache.jackrabbit.oak.api.Blob;
 import org.apache.jackrabbit.oak.api.PropertyState;
 import org.apache.jackrabbit.oak.api.Type;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
 
 /**
  * Builder interface for constructing new {@link NodeState node states}.
@@ -92,6 +93,8 @@ public interface NodeBuilder {
      */
     @Nonnull
     NodeState getBaseState();
+    
+    Tenant getTenant();
 
     /**
      * Checks whether this builder represents a node that exists.

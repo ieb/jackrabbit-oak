@@ -27,6 +27,7 @@ import org.apache.jackrabbit.oak.api.Blob;
 import org.apache.jackrabbit.oak.api.CommitFailedException;
 import org.apache.jackrabbit.oak.spi.commit.CommitHook;
 import org.apache.jackrabbit.oak.spi.commit.CommitInfo;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
 
 /**
  * Storage abstraction for trees. At any given point in time the stored
@@ -44,8 +45,8 @@ public interface NodeStore {
      * @return root node state
      */
     @Nonnull
-    NodeState getRoot();
-
+    NodeState getRoot(Tenant tenant);
+    
     /**
      * Merges the changes between the
      * {@link NodeBuilder#getBaseState() base} and
@@ -165,7 +166,7 @@ public interface NodeStore {
      *         or {@code null} if the checkpoint is no longer available
      */
     @CheckForNull
-    NodeState retrieve(@Nonnull String checkpoint);
+    NodeState retrieve(@Nonnull Tenant tenant, @Nonnull String checkpoint);
 
     /**
      * Releases the provided checkpoint. If the provided checkpoint doesn't exist this method should return {@code true}.

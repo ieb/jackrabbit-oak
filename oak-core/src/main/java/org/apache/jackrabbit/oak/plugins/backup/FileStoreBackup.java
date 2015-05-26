@@ -25,12 +25,14 @@ import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
 import com.google.common.collect.ImmutableMap;
+
 import org.apache.jackrabbit.oak.plugins.segment.Compactor;
 import org.apache.jackrabbit.oak.plugins.segment.SegmentNodeBuilder;
 import org.apache.jackrabbit.oak.plugins.segment.SegmentNodeState;
 import org.apache.jackrabbit.oak.plugins.segment.file.FileStore;
 import org.apache.jackrabbit.oak.spi.state.NodeState;
 import org.apache.jackrabbit.oak.spi.state.NodeStore;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,10 +53,10 @@ public class FileStoreBackup {
         String checkpoint = store.checkpoint(DEFAULT_LIFETIME, ImmutableMap.of(
                 "creator", FileStoreBackup.class.getSimpleName(),
                 "thread", Thread.currentThread().getName()));
-        NodeState current = store.retrieve(checkpoint);
+        NodeState current = store.retrieve(Tenant.SYSTEM_TENANT, checkpoint);
         if (current == null) {
             // unable to retrieve the checkpoint; use root state instead
-            current = store.getRoot();
+            current = store.getRoot(Tenant.SYSTEM_TENANT);
         }
 
         // 2. init filestore
@@ -68,7 +70,7 @@ public class FileStoreBackup {
                 before = EMPTY_NODE;
             } else {
                 // 3.2 try to retrieve the previously backed up checkpoint
-                before = store.retrieve(beforeCheckpoint);
+                before = store.retrieve(Tenant.SYSTEM_TENANT, beforeCheckpoint);
                 if (before == null) {
                     // the previous checkpoint is no longer available,
                     // so use the backed up state as the basis of the

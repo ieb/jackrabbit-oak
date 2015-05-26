@@ -21,6 +21,7 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 import org.apache.jackrabbit.oak.api.PropertyState;
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
 
 import com.google.common.base.Predicate;
 
@@ -370,6 +371,9 @@ public interface NodeState {
      */
     boolean compareAgainstBaseState(NodeState base, NodeStateDiff diff);
 
+    
+    TenantPath getTenantPath();
+    
     /**
      * Predicate that checks the existence of NodeState instances.
      */
