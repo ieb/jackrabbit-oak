@@ -30,6 +30,7 @@ import org.apache.jackrabbit.oak.spi.state.ChildNodeEntry;
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
 import org.apache.jackrabbit.oak.spi.state.NodeState;
 import org.apache.jackrabbit.oak.spi.state.NodeStateDiff;
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
 
 /**
  * Basic in-memory node state implementation.
@@ -50,8 +51,10 @@ class MemoryNodeState extends AbstractNodeState {
      * @param nodes child nodes
      */
     public MemoryNodeState(
+            @Nonnull TenantPath tenantPath,
             Map<String, PropertyState> properties,
             Map<String, NodeState> nodes) {
+        super(tenantPath);
         this.properties = properties;
         this.nodes = nodes;
     }

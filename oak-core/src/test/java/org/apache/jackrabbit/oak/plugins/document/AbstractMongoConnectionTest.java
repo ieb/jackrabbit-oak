@@ -17,6 +17,7 @@
 package org.apache.jackrabbit.oak.plugins.document;
 
 import org.apache.jackrabbit.oak.plugins.document.util.MongoConnection;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
 import org.apache.jackrabbit.oak.stats.Clock;
 import org.junit.After;
 import org.junit.Assume;
@@ -30,6 +31,7 @@ import org.junit.BeforeClass;
  */
 public abstract class AbstractMongoConnectionTest extends DocumentMKTestBase {
 
+    static final Tenant TEST_TENANT = new Tenant("testtenant");
     protected MongoConnection mongoConnection;
     protected DocumentMK mk;
 

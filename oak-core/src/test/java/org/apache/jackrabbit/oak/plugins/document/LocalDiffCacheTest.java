@@ -35,6 +35,8 @@ import org.apache.jackrabbit.oak.spi.commit.CommitInfo;
 import org.apache.jackrabbit.oak.spi.commit.EmptyHook;
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
 import org.apache.jackrabbit.oak.spi.state.NodeStore;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
 import org.junit.After;
 import org.junit.Test;
 
@@ -46,6 +48,7 @@ import static org.junit.Assert.assertTrue;
 public class LocalDiffCacheTest {
 
     DocumentNodeStore store;
+    private static final Tenant TEST_TENANT = new Tenant("testtenant");
 
     @After
     public void dispose() {
@@ -66,7 +69,7 @@ public class LocalDiffCacheTest {
         DiffCache cache = store.getDiffCache();
         Iterable<CacheStats> stats = cache.getStats();
 
-        NodeBuilder builder = store.getRoot().builder();
+        NodeBuilder builder = store.getRoot(TEST_TENANT).builder();
         builder.child("a").child("a2").setProperty("foo", "bar");
         builder.child("b");
         merge(store, builder);
@@ -75,7 +78,7 @@ public class LocalDiffCacheTest {
         assertEquals(0, getMissCount(stats));
         assertEquals(3, o.added.size());
 
-        builder = store.getRoot().builder();
+        builder = store.getRoot(TEST_TENANT).builder();
         builder.child("a").child("a2").removeProperty("foo");
 
         o.reset();
@@ -89,11 +92,11 @@ public class LocalDiffCacheTest {
 
     @Test
     public void diffFromAsString() {
-        Map<String, String> changes = Maps.newHashMap();
-        changes.put("/", "+\"foo\":{}^\"bar\":{}-\"baz\"");
-        changes.put("/foo", "");
-        changes.put("/bar", "+\"qux\"");
-        changes.put("/bar/qux", "");
+        Map<TenantPath, String> changes = Maps.newHashMap();
+        changes.put(new TenantPath(TEST_TENANT, "/"), "+\"foo\":{}^\"bar\":{}-\"baz\"");
+        changes.put(new TenantPath(TEST_TENANT, "/foo"), "");
+        changes.put(new TenantPath(TEST_TENANT, "/bar"), "+\"qux\"");
+        changes.put(new TenantPath(TEST_TENANT, "/bar/qux"), "");
         Diff diff = new Diff(changes, 0);
 
         assertEquals(changes, Diff.fromString(diff.asString()).getChanges());
@@ -101,7 +104,7 @@ public class LocalDiffCacheTest {
 
     @Test
     public void emptyDiff() throws Exception{
-        Map<String, String> changes = new HashMap<String, String>();
+        Map<TenantPath, String> changes = new HashMap<TenantPath, String>();
         Diff diff = new Diff(changes, 100);
         String asString = diff.asString();
         Diff diff2 = Diff.fromString(asString);

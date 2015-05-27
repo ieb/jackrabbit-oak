@@ -25,10 +25,12 @@ import java.util.List;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
+
 import org.apache.jackrabbit.oak.api.Blob;
 import org.apache.jackrabbit.oak.spi.commit.CommitInfo;
 import org.apache.jackrabbit.oak.spi.commit.EmptyHook;
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -40,6 +42,8 @@ import static org.junit.Assert.assertEquals;
 
 @RunWith(Parameterized.class)
 public class BlobReferenceIteratorTest {
+    private static final Tenant TEST_TENANT = new Tenant("testtenant");
+
     private DocumentStoreFixture fixture;
 
     private DocumentNodeStore store;
@@ -80,7 +84,7 @@ public class BlobReferenceIteratorTest {
 
         //1. Set some single value Binary property
         for(int i = 0; i < 10; i++){
-            NodeBuilder b1 = store.getRoot().builder();
+            NodeBuilder b1 = store.getRoot(TEST_TENANT).builder();
             Blob b = store.createBlob(randomStream(i, 4096));
             b1.child("x").child("y"+1).setProperty("b" + i, b);
             blobs.add(b);

@@ -34,6 +34,7 @@ import org.junit.Test;
 public class LargeNodeStateTest extends OakBaseTest {
     private static final int N = 100;
 
+
     private NodeState state;
 
     public LargeNodeStateTest(NodeStoreFixture fixture) {
@@ -42,7 +43,7 @@ public class LargeNodeStateTest extends OakBaseTest {
 
     @Before
     public void setUp() throws CommitFailedException {
-        NodeBuilder builder = store.getRoot().builder();
+        NodeBuilder builder = store.getRoot(TEST_TENANT).builder();
         builder.setProperty("a", 1);
         for (int i = 0; i <= N; i++) {
             builder.child("x" + i);

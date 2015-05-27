@@ -23,6 +23,8 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import com.google.common.base.Stopwatch;
+
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
 import org.json.simple.JSONObject;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -33,11 +35,12 @@ import org.junit.Test;
  */
 public class DocumentMKCommitAddTest extends BaseDocumentMKTest {
 
+
     @Test
     public void addSingleNode() throws Exception {
         mk.commit("/", "+\"a\" : {}", null, null);
 
-        String nodes = mk.getNodes("/", null, 0 /*depth*/, 0 /*offset*/, -1 /*maxChildNodes*/, null /*filter*/);
+        String nodes = mk.getNodes(new TenantPath(TEST_TENANT, "/"), null, 0 /*depth*/, 0 /*offset*/, -1 /*maxChildNodes*/, null /*filter*/);
         JSONObject obj = parseJSONObject(nodes);
         assertPropertyValue(obj, ":childNodeCount", 1L);
     }
@@ -46,20 +49,20 @@ public class DocumentMKCommitAddTest extends BaseDocumentMKTest {
     public void addNodeWithChildren() throws Exception {
         mk.commit("/", "+\"a\" : { \"b\": {}, \"c\": {}, \"d\" : {} }", null, null);
 
-        assertTrue(mk.nodeExists("/a", null));
-        assertTrue(mk.nodeExists("/a/b", null));
-        assertTrue(mk.nodeExists("/a/c", null));
-        assertTrue(mk.nodeExists("/a/d", null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/a"), null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/a/b"), null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/a/c"), null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/a/d"), null));
     }
 
     @Test
     public void addNodeWithNestedChildren() throws Exception {
         mk.commit("/", "+\"a\" : { \"b\": { \"c\" : { \"d\" : {} } } }", null, null);
 
-        assertTrue(mk.nodeExists("/a", null));
-        assertTrue(mk.nodeExists("/a/b", null));
-        assertTrue(mk.nodeExists("/a/b/c", null));
-        assertTrue(mk.nodeExists("/a/b/c/d", null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/a"), null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/a/b"), null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/a/b/c"), null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/a/b/c/d"), null));
     }
 
     @Test
@@ -69,16 +72,16 @@ public class DocumentMKCommitAddTest extends BaseDocumentMKTest {
         mk.commit("/a/b", "+\"c\" : {}", null, null);
         mk.commit("/a", "+\"d\" : {}", null, null);
 
-        assertTrue(mk.nodeExists("/a", null));
-        assertTrue(mk.nodeExists("/a/b", null));
-        assertTrue(mk.nodeExists("/a/b/c", null));
-        assertTrue(mk.nodeExists("/a/d", null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/a"), null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/a/b"), null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/a/b/c"), null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/a/d"), null));
     }
 
     @Test
     public void addNodeWithParanthesis() throws Exception {
         mk.commit("/", "+\"Test({0})\" : {}", null, null);
-        String nodes = mk.getNodes("/Test({0})", null, 0, 0, -1, null);
+        String nodes = mk.getNodes(new TenantPath(TEST_TENANT, "/Test({0})"), null, 0, 0, -1, null);
         JSONObject obj = parseJSONObject(nodes);
         assertPropertyValue(obj, ":childNodeCount", 0L);
     }
@@ -89,13 +92,13 @@ public class DocumentMKCommitAddTest extends BaseDocumentMKTest {
         String rev1 = mk.commit("/", "+\"a\" : { \"b\" : { \"c\": {} }}", null, null);
         String rev2 = mk.commit("/", "+\"a/d\" : {} +\"a/b/e\" : {}", null, null);
 
-        assertTrue(mk.nodeExists("/a/b/c", rev1));
-        assertFalse(mk.nodeExists("/a/b/e", rev1));
-        assertFalse(mk.nodeExists("/a/d", rev1));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/a/b/c"), rev1));
+        assertFalse(mk.nodeExists(new TenantPath(TEST_TENANT, "/a/b/e"), rev1));
+        assertFalse(mk.nodeExists(new TenantPath(TEST_TENANT, "/a/d"), rev1));
 
-        assertTrue(mk.nodeExists("/a/b/c", rev2));
-        assertTrue(mk.nodeExists("/a/b/e", rev2));
-        assertTrue(mk.nodeExists("/a/d", rev2));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/a/b/c"), rev2));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/a/b/e"), rev2));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/a/d"), rev2));
     }
 
     @Test
@@ -113,10 +116,10 @@ public class DocumentMKCommitAddTest extends BaseDocumentMKTest {
     public void setSingleProperty() throws Exception {
         mk.commit("/", "+\"a\" : {} ^\"a/key1\" : \"value1\"", null, null);
 
-        String nodes = mk.getNodes("/", null, 0 /*depth*/, 0 /*offset*/, -1 /*maxChildNodes*/, null /*filter*/);
+        String nodes = mk.getNodes(new TenantPath(TEST_TENANT, "/"), null, 0 /*depth*/, 0 /*offset*/, -1 /*maxChildNodes*/, null /*filter*/);
         JSONObject obj = parseJSONObject(nodes);
         assertPropertyValue(obj, ":childNodeCount", 1L);
-        nodes = mk.getNodes("/a", null, 0 /*depth*/, 0 /*offset*/, -1 /*maxChildNodes*/, null /*filter*/);
+        nodes = mk.getNodes(new TenantPath(TEST_TENANT, "/a"), null, 0 /*depth*/, 0 /*offset*/, -1 /*maxChildNodes*/, null /*filter*/);
         obj = parseJSONObject(nodes);
         assertPropertyValue(obj, "key1", "value1");
     }
@@ -128,10 +131,10 @@ public class DocumentMKCommitAddTest extends BaseDocumentMKTest {
         mk.commit("/", "^\"a/key3\" : false", null, null);
         mk.commit("/", "^\"a/key4\" : 0.25", null, null);
 
-        String nodes = mk.getNodes("/", null, 0 /*depth*/, 0 /*offset*/, -1 /*maxChildNodes*/, null /*filter*/);
+        String nodes = mk.getNodes(new TenantPath(TEST_TENANT, "/"), null, 0 /*depth*/, 0 /*offset*/, -1 /*maxChildNodes*/, null /*filter*/);
         JSONObject obj = parseJSONObject(nodes);
         assertPropertyValue(obj, ":childNodeCount", 1L);
-        nodes = mk.getNodes("/a", null, 0 /*depth*/, 0 /*offset*/, -1 /*maxChildNodes*/, null /*filter*/);
+        nodes = mk.getNodes(new TenantPath(TEST_TENANT, "/a"), null, 0 /*depth*/, 0 /*offset*/, -1 /*maxChildNodes*/, null /*filter*/);
         obj = parseJSONObject(nodes);
         assertPropertyValue(obj, "key1", "value1");
         assertPropertyValue(obj, "key2", 2L);
@@ -145,22 +148,22 @@ public class DocumentMKCommitAddTest extends BaseDocumentMKTest {
         mk.commit("/", "+\"a\" : {}", null, null);
 
         mk.commit("/", "^\"a/_id\" : \"value\"", null, null);
-        String nodes = mk.getNodes("/a", null, 0 /*depth*/, 0 /*offset*/, -1 /*maxChildNodes*/, null /*filter*/);
+        String nodes = mk.getNodes(new TenantPath(TEST_TENANT, "/a"), null, 0 /*depth*/, 0 /*offset*/, -1 /*maxChildNodes*/, null /*filter*/);
         JSONObject obj = parseJSONObject(nodes);
         assertPropertyValue(obj, "_id", "value");
 
         mk.commit("/", "^\"a/ke.y1\" : \"value\"", null, null);
-        nodes = mk.getNodes("/a", null, 0 /*depth*/, 0 /*offset*/, -1 /*maxChildNodes*/, null /*filter*/);
+        nodes = mk.getNodes(new TenantPath(TEST_TENANT, "/a"), null, 0 /*depth*/, 0 /*offset*/, -1 /*maxChildNodes*/, null /*filter*/);
         obj = parseJSONObject(nodes);
         assertPropertyValue(obj, "ke.y1", "value");
 
         mk.commit("/", "^\"a/ke.y.1\" : \"value\"", null, null);
-        nodes = mk.getNodes("/a", null, 0 /*depth*/, 0 /*offset*/, -1 /*maxChildNodes*/, null /*filter*/);
+        nodes = mk.getNodes(new TenantPath(TEST_TENANT, "/a"), null, 0 /*depth*/, 0 /*offset*/, -1 /*maxChildNodes*/, null /*filter*/);
         obj = parseJSONObject(nodes);
         assertPropertyValue(obj, "ke.y.1", "value");
 
         mk.commit("/", "^\"a/$key1\" : \"value\"", null, null);
-        nodes = mk.getNodes("/a", null, 0 /*depth*/, 0 /*offset*/, -1 /*maxChildNodes*/, null /*filter*/);
+        nodes = mk.getNodes(new TenantPath(TEST_TENANT, "/a"), null, 0 /*depth*/, 0 /*offset*/, -1 /*maxChildNodes*/, null /*filter*/);
         obj = parseJSONObject(nodes);
         assertPropertyValue(obj, "$key1", "value");
     }
@@ -193,7 +196,7 @@ public class DocumentMKCommitAddTest extends BaseDocumentMKTest {
         // now overwrite with correct base revision
         mk.commit("/", "^\"a/key1\" : \"value3\"", rev2, null);
 
-        String nodes = mk.getNodes("/a", null, 0 /*depth*/, 0 /*offset*/, -1 /*maxChildNodes*/, null /*filter*/);
+        String nodes = mk.getNodes(new TenantPath(TEST_TENANT, "/a"), null, 0 /*depth*/, 0 /*offset*/, -1 /*maxChildNodes*/, null /*filter*/);
         JSONObject obj = parseJSONObject(nodes);
         assertPropertyValue(obj, "key1", "value3");
    }
@@ -231,10 +234,10 @@ public class DocumentMKCommitAddTest extends BaseDocumentMKTest {
         mk.commit("/", "^\"a/key2\" : \"value2\"", rev, null);
 
         // Check that key1 and b were merged
-        String nodes = mk.getNodes("/", null, 0 /*depth*/, 0 /*offset*/, -1 /*maxChildNodes*/, null /*filter*/);
+        String nodes = mk.getNodes(new TenantPath(TEST_TENANT, "/"), null, 0 /*depth*/, 0 /*offset*/, -1 /*maxChildNodes*/, null /*filter*/);
         JSONObject obj = parseJSONObject(nodes);
         assertPropertyValue(obj, ":childNodeCount", 1L);
-        nodes = mk.getNodes("/a", null, 0 /*depth*/, 0 /*offset*/, -1 /*maxChildNodes*/, null /*filter*/);
+        nodes = mk.getNodes(new TenantPath(TEST_TENANT, "/a"), null, 0 /*depth*/, 0 /*offset*/, -1 /*maxChildNodes*/, null /*filter*/);
         obj = parseJSONObject(nodes);
         assertPropertyValue(obj, "key1", "value1");
         assertPropertyValue(obj, "key2", "value2");

@@ -56,6 +56,7 @@ import org.apache.jackrabbit.oak.spi.state.ConflictAnnotatingRebaseDiff;
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
 import org.apache.jackrabbit.oak.spi.state.NodeState;
 import org.apache.jackrabbit.oak.spi.state.NodeStore;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
 import org.junit.Test;
 
 import com.google.common.collect.ImmutableSet;
@@ -65,6 +66,8 @@ import com.google.common.collect.Sets;
 public class AsyncIndexUpdateTest {
 
     // TODO test index config deletes
+
+    private static final Tenant TEST_TENANT = new Tenant("testtenant");
 
     private static Set<String> find(PropertyIndexLookup lookup, String name,
             String value) {
@@ -95,7 +98,7 @@ public class AsyncIndexUpdateTest {
         NodeStore store = new MemoryNodeStore();
         IndexEditorProvider provider = new PropertyIndexEditorProvider();
 
-        NodeBuilder builder = store.getRoot().builder();
+        NodeBuilder builder = store.getRoot(TEST_TENANT).builder();
         createIndexDefinition(builder.child(INDEX_DEFINITIONS_NAME),
                 "rootIndex", true, false, ImmutableSet.of("foo"), null)
                 .setProperty(ASYNC_PROPERTY_NAME, "async");
@@ -106,7 +109,7 @@ public class AsyncIndexUpdateTest {
 
         AsyncIndexUpdate async = new AsyncIndexUpdate("async", store, provider);
         async.run();
-        NodeState root = store.getRoot();
+        NodeState root = store.getRoot(TEST_TENANT);
 
         // first check that the index content nodes exist
         checkPathExists(root, INDEX_DEFINITIONS_NAME, "rootIndex",
@@ -132,7 +135,7 @@ public class AsyncIndexUpdateTest {
         NodeStore store = new MemoryNodeStore();
         IndexEditorProvider provider = new PropertyIndexEditorProvider();
 
-        NodeBuilder builder = store.getRoot().builder();
+        NodeBuilder builder = store.getRoot(TEST_TENANT).builder();
         createIndexDefinition(builder.child(INDEX_DEFINITIONS_NAME),
                 "rootIndex", true, false, ImmutableSet.of("foo"), null)
                 .setProperty(ASYNC_PROPERTY_NAME, "async");
@@ -149,7 +152,7 @@ public class AsyncIndexUpdateTest {
 
         AsyncIndexUpdate async = new AsyncIndexUpdate("async", store, provider);
         async.run();
-        NodeState root = store.getRoot();
+        NodeState root = store.getRoot(TEST_TENANT);
 
         // first check that the index content nodes exist
         checkPathExists(root, INDEX_DEFINITIONS_NAME, "rootIndex",
@@ -182,7 +185,7 @@ public class AsyncIndexUpdateTest {
         NodeStore store = new MemoryNodeStore();
         IndexEditorProvider provider = new PropertyIndexEditorProvider();
 
-        NodeBuilder builder = store.getRoot().builder();
+        NodeBuilder builder = store.getRoot(TEST_TENANT).builder();
         createIndexDefinition(builder.child(INDEX_DEFINITIONS_NAME),
                 "rootIndex", true, false, ImmutableSet.of("foo"), null)
                 .setProperty(ASYNC_PROPERTY_NAME, "async");
@@ -201,7 +204,7 @@ public class AsyncIndexUpdateTest {
 
         AsyncIndexUpdate async = new AsyncIndexUpdate("async", store, provider);
         async.run();
-        NodeState root = store.getRoot();
+        NodeState root = store.getRoot(TEST_TENANT);
 
         // first check that the index content nodes exist
         checkPathExists(root, INDEX_DEFINITIONS_NAME, "rootIndex",
@@ -225,7 +228,7 @@ public class AsyncIndexUpdateTest {
         NodeStore store = new MemoryNodeStore();
         IndexEditorProvider provider = new PropertyIndexEditorProvider();
 
-        NodeBuilder builder = store.getRoot().builder();
+        NodeBuilder builder = store.getRoot(TEST_TENANT).builder();
         createIndexDefinition(builder.child(INDEX_DEFINITIONS_NAME),
                 "rootIndex", true, false, ImmutableSet.of("foo"), null)
                 .setProperty(ASYNC_PROPERTY_NAME, "async");
@@ -237,13 +240,13 @@ public class AsyncIndexUpdateTest {
         AsyncIndexUpdate async = new AsyncIndexUpdate("async", store, provider);
         async.getIndexStats().pause();
         async.run();
-        assertFalse(store.getRoot().getChildNode(INDEX_DEFINITIONS_NAME)
+        assertFalse(store.getRoot(TEST_TENANT).getChildNode(INDEX_DEFINITIONS_NAME)
                 .getChildNode("rootIndex")
                 .hasChildNode(INDEX_CONTENT_NODE_NAME));
 
         async.getIndexStats().resume();
         async.run();
-        NodeState root = store.getRoot();
+        NodeState root = store.getRoot(TEST_TENANT);
 
         // first check that the index content nodes exist
         checkPathExists(root, INDEX_DEFINITIONS_NAME, "rootIndex",
@@ -284,7 +287,7 @@ public class AsyncIndexUpdateTest {
         };
         IndexEditorProvider provider = new PropertyIndexEditorProvider();
 
-        NodeBuilder builder = store.getRoot().builder();
+        NodeBuilder builder = store.getRoot(TEST_TENANT).builder();
         createIndexDefinition(builder.child(INDEX_DEFINITIONS_NAME), "foo",
                 false, ImmutableSet.of("foo"), null, TYPE,
                 Collections.singletonMap(ASYNC_PROPERTY_NAME, "async"));
@@ -298,7 +301,7 @@ public class AsyncIndexUpdateTest {
                 provider);
         async.run();
 
-        builder = store.getRoot().builder();
+        builder = store.getRoot(TEST_TENANT).builder();
         builder.child("test").setProperty("foo", "b");
         builder.child("child").setProperty("prop", "value");
         store.merge(builder, EmptyHook.INSTANCE, CommitInfo.EMPTY);
@@ -319,7 +322,7 @@ public class AsyncIndexUpdateTest {
         // wait until async update called checkpoint
         retrieve.release();
         checkpoint.acquireUninterruptibly();
-        builder = store.getRoot().builder();
+        builder = store.getRoot(TEST_TENANT).builder();
         builder.child("child").remove();
         store.merge(builder, EmptyHook.INSTANCE, CommitInfo.EMPTY);
 
@@ -327,7 +330,7 @@ public class AsyncIndexUpdateTest {
         retrieve.release();
         t.join();
 
-        assertFalse(store.getRoot().hasChildNode("child"));
+        assertFalse(store.getRoot(TEST_TENANT).hasChildNode("child"));
     }
 
     // OAK-1784
@@ -349,7 +352,7 @@ public class AsyncIndexUpdateTest {
         };
         IndexEditorProvider provider = new PropertyIndexEditorProvider();
 
-        NodeBuilder builder = store.getRoot().builder();
+        NodeBuilder builder = store.getRoot(TEST_TENANT).builder();
         createIndexDefinition(builder.child(INDEX_DEFINITIONS_NAME), "foo",
                 false, ImmutableSet.of("foo"), null, TYPE,
                 Collections.singletonMap(ASYNC_PROPERTY_NAME, "async"));
@@ -362,7 +365,7 @@ public class AsyncIndexUpdateTest {
                 provider);
         async.run();
 
-        builder = store.getRoot().builder();
+        builder = store.getRoot(TEST_TENANT).builder();
         builder.child("test").setProperty("foo", "b");
         store.merge(builder, EmptyHook.INSTANCE, CommitInfo.EMPTY);
 
@@ -377,7 +380,7 @@ public class AsyncIndexUpdateTest {
         t.start();
 
         // make some unrelated changes to trigger indexing
-        builder = store.getRoot().builder();
+        builder = store.getRoot(TEST_TENANT).builder();
         builder.setChildNode("dummy").setProperty("foo", "bar");
         store.merge(builder, EmptyHook.INSTANCE, CommitInfo.EMPTY);
 
@@ -386,7 +389,7 @@ public class AsyncIndexUpdateTest {
         }
 
         // introduce a conflict
-        builder = store.getRoot().builder();
+        builder = store.getRoot(TEST_TENANT).builder();
         builder.getChildNode(INDEX_DEFINITIONS_NAME).getChildNode("foo")
                 .getChildNode(":index").child("a").remove();
         store.merge(builder, EmptyHook.INSTANCE, CommitInfo.EMPTY);
@@ -394,7 +397,7 @@ public class AsyncIndexUpdateTest {
         s.release(100);
         t.join();
 
-        builder = store.getRoot().builder();
+        builder = store.getRoot(TEST_TENANT).builder();
         assertNoConflictMarker(builder);
     }
 
@@ -416,24 +419,24 @@ public class AsyncIndexUpdateTest {
         MemoryNodeStore store = new MemoryNodeStore();
         IndexEditorProvider provider = new PropertyIndexEditorProvider();
 
-        NodeBuilder builder = store.getRoot().builder();
+        NodeBuilder builder = store.getRoot(TEST_TENANT).builder();
         createIndexDefinition(builder.child(INDEX_DEFINITIONS_NAME),
                 "rootIndex", true, false, ImmutableSet.of("foo"), null)
                 .setProperty(ASYNC_PROPERTY_NAME, "async");
         builder.child("testRoot").setProperty("foo", "abc");
         store.merge(builder, EmptyHook.INSTANCE, CommitInfo.EMPTY);
         new AsyncIndexUpdate("async", store, provider).run();
-        checkPathExists(store.getRoot(), INDEX_DEFINITIONS_NAME, "rootIndex",
+        checkPathExists(store.getRoot(TEST_TENANT), INDEX_DEFINITIONS_NAME, "rootIndex",
                 INDEX_CONTENT_NODE_NAME, "abc", "testRoot");
 
-        builder = store.getRoot().builder();
+        builder = store.getRoot(TEST_TENANT).builder();
         // change cp ref to point to a non-existing one
         builder.child(AsyncIndexUpdate.ASYNC).setProperty("async", "faulty");
         builder.child("testAnother").setProperty("foo", "def");
         store.merge(builder, EmptyHook.INSTANCE, CommitInfo.EMPTY);
 
         new AsyncIndexUpdate("async", store, provider).run();
-        checkPathExists(store.getRoot(), INDEX_DEFINITIONS_NAME, "rootIndex",
+        checkPathExists(store.getRoot(TEST_TENANT), INDEX_DEFINITIONS_NAME, "rootIndex",
                 INDEX_CONTENT_NODE_NAME, "def", "testAnother");
     }
 
@@ -452,7 +455,7 @@ public class AsyncIndexUpdateTest {
         Set<String> checkpoints = newHashSet(store.listCheckpoints());
         assertTrue("Expecting the initial checkpoint",
                 checkpoints.size() == 1);
-        assertEquals(store.getRoot().getChildNode(AsyncIndexUpdate.ASYNC)
+        assertEquals(store.getRoot(TEST_TENANT).getChildNode(AsyncIndexUpdate.ASYNC)
                 .getString("async"), checkpoints.iterator().next());
 
         async.run();
@@ -465,7 +468,7 @@ public class AsyncIndexUpdateTest {
         MemoryNodeStore store = new MemoryNodeStore();
         IndexEditorProvider provider = new PropertyIndexEditorProvider();
 
-        NodeBuilder builder = store.getRoot().builder();
+        NodeBuilder builder = store.getRoot(TEST_TENANT).builder();
         createIndexDefinition(builder.child(INDEX_DEFINITIONS_NAME),
                 "rootIndex", true, false, ImmutableSet.of("foo"), null)
                 .setProperty(ASYNC_PROPERTY_NAME, "async");
@@ -481,7 +484,7 @@ public class AsyncIndexUpdateTest {
                 store.listCheckpoints().size() == 1);
         String firstCp = store.listCheckpoints().iterator().next();
 
-        builder = store.getRoot().builder();
+        builder = store.getRoot(TEST_TENANT).builder();
         builder.child("testRoot").setProperty("foo", "def");
         store.merge(builder, EmptyHook.INSTANCE, CommitInfo.EMPTY);
 
@@ -493,7 +496,7 @@ public class AsyncIndexUpdateTest {
                 secondCp.equals(firstCp));
         assertEquals(
                 secondCp,
-                store.getRoot().getChildNode(AsyncIndexUpdate.ASYNC)
+                store.getRoot(TEST_TENANT).getChildNode(AsyncIndexUpdate.ASYNC)
                         .getString("async"));
     }
 
@@ -502,7 +505,7 @@ public class AsyncIndexUpdateTest {
         MemoryNodeStore store = new MemoryNodeStore();
         IndexEditorProvider provider = new PropertyIndexEditorProvider();
 
-        NodeBuilder builder = store.getRoot().builder();
+        NodeBuilder builder = store.getRoot(TEST_TENANT).builder();
         createIndexDefinition(builder.child(INDEX_DEFINITIONS_NAME),
                 "rootIndex", true, false, ImmutableSet.of("foo"), null)
                 .setProperty(ASYNC_PROPERTY_NAME, "async");
@@ -519,7 +522,7 @@ public class AsyncIndexUpdateTest {
         String firstCp = store.listCheckpoints().iterator().next();
 
         // add content that's hidden from indexing
-        builder = store.getRoot().builder();
+        builder = store.getRoot(TEST_TENANT).builder();
         builder.child("testRoot").child(":hidden");
         store.merge(builder, EmptyHook.INSTANCE, CommitInfo.EMPTY);
         async.run();
@@ -531,7 +534,7 @@ public class AsyncIndexUpdateTest {
                 secondCp.equals(firstCp));
         assertEquals(
                 secondCp,
-                store.getRoot().getChildNode(AsyncIndexUpdate.ASYNC)
+                store.getRoot(TEST_TENANT).getChildNode(AsyncIndexUpdate.ASYNC)
                         .getString("async"));
     }
 
@@ -540,7 +543,7 @@ public class AsyncIndexUpdateTest {
         MemoryNodeStore store = new MemoryNodeStore();
         FaultyIndexEditorProvder provider = new FaultyIndexEditorProvder();
 
-        NodeBuilder builder = store.getRoot().builder();
+        NodeBuilder builder = store.getRoot(TEST_TENANT).builder();
         createIndexDefinition(builder.child(INDEX_DEFINITIONS_NAME),
                 "rootIndex", true, false, ImmutableSet.of("foo"), null)
                 .setProperty(ASYNC_PROPERTY_NAME, "async");
@@ -567,7 +570,7 @@ public class AsyncIndexUpdateTest {
         MemoryNodeStore store = new MemoryNodeStore();
         IndexEditorProvider provider = new PropertyIndexEditorProvider();
 
-        NodeBuilder builder = store.getRoot().builder();
+        NodeBuilder builder = store.getRoot(TEST_TENANT).builder();
         createIndexDefinition(builder.child(INDEX_DEFINITIONS_NAME),
                 "rootIndex", true, false, ImmutableSet.of("foo"), null)
                 .setProperty(ASYNC_PROPERTY_NAME, "asyncMissing");
@@ -587,7 +590,7 @@ public class AsyncIndexUpdateTest {
         String firstCp = store.listCheckpoints().iterator().next();
         assertEquals(
                 firstCp,
-                store.getRoot().getChildNode(AsyncIndexUpdate.ASYNC)
+                store.getRoot(TEST_TENANT).getChildNode(AsyncIndexUpdate.ASYNC)
                         .getString("asyncMissing"));
 
         // second run, simulate an index going away
@@ -597,7 +600,7 @@ public class AsyncIndexUpdateTest {
         async.run();
         assertTrue(async.isFailing());
         // don't set reindex=true but skip the update
-        PropertyState reindex = store.getRoot()
+        PropertyState reindex = store.getRoot(TEST_TENANT)
                 .getChildNode(INDEX_DEFINITIONS_NAME).getChildNode("rootIndex")
                 .getProperty(REINDEX_PROPERTY_NAME);
         assertTrue(reindex == null || !reindex.getValue(Type.BOOLEAN));
@@ -609,7 +612,7 @@ public class AsyncIndexUpdateTest {
                 secondCp.equals(firstCp));
         assertEquals(
                 firstCp,
-                store.getRoot().getChildNode(AsyncIndexUpdate.ASYNC)
+                store.getRoot(TEST_TENANT).getChildNode(AsyncIndexUpdate.ASYNC)
                         .getString("asyncMissing"));
     }
 
@@ -687,7 +690,7 @@ public class AsyncIndexUpdateTest {
         MemoryNodeStore store = new MemoryNodeStore();
         IndexEditorProvider provider = new PropertyIndexEditorProvider();
 
-        NodeBuilder builder = store.getRoot().builder();
+        NodeBuilder builder = store.getRoot(TEST_TENANT).builder();
 
         createIndexDefinition(builder.child(INDEX_DEFINITIONS_NAME),
                 "rootIndex", true, false, ImmutableSet.of("foo"), null)
@@ -714,7 +717,7 @@ public class AsyncIndexUpdateTest {
                 store.listCheckpoints().size() == 1);
         String firstCp = store.listCheckpoints().iterator().next();
 
-        builder = store.getRoot().builder();
+        builder = store.getRoot(TEST_TENANT).builder();
         builder.child("testRoot").setProperty("foo", "def");
         builder.child("testRoot").setProperty("bar", "def");
         store.merge(builder, EmptyHook.INSTANCE, CommitInfo.EMPTY);
@@ -731,14 +734,14 @@ public class AsyncIndexUpdateTest {
         assertTrue(checkpoints.remove(firstCp));
         String secondCp = checkpoints.iterator().next();
 
-        NodeState asyncNode = store.getRoot().getChildNode(
+        NodeState asyncNode = store.getRoot(TEST_TENANT).getChildNode(
                 AsyncIndexUpdate.ASYNC);
         assertEquals(firstCp, asyncNode.getString("async-slow"));
         assertEquals(secondCp, asyncNode.getString("async"));
         assertFalse(newHashSet(asyncNode.getStrings("async-temp")).contains(
                 firstCp));
 
-        NodeState indexNode = store.getRoot().getChildNode(
+        NodeState indexNode = store.getRoot(TEST_TENANT).getChildNode(
                 INDEX_DEFINITIONS_NAME);
         assertEquals("async",
                 indexNode.getChildNode("rootIndex").getString("async"));
@@ -752,7 +755,7 @@ public class AsyncIndexUpdateTest {
                 indexNode.getChildNode("changedIndex").getBoolean("reindex"));
 
         // new index task is on previous checkpoint
-        PropertyIndexLookup lookup = new PropertyIndexLookup(store.getRoot());
+        PropertyIndexLookup lookup = new PropertyIndexLookup(store.getRoot(TEST_TENANT));
         assertEquals(ImmutableSet.of("testRoot"), find(lookup, "bar", "abc"));
         assertEquals(ImmutableSet.of(), find(lookup, "bar", "def"));
     }
@@ -762,7 +765,7 @@ public class AsyncIndexUpdateTest {
         MemoryNodeStore store = new MemoryNodeStore();
         IndexEditorProvider provider = new PropertyIndexEditorProvider();
 
-        NodeBuilder builder = store.getRoot().builder();
+        NodeBuilder builder = store.getRoot(TEST_TENANT).builder();
 
         createIndexDefinition(builder.child(INDEX_DEFINITIONS_NAME),
                 "rootIndex", true, false, ImmutableSet.of("foo"), null)
@@ -783,7 +786,7 @@ public class AsyncIndexUpdateTest {
                 store.listCheckpoints().size() == 1);
         String firstCp = store.listCheckpoints().iterator().next();
 
-        builder = store.getRoot().builder();
+        builder = store.getRoot(TEST_TENANT).builder();
         builder.child("testRoot").setProperty("foo", "def");
         store.merge(builder, EmptyHook.INSTANCE, CommitInfo.EMPTY);
 
@@ -798,7 +801,7 @@ public class AsyncIndexUpdateTest {
                 checkpoints.size() == 1);
         String secondCp = checkpoints.iterator().next();
 
-        NodeState asyncNode = store.getRoot().getChildNode(
+        NodeState asyncNode = store.getRoot(TEST_TENANT).getChildNode(
                 AsyncIndexUpdate.ASYNC);
         assertEquals(secondCp, asyncNode.getString("async"));
         assertNull(firstCp, asyncNode.getString("async-slow"));

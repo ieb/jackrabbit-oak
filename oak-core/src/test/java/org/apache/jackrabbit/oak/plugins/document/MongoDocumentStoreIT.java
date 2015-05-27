@@ -23,6 +23,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.jackrabbit.oak.plugins.document.util.Utils;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
 import org.junit.Test;
 
 import com.google.common.collect.Maps;
@@ -39,6 +41,7 @@ import static org.apache.jackrabbit.oak.plugins.document.Collection.NODES;
  */
 public class MongoDocumentStoreIT extends AbstractMongoConnectionTest {
 
+    private static final Tenant TEST_TENANT = new Tenant("testtenant");
     private static final int NUM_THREADS = 3;
     private static final int UPDATES_PER_THREAD = 10;
 
@@ -46,7 +49,7 @@ public class MongoDocumentStoreIT extends AbstractMongoConnectionTest {
     public void concurrent() throws Exception {
         final long time = System.currentTimeMillis();
         mk.commit("/", "+\"test\":{}", null, null);
-        final String id = Utils.getIdFromPath("/test");
+        final String id = Utils.getIdFromPath(new TenantPath(TEST_TENANT, "/test"));
         final DocumentStore docStore = mk.getDocumentStore();
         List<Thread> threads = new ArrayList<Thread>();
         for (int i = 0; i < NUM_THREADS; i++) {
@@ -54,7 +57,7 @@ public class MongoDocumentStoreIT extends AbstractMongoConnectionTest {
             threads.add(new Thread(new Runnable() {
                 @Override
                 public void run() {
-                    Revision r = new Revision(time, tId, 0);
+                    Revision r = new Revision(TEST_TENANT.getTenantId(), time, tId, 0);
                     for (int i = 0; i < UPDATES_PER_THREAD; i++) {
                         UpdateOp update = new UpdateOp(id, false);
                         update.setMapEntry("prop", r, String.valueOf(i));
@@ -130,7 +133,7 @@ public class MongoDocumentStoreIT extends AbstractMongoConnectionTest {
 
     @Test
     public void negativeCache() throws Exception {
-        String id = Utils.getIdFromPath("/test");
+        String id = Utils.getIdFromPath(new TenantPath(TEST_TENANT, "/test"));
         DocumentStore docStore = mk.getDocumentStore();
         assertNull(docStore.find(NODES, id));
         mk.commit("/", "+\"test\":{}", null, null);
@@ -145,7 +148,7 @@ public class MongoDocumentStoreIT extends AbstractMongoConnectionTest {
         // make sure _lastRev is persisted and _modCount updated accordingly
         mk.runBackgroundOperations();
 
-        NodeDocument doc = docStore.find(NODES, Utils.getIdFromPath("/test"));
+        NodeDocument doc = docStore.find(NODES, Utils.getIdFromPath(new TenantPath(TEST_TENANT, "/test")));
         assertNotNull(doc);
         Number mc1 = doc.getModCount();
         assertNotNull(mc1);
@@ -155,7 +158,7 @@ public class MongoDocumentStoreIT extends AbstractMongoConnectionTest {
         } catch (DocumentStoreException e) {
             // expected
         }
-        doc = docStore.find(NODES, Utils.getIdFromPath("/test"));
+        doc = docStore.find(NODES, Utils.getIdFromPath(new TenantPath(TEST_TENANT, "/test")));
         assertNotNull(doc);
         Number mc2 = doc.getModCount();
         assertNotNull(mc2);

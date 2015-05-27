@@ -27,6 +27,7 @@ import org.apache.jackrabbit.oak.spi.commit.EmptyHook;
 import org.apache.jackrabbit.oak.spi.state.ChildNodeEntry;
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
 import org.apache.jackrabbit.oak.spi.state.NodeStore;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
 import org.junit.Test;
 
 import com.google.common.collect.Maps;
@@ -38,6 +39,7 @@ import static org.junit.Assert.assertTrue;
  * an upper limit.
  */
 public class ManyChildNodesTest {
+    private static final Tenant TEST_TENANT = new Tenant("testtenant");
 
     @Test
     public void manyChildNodes() throws Exception {
@@ -45,14 +47,14 @@ public class ManyChildNodesTest {
         DocumentMK mk = new DocumentMK.Builder().setDocumentStore(store).open();
         NodeStore ns = mk.getNodeStore();
 
-        NodeBuilder builder = ns.getRoot().builder();
+        NodeBuilder builder = ns.getRoot(TEST_TENANT).builder();
         for (int i = 0; i < DocumentNodeState.MAX_FETCH_SIZE * 2; i++) {
             builder.child("c-" + i);
         }
         ns.merge(builder, EmptyHook.INSTANCE, CommitInfo.EMPTY);
         store.queries.clear();
         // must fetch in batches
-        for (ChildNodeEntry entry : ns.getRoot().getChildNodeEntries()) {
+        for (ChildNodeEntry entry : ns.getRoot(TEST_TENANT).getChildNodeEntries()) {
             entry.getName();
         }
         // maximum fetch size is MAX_FETCH_SIZE plus one because
@@ -70,7 +72,7 @@ public class ManyChildNodesTest {
     @Test
     public void nodeChildrenCache() throws Exception {
         DocumentNodeStore ns = new DocumentMK.Builder().getNodeStore();
-        NodeBuilder builder = ns.getRoot().builder();
+        NodeBuilder builder = ns.getRoot(TEST_TENANT).builder();
         for (int i = 0; i < 1000; i++) {
             builder.child("c-" + i);
         }

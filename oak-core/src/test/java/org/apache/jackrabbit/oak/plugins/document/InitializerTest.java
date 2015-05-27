@@ -35,7 +35,7 @@ public class InitializerTest extends AbstractMongoConnectionTest {
 
     @Test
     public void testInitializerMongo() throws CommitFailedException {
-        NodeBuilder builder = mk.getNodeStore().getRoot().builder();
+        NodeBuilder builder = mk.getNodeStore().getRoot(TEST_TENANT).builder();
         new InitialContent().initialize(builder);
 
         SecurityProviderImpl provider = new SecurityProviderImpl(
@@ -54,7 +54,7 @@ public class InitializerTest extends AbstractMongoConnectionTest {
     public void testInitializerSegment() throws CommitFailedException {
         NodeStore store = new SegmentNodeStore(new MemoryStore());
 
-        NodeBuilder builder = store.getRoot().builder();
+        NodeBuilder builder = store.getRoot(TEST_TENANT).builder();
         new InitialContent().initialize(builder);
 
         SecurityProviderImpl provider = new SecurityProviderImpl(
@@ -71,7 +71,7 @@ public class InitializerTest extends AbstractMongoConnectionTest {
 
     @Test
     public void testInitializerMongoAfterInitialContent() throws CommitFailedException {
-        NodeBuilder builder = mk.getNodeStore().getRoot().builder();
+        NodeBuilder builder = mk.getNodeStore().getRoot(TEST_TENANT).builder();
         // add initial content in separate merge
         new InitialContent().initialize(builder);
         mk.getNodeStore().merge(builder, EmptyHook.INSTANCE, CommitInfo.EMPTY);

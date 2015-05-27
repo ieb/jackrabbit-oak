@@ -67,7 +67,7 @@ public class NodeStoreTest extends OakBaseTest {
 
     @Before
     public void setUp() throws Exception {
-        NodeBuilder builder = store.getRoot().builder();
+        NodeBuilder builder = store.getRoot(TEST_TENANT).builder();
         NodeBuilder test = builder.child("test");
         test.setProperty("a", 1);
         test.setProperty("b", 2);
@@ -84,17 +84,17 @@ public class NodeStoreTest extends OakBaseTest {
     }
 
     @Test
-    public void getRoot() {
-        assertEquals(root, store.getRoot());
-        assertEquals(root.getChildNode("test"), store.getRoot().getChildNode("test"));
+    public void getRoot(TEST_TENANT) {
+        assertEquals(root, store.getRoot(TEST_TENANT));
+        assertEquals(root.getChildNode("test"), store.getRoot(TEST_TENANT).getChildNode("test"));
         assertEquals(root.getChildNode("test").getChildNode("x"),
-                store.getRoot().getChildNode("test").getChildNode("x"));
+                store.getRoot(TEST_TENANT).getChildNode("test").getChildNode("x"));
         assertEquals(root.getChildNode("test").getChildNode("any"),
-                store.getRoot().getChildNode("test").getChildNode("any"));
+                store.getRoot(TEST_TENANT).getChildNode("test").getChildNode("any"));
         assertEquals(root.getChildNode("test").getProperty("a"),
-                store.getRoot().getChildNode("test").getProperty("a"));
+                store.getRoot(TEST_TENANT).getChildNode("test").getProperty("a"));
         assertEquals(root.getChildNode("test").getProperty("any"),
-                store.getRoot().getChildNode("test").getProperty("any"));
+                store.getRoot(TEST_TENANT).getChildNode("test").getProperty("any"));
     }
 
     @Test
@@ -107,8 +107,8 @@ public class NodeStoreTest extends OakBaseTest {
                 new EditorHook(new ConflictValidatorProvider())
         );
 
-        NodeBuilder b1 = store.getRoot().builder();
-        NodeBuilder b2 = store.getRoot().builder();
+        NodeBuilder b1 = store.getRoot(TEST_TENANT).builder();
+        NodeBuilder b2 = store.getRoot(TEST_TENANT).builder();
 
         // make sure we make it past DocumentRootBuilder.UPDATE_LIMIT
         // in order to see the conflict handling of the stores involved
@@ -132,8 +132,8 @@ public class NodeStoreTest extends OakBaseTest {
             new EditorHook(new ConflictValidatorProvider())
         );
 
-        NodeBuilder b1 = store.getRoot().builder();
-        NodeBuilder b2 = store.getRoot().builder();
+        NodeBuilder b1 = store.getRoot(TEST_TENANT).builder();
+        NodeBuilder b2 = store.getRoot(TEST_TENANT).builder();
 
         Calendar calendar = Calendar.getInstance();
         b1.setChildNode("addExistingNodeJCRLastModified").setProperty(JCR_LASTMODIFIED, calendar);
@@ -154,13 +154,13 @@ public class NodeStoreTest extends OakBaseTest {
             new EditorHook(new ConflictValidatorProvider())
         );
 
-        NodeBuilder b = store.getRoot().builder();
+        NodeBuilder b = store.getRoot(TEST_TENANT).builder();
         Calendar calendar = Calendar.getInstance();
         b.setChildNode("addExistingNodeJCRLastModified").setProperty(JCR_LASTMODIFIED, calendar);
         store.merge(b, hook, CommitInfo.EMPTY);
 
-        NodeBuilder b1 = store.getRoot().builder();
-        NodeBuilder b2 = store.getRoot().builder();
+        NodeBuilder b1 = store.getRoot(TEST_TENANT).builder();
+        NodeBuilder b2 = store.getRoot(TEST_TENANT).builder();
 
         calendar.add(Calendar.MINUTE, 1);
         b1.setChildNode("addExistingNodeJCRLastModified").setProperty(JCR_LASTMODIFIED, calendar);
@@ -176,7 +176,7 @@ public class NodeStoreTest extends OakBaseTest {
 
     @Test
     public void simpleMerge() throws CommitFailedException {
-        NodeBuilder rootBuilder = store.getRoot().builder();
+        NodeBuilder rootBuilder = store.getRoot(TEST_TENANT).builder();
         NodeBuilder testBuilder = rootBuilder.child("test");
         NodeBuilder newNodeBuilder = testBuilder.child("newNode");
 
@@ -191,14 +191,14 @@ public class NodeStoreTest extends OakBaseTest {
         assertEquals(42, (long) testState.getChildNode("newNode").getProperty("n").getValue(LONG));
 
         // Assert changes are not yet present in the trunk
-        testState = store.getRoot().getChildNode("test");
+        testState = store.getRoot(TEST_TENANT).getChildNode("test");
         assertFalse(testState.getChildNode("newNode").exists());
         assertTrue(testState.getChildNode("x").exists());
 
         store.merge(rootBuilder, EmptyHook.INSTANCE, CommitInfo.EMPTY);
 
         // Assert changes are present in the trunk
-        testState = store.getRoot().getChildNode("test");
+        testState = store.getRoot(TEST_TENANT).getChildNode("test");
         assertTrue(testState.getChildNode("newNode").exists());
         assertFalse(testState.getChildNode("x").exists());
         assertEquals(42, (long) testState.getChildNode("newNode").getProperty("n").getValue(LONG));
@@ -223,7 +223,7 @@ public class NodeStoreTest extends OakBaseTest {
             }
         });
 
-        NodeState root = store.getRoot();
+        NodeState root = store.getRoot(TEST_TENANT);
         NodeBuilder rootBuilder= root.builder();
         NodeBuilder testBuilder = rootBuilder.child("test");
         NodeBuilder newNodeBuilder = testBuilder.child("newNode");
@@ -232,7 +232,7 @@ public class NodeStoreTest extends OakBaseTest {
         testBuilder.getChildNode("a").remove();
 
         store.merge(rootBuilder, EmptyHook.INSTANCE, CommitInfo.EMPTY);
-        NodeState newRoot = store.getRoot(); // triggers the observer
+        NodeState newRoot = store.getRoot(TEST_TENANT); // triggers the observer
         latch.await(2, TimeUnit.SECONDS);
 
         NodeState after = observedRoot.get();
@@ -245,7 +245,7 @@ public class NodeStoreTest extends OakBaseTest {
 
     @Test
     public void beforeCommitHook() throws CommitFailedException {
-        NodeState root = store.getRoot();
+        NodeState root = store.getRoot(TEST_TENANT);
         NodeBuilder rootBuilder = root.builder();
         NodeBuilder testBuilder = rootBuilder.child("test");
         NodeBuilder newNodeBuilder = testBuilder.child("newNode");
@@ -266,51 +266,51 @@ public class NodeStoreTest extends OakBaseTest {
             }
         }, CommitInfo.EMPTY);
 
-        NodeState test = store.getRoot().getChildNode("test");
+        NodeState test = store.getRoot(TEST_TENANT).getChildNode("test");
         assertTrue(test.getChildNode("newNode").exists());
         assertTrue(test.getChildNode("fromHook").exists());
         assertFalse(test.getChildNode("a").exists());
         assertEquals(42, (long) test.getChildNode("newNode").getProperty("n").getValue(LONG));
-        assertEquals(test, store.getRoot().getChildNode("test"));
+        assertEquals(test, store.getRoot(TEST_TENANT).getChildNode("test"));
     }
 
     @Test
     public void manyChildNodes() throws CommitFailedException {
-        NodeBuilder root = store.getRoot().builder();
+        NodeBuilder root = store.getRoot(TEST_TENANT).builder();
         NodeBuilder parent = root.child("parent");
         for (int i = 0; i <= 100; i++) {
             parent.child("child-" + i);
         }
         store.merge(root, EmptyHook.INSTANCE, CommitInfo.EMPTY);
 
-        NodeState base = store.getRoot();
+        NodeState base = store.getRoot(TEST_TENANT);
         root = base.builder();
         parent = root.child("parent");
         parent.child("child-new");
         store.merge(root, EmptyHook.INSTANCE, CommitInfo.EMPTY);
 
         Diff diff = new Diff();
-        store.getRoot().compareAgainstBaseState(base, diff);
+        store.getRoot(TEST_TENANT).compareAgainstBaseState(base, diff);
 
         assertEquals(0, diff.removed.size());
         assertEquals(1, diff.added.size());
         assertEquals("child-new", diff.added.get(0));
 
-        base = store.getRoot();
+        base = store.getRoot(TEST_TENANT);
         root = base.builder();
         parent = root.getChildNode("parent");
         parent.getChildNode("child-new").moveTo(parent, "child-moved");
         store.merge(root, EmptyHook.INSTANCE, CommitInfo.EMPTY);
 
         diff = new Diff();
-        store.getRoot().compareAgainstBaseState(base, diff);
+        store.getRoot(TEST_TENANT).compareAgainstBaseState(base, diff);
 
         assertEquals(1, diff.removed.size());
         assertEquals("child-new", diff.removed.get(0));
         assertEquals(1, diff.added.size());
         assertEquals("child-moved", diff.added.get(0));
 
-        base = store.getRoot();
+        base = store.getRoot(TEST_TENANT);
         root = base.builder();
         parent = root.child("parent");
         parent.child("child-moved").setProperty("foo", "value");
@@ -319,7 +319,7 @@ public class NodeStoreTest extends OakBaseTest {
         store.merge(root, EmptyHook.INSTANCE, CommitInfo.EMPTY);
 
         diff = new Diff();
-        store.getRoot().compareAgainstBaseState(base, diff);
+        store.getRoot(TEST_TENANT).compareAgainstBaseState(base, diff);
 
         assertEquals(0, diff.removed.size());
         assertEquals(0, diff.added.size());
@@ -327,7 +327,7 @@ public class NodeStoreTest extends OakBaseTest {
         assertTrue(diff.addedProperties.contains("foo"));
         assertTrue(diff.addedProperties.contains("bar"));
 
-        base = store.getRoot();
+        base = store.getRoot(TEST_TENANT);
         root = base.builder();
         parent = root.child("parent");
         parent.setProperty("foo", "value");
@@ -336,7 +336,7 @@ public class NodeStoreTest extends OakBaseTest {
         store.merge(root, EmptyHook.INSTANCE, CommitInfo.EMPTY);
 
         diff = new Diff();
-        store.getRoot().compareAgainstBaseState(base, diff);
+        store.getRoot(TEST_TENANT).compareAgainstBaseState(base, diff);
 
         assertEquals(0, diff.removed.size());
         assertEquals(0, diff.added.size());
@@ -344,14 +344,14 @@ public class NodeStoreTest extends OakBaseTest {
         assertTrue(diff.addedProperties.contains("foo"));
         assertTrue(diff.addedProperties.contains("bar"));
 
-        base = store.getRoot();
+        base = store.getRoot(TEST_TENANT);
         root = base.builder();
         parent = root.child("parent");
         parent.getChildNode("child-moved").remove();
         store.merge(root, EmptyHook.INSTANCE, CommitInfo.EMPTY);
 
         diff = new Diff();
-        store.getRoot().compareAgainstBaseState(base, diff);
+        store.getRoot(TEST_TENANT).compareAgainstBaseState(base, diff);
 
         assertEquals(1, diff.removed.size());
         assertEquals(0, diff.added.size());
@@ -360,7 +360,7 @@ public class NodeStoreTest extends OakBaseTest {
 
     @Test
     public void move() {
-        NodeBuilder test = store.getRoot().builder().getChildNode("test");
+        NodeBuilder test = store.getRoot(TEST_TENANT).builder().getChildNode("test");
         NodeBuilder x = test.getChildNode("x");
         NodeBuilder y = test.getChildNode("y");
         assertTrue(x.moveTo(y, "xx"));
@@ -372,7 +372,7 @@ public class NodeStoreTest extends OakBaseTest {
 
     @Test
     public void moveNonExisting() {
-        NodeBuilder test = store.getRoot().builder().getChildNode("test");
+        NodeBuilder test = store.getRoot(TEST_TENANT).builder().getChildNode("test");
         NodeBuilder any = test.getChildNode("any");
         NodeBuilder y = test.getChildNode("y");
         assertFalse(any.moveTo(y, "xx"));
@@ -383,7 +383,7 @@ public class NodeStoreTest extends OakBaseTest {
 
     @Test
     public void moveToExisting() {
-        NodeBuilder test = store.getRoot().builder().getChildNode("test");
+        NodeBuilder test = store.getRoot(TEST_TENANT).builder().getChildNode("test");
         NodeBuilder x = test.getChildNode("x");
         assertFalse(x.moveTo(test, "y"));
         assertTrue(x.exists());
@@ -393,7 +393,7 @@ public class NodeStoreTest extends OakBaseTest {
 
     @Test
     public void rename() {
-        NodeBuilder test = store.getRoot().builder().getChildNode("test");
+        NodeBuilder test = store.getRoot(TEST_TENANT).builder().getChildNode("test");
         NodeBuilder x = test.getChildNode("x");
         assertTrue(x.moveTo(test, "xx"));
         assertFalse(x.exists());
@@ -403,7 +403,7 @@ public class NodeStoreTest extends OakBaseTest {
 
     @Test
     public void renameNonExisting() {
-        NodeBuilder test = store.getRoot().builder().getChildNode("test");
+        NodeBuilder test = store.getRoot(TEST_TENANT).builder().getChildNode("test");
         NodeBuilder any = test.getChildNode("any");
         assertFalse(any.moveTo(test, "xx"));
         assertFalse(any.exists());
@@ -412,7 +412,7 @@ public class NodeStoreTest extends OakBaseTest {
 
     @Test
     public void renameToExisting() {
-        NodeBuilder test = store.getRoot().builder().getChildNode("test");
+        NodeBuilder test = store.getRoot(TEST_TENANT).builder().getChildNode("test");
         NodeBuilder x = test.getChildNode("x");
         assertFalse(x.moveTo(test, "y"));
         assertTrue(x.exists());
@@ -422,7 +422,7 @@ public class NodeStoreTest extends OakBaseTest {
 
     @Test
     public void moveToSelf() {
-        NodeBuilder test = store.getRoot().builder().getChildNode("test");
+        NodeBuilder test = store.getRoot(TEST_TENANT).builder().getChildNode("test");
         NodeBuilder x = test.getChildNode("x");
         assertFalse(x.moveTo(test, "x"));
         assertTrue(x.exists());
@@ -431,7 +431,7 @@ public class NodeStoreTest extends OakBaseTest {
 
     @Test
     public void moveToSelfNonExisting() {
-        NodeBuilder test = store.getRoot().builder().getChildNode("test");
+        NodeBuilder test = store.getRoot(TEST_TENANT).builder().getChildNode("test");
         NodeBuilder any = test.getChildNode("any");
         assertFalse(any.moveTo(test, "any"));
         assertFalse(any.exists());
@@ -440,7 +440,7 @@ public class NodeStoreTest extends OakBaseTest {
 
     @Test
     public void moveToDescendant() {
-        NodeBuilder test = store.getRoot().builder().getChildNode("test");
+        NodeBuilder test = store.getRoot(TEST_TENANT).builder().getChildNode("test");
         NodeBuilder x = test.getChildNode("x");
         if (fixture == NodeStoreFixture.SEGMENT_MK || fixture == NodeStoreFixture.MEMORY_NS) {
             assertTrue(x.moveTo(x, "xx"));
@@ -458,8 +458,8 @@ public class NodeStoreTest extends OakBaseTest {
         NodeStore store1 = init(fixture.createNodeStore());
         NodeStore store2 = init(fixture.createNodeStore());
         try {
-            NodeState tree1 = store1.getRoot();
-            NodeState tree2 = store2.getRoot();
+            NodeState tree1 = store1.getRoot(TEST_TENANT);
+            NodeState tree2 = store2.getRoot(TEST_TENANT);
             tree1.equals(tree2);
         } finally {
             fixture.dispose(store1);
@@ -468,7 +468,7 @@ public class NodeStoreTest extends OakBaseTest {
     }
 
     private static NodeStore init(NodeStore store) throws CommitFailedException {
-        NodeBuilder builder = store.getRoot().builder();
+        NodeBuilder builder = store.getRoot(TEST_TENANT).builder();
         builder.setChildNode("root");
         store.merge(builder, EmptyHook.INSTANCE, CommitInfo.EMPTY);
         return store;
@@ -476,7 +476,7 @@ public class NodeStoreTest extends OakBaseTest {
 
     @Test
     public void merge() throws CommitFailedException {
-        NodeState base = store.getRoot();
+        NodeState base = store.getRoot(TEST_TENANT);
         NodeBuilder builder1 = base.builder();
 
         NodeBuilder builder2 = base.builder();
@@ -485,12 +485,12 @@ public class NodeStoreTest extends OakBaseTest {
         builder2.setChildNode("node2");
 
         store.merge(builder1, EmptyHook.INSTANCE, CommitInfo.EMPTY);
-        assertTrue(store.getRoot().hasChildNode("node1"));
-        assertFalse(store.getRoot().hasChildNode("node2"));
+        assertTrue(store.getRoot(TEST_TENANT).hasChildNode("node1"));
+        assertFalse(store.getRoot(TEST_TENANT).hasChildNode("node2"));
 
         store.merge(builder2, EmptyHook.INSTANCE, CommitInfo.EMPTY);
-        assertTrue(store.getRoot().hasChildNode("node1"));
-        assertTrue(store.getRoot().hasChildNode("node2"));
+        assertTrue(store.getRoot(TEST_TENANT).hasChildNode("node1"));
+        assertTrue(store.getRoot(TEST_TENANT).hasChildNode("node2"));
     }
 
     @Test
@@ -510,11 +510,11 @@ public class NodeStoreTest extends OakBaseTest {
 
     @Test // OAK-1320
     public void rebaseWithFailedMerge() throws CommitFailedException {
-        NodeBuilder rootBuilder = store.getRoot().builder();
+        NodeBuilder rootBuilder = store.getRoot(TEST_TENANT).builder();
         rootBuilder.child("foo");
 
         // commit something in between to force rebase
-        NodeBuilder b = store.getRoot().builder();
+        NodeBuilder b = store.getRoot(TEST_TENANT).builder();
         b.child("bar");
         store.merge(b, EmptyHook.INSTANCE, CommitInfo.EMPTY);
 
@@ -539,7 +539,7 @@ public class NodeStoreTest extends OakBaseTest {
     }
 
     private void compareAgainstBaseState(int childNodeCount) throws CommitFailedException {
-        NodeState before = store.getRoot();
+        NodeState before = store.getRoot(TEST_TENANT);
         NodeBuilder builder = before.builder();
         for (int k = 0; k < childNodeCount; k++) {
             builder.child("c" + k);
@@ -548,7 +548,7 @@ public class NodeStoreTest extends OakBaseTest {
         builder.child("foo").child(":bar").child("quz").setProperty("p", "v");
         store.merge(builder, EmptyHook.INSTANCE, CommitInfo.EMPTY);
 
-        NodeState after = store.getRoot();
+        NodeState after = store.getRoot(TEST_TENANT);
         Diff diff = new Diff();
         after.compareAgainstBaseState(before, diff);
 

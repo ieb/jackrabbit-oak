@@ -46,6 +46,7 @@ import org.apache.jackrabbit.oak.spi.query.PropertyValues;
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
 import org.apache.jackrabbit.oak.spi.state.NodeState;
 import org.apache.jackrabbit.oak.spi.state.NodeStore;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
 import org.junit.Test;
 
 import com.google.common.collect.ImmutableSet;
@@ -58,6 +59,8 @@ import com.google.common.collect.Sets;
  */
 public class AsyncPropertyIndexTest {
 
+    private static final Tenant TEST_TENANT = new Tenant("testtenant");
+
     private IndexEditorProvider provider = new PropertyIndexEditorProvider();
 
     private EditorHook hook = new EditorHook(new IndexUpdateProvider(provider));
@@ -66,7 +69,7 @@ public class AsyncPropertyIndexTest {
     public void testAsyncPropertyLookup() throws Exception {
         NodeStore store = new MemoryNodeStore();
 
-        NodeBuilder builder = store.getRoot().builder();
+        NodeBuilder builder = store.getRoot(TEST_TENANT).builder();
 
         //add a property index on 'foo'
         NodeBuilder def = createIndexDefinition(
@@ -95,16 +98,16 @@ public class AsyncPropertyIndexTest {
                 store, provider, true);
         async.run();
         assertEquals(ASYNC_REINDEX_VALUE,
-                store.getRoot().getChildNode(INDEX_DEFINITIONS_NAME)
+                store.getRoot(TEST_TENANT).getChildNode(INDEX_DEFINITIONS_NAME)
                         .getChildNode("foo").getString(ASYNC_PROPERTY_NAME));
 
         // run async second time, there are no changes, should switch to sync
         async.run();
-        assertEquals(null, store.getRoot().getChildNode(INDEX_DEFINITIONS_NAME)
+        assertEquals(null, store.getRoot(TEST_TENANT).getChildNode(INDEX_DEFINITIONS_NAME)
                 .getChildNode("foo").getString(ASYNC_PROPERTY_NAME));
 
         // add content, it should be indexed synchronously
-        builder = store.getRoot().builder();
+        builder = store.getRoot(TEST_TENANT).builder();
         builder.child("c").setProperty("foo", "def");
         head = store.merge(builder, hook, EMPTY);
         f = createFilter(head, NT_BASE);

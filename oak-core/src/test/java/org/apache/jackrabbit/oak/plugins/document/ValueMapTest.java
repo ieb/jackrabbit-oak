@@ -27,6 +27,8 @@ import org.apache.jackrabbit.oak.plugins.document.util.Utils;
 import org.apache.jackrabbit.oak.spi.commit.CommitInfo;
 import org.apache.jackrabbit.oak.spi.commit.EmptyHook;
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
 import org.junit.Test;
 
 import com.google.common.collect.Iterators;
@@ -43,11 +45,13 @@ import static org.junit.Assert.assertTrue;
  */
 public class ValueMapTest {
 
+    private static final Tenant TEST_TENANT = new Tenant("testtenant");
+
     @Test
     public void previousDocs1() {
         String rootPath = "/";
-        String rootId = Utils.getIdFromPath(rootPath);
-        Revision r0 = new Revision(0, 0, 1);
+        String rootId = Utils.getIdFromPath(new TenantPath(TEST_TENANT, rootPath));
+        Revision r0 = new Revision(TEST_TENANT.getTenantId(),0, 0, 1);
         MemoryDocumentStore store = new MemoryDocumentStore();
         // create previous docs
         UpdateOp op = new UpdateOp(Utils.getPreviousIdFor(rootPath, r0, 0), true);
@@ -55,12 +59,12 @@ public class ValueMapTest {
         op.setMapEntry("prop", r0, "0");
         NodeDocument.setRevision(op, r0, "c");
         store.createOrUpdate(NODES, op);
-        Revision r1low = new Revision(1, 0, 1);
-        Revision r1high = new Revision(1, 10, 1);
+        Revision r1low = new Revision(TEST_TENANT.getTenantId(),1, 0, 1);
+        Revision r1high = new Revision(TEST_TENANT.getTenantId(),1, 10, 1);
         op = new UpdateOp(Utils.getPreviousIdFor(rootPath, r1high, 0), true);
         op.set(ID, op.getId());
         for (int i = r1low.getCounter(); i <= r1high.getCounter(); i++) {
-            Revision r = new Revision(1, i, 1);
+            Revision r = new Revision(TEST_TENANT.getTenantId(),1, i, 1);
             op.setMapEntry("foo", r, String.valueOf(i));
             NodeDocument.setRevision(op, r, "c");
         }
@@ -68,7 +72,7 @@ public class ValueMapTest {
         // create root doc
         op = new UpdateOp(rootId, true);
         op.set(ID, op.getId());
-        Revision r2 = new Revision(2, 0, 1);
+        Revision r2 = new Revision(TEST_TENANT.getTenantId(),2, 0, 1);
         op.setMapEntry("prop", r2, "1");
         NodeDocument.setRevision(op, r2, "c");
         NodeDocument.setPrevious(op, new Range(r0, r0, 0));
@@ -92,13 +96,13 @@ public class ValueMapTest {
     public void previousDocs2() {
         MemoryDocumentStore store = new MemoryDocumentStore();
         String rootPath = "/";
-        String rootId = Utils.getIdFromPath(rootPath);
-        Revision r01 = new Revision(0, 0, 1);
-        Revision r12 = new Revision(1, 0, 2);
-        Revision r22 = new Revision(2, 0, 2);
-        Revision r31 = new Revision(3, 0, 1);
-        Revision r42 = new Revision(4, 0, 2);
-        Revision r51 = new Revision(5, 0, 1);
+        String rootId = Utils.getIdFromPath(new TenantPath(TEST_TENANT, rootPath));
+        Revision r01 = new Revision(TEST_TENANT.getTenantId(),0, 0, 1);
+        Revision r12 = new Revision(TEST_TENANT.getTenantId(),1, 0, 2);
+        Revision r22 = new Revision(TEST_TENANT.getTenantId(),2, 0, 2);
+        Revision r31 = new Revision(TEST_TENANT.getTenantId(),3, 0, 1);
+        Revision r42 = new Revision(TEST_TENANT.getTenantId(),4, 0, 2);
+        Revision r51 = new Revision(TEST_TENANT.getTenantId(),5, 0, 1);
         // create previous docs
         UpdateOp op = new UpdateOp(Utils.getPreviousIdFor(rootPath, r31, 0), true);
         op.set(ID, op.getId());
@@ -148,13 +152,13 @@ public class ValueMapTest {
     public void mergeSorted() throws Exception {
         DocumentNodeStore store = new DocumentMK.Builder().setAsyncDelay(0).getNodeStore();
         DocumentStore docStore = store.getDocumentStore();
-        String id = Utils.getIdFromPath("/");
+        String id = Utils.getIdFromPath(new TenantPath(TEST_TENANT, "/"));
         
         List<NodeBuilder> branches = Lists.newArrayList();
         int i = 0;
         while (docStore.find(NODES, id).getPreviousRanges().size() < 2) {
             i++;
-            NodeBuilder builder = store.getRoot().builder();
+            NodeBuilder builder = store.getRoot(TEST_TENANT).builder();
             builder.child("foo").setProperty("prop", i);
             builder.child("bar").setProperty("prop", i);
             if (i % 7 == 0) {
@@ -183,13 +187,13 @@ public class ValueMapTest {
     public void mergeSorted1() throws Exception {
         MemoryDocumentStore store = new MemoryDocumentStore();
         
-        Revision r1 = new Revision(1, 0, 1); // prev2
-        Revision r2 = new Revision(2, 0, 1); // prev2
-        Revision r3 = new Revision(3, 0, 1); // root
-        Revision r4 = new Revision(4, 0, 1); // prev2
-        Revision r5 = new Revision(5, 0, 1); // prev1
-        Revision r6 = new Revision(6, 0, 1); // root
-        Revision r7 = new Revision(7, 0, 1); // prev1
+        Revision r1 = new Revision(TEST_TENANT.getTenantId(),1, 0, 1); // prev2
+        Revision r2 = new Revision(TEST_TENANT.getTenantId(),2, 0, 1); // prev2
+        Revision r3 = new Revision(TEST_TENANT.getTenantId(),3, 0, 1); // root
+        Revision r4 = new Revision(TEST_TENANT.getTenantId(),4, 0, 1); // prev2
+        Revision r5 = new Revision(TEST_TENANT.getTenantId(),5, 0, 1); // prev1
+        Revision r6 = new Revision(TEST_TENANT.getTenantId(),6, 0, 1); // root
+        Revision r7 = new Revision(TEST_TENANT.getTenantId(),7, 0, 1); // prev1
 
         Range range1 = new Range(r7, r5, 0);
         Range range2 = new Range(r4, r1, 0);
@@ -207,7 +211,7 @@ public class ValueMapTest {
         NodeDocument.setRevision(prevOp2, r2, "c");
         NodeDocument.setRevision(prevOp2, r4, "c");
 
-        String rootId = Utils.getIdFromPath("/");
+        String rootId = Utils.getIdFromPath(new TenantPath(TEST_TENANT, "/"));
         UpdateOp op = new UpdateOp(rootId, true);
         op.set(Document.ID, rootId);
         NodeDocument.setRevision(op, r3, "c");

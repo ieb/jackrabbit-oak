@@ -39,6 +39,7 @@ import org.apache.jackrabbit.oak.spi.commit.EmptyHook;
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
 import org.apache.jackrabbit.oak.spi.state.NodeState;
 import org.apache.jackrabbit.oak.spi.state.NodeStore;
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
 import org.junit.Test;
 
 import com.google.common.collect.Iterables;
@@ -69,7 +70,7 @@ public class DocumentSplitTest extends BaseDocumentMKTest {
         DocumentStore store = mk.getDocumentStore();
         DocumentNodeStore ns = mk.getNodeStore();
         Set<Revision> revisions = Sets.newHashSet();
-        NodeDocument doc = store.find(NODES, Utils.getIdFromPath("/"));
+        NodeDocument doc = store.find(NODES, Utils.getIdFromPath(new TenantPath(TEST_TENANT, "/")));
         assertNotNull(doc);
         revisions.addAll(doc.getLocalRevisions().keySet());
         revisions.add(Revision.fromString(mk.commit("/", "+\"foo\":{}+\"bar\":{}", null, null)));
@@ -80,7 +81,7 @@ public class DocumentSplitTest extends BaseDocumentMKTest {
         }
         mk.runBackgroundOperations();
         String head = mk.getHeadRevision();
-        doc = store.find(NODES, Utils.getIdFromPath("/"));
+        doc = store.find(NODES, Utils.getIdFromPath(new TenantPath(TEST_TENANT, "/")));
         assertNotNull(doc);
         Map<Revision, String> revs = doc.getLocalRevisions();
         // one remaining in the local revisions map
@@ -90,7 +91,7 @@ public class DocumentSplitTest extends BaseDocumentMKTest {
             assertTrue(doc.isCommitted(rev));
         }
         // check if document is still there
-        assertNotNull(ns.getNode("/", Revision.fromString(head)));
+        assertNotNull(ns.getNode(new TenantPath(TEST_TENANT, "/"), Revision.fromString(head)));
 
         NodeDocument prevDoc = Iterators.getOnlyElement(doc.getAllPreviousDocs());
         assertEquals(SplitDocType.DEFAULT, prevDoc.getSplitDocType());
@@ -106,7 +107,7 @@ public class DocumentSplitTest extends BaseDocumentMKTest {
         DocumentNodeStore ns = mk.getNodeStore();
         Set<Revision> revisions = Sets.newHashSet();
         mk.commit("/", "+\"foo\":{}", null, null);
-        NodeDocument doc = store.find(NODES, Utils.getIdFromPath("/foo"));
+        NodeDocument doc = store.find(NODES, Utils.getIdFromPath(new TenantPath(TEST_TENANT, "/foo")));
         assertNotNull(doc);
         revisions.addAll(doc.getLocalRevisions().keySet());
         boolean create = false;
@@ -120,7 +121,7 @@ public class DocumentSplitTest extends BaseDocumentMKTest {
         }
         mk.runBackgroundOperations();
         String head = mk.getHeadRevision();
-        doc = store.find(NODES, Utils.getIdFromPath("/foo"));
+        doc = store.find(NODES, Utils.getIdFromPath(new TenantPath(TEST_TENANT, "/foo")));
         assertNotNull(doc);
         Map<Revision, String> deleted = doc.getLocalDeleted();
         // one remaining in the local deleted map
@@ -130,7 +131,7 @@ public class DocumentSplitTest extends BaseDocumentMKTest {
                     || doc.getCommitRootPath(rev) != null);
             assertTrue(doc.isCommitted(rev));
         }
-        DocumentNodeState node = ns.getNode("/foo", Revision.fromString(head));
+        DocumentNodeState node = ns.getNode(new TenantPath(TEST_TENANT, "/foo"), Revision.fromString(head));
         // check status of node
         if (create) {
             assertNull(node);
@@ -143,7 +144,7 @@ public class DocumentSplitTest extends BaseDocumentMKTest {
     public void splitCommitRoot() throws Exception {
         DocumentStore store = mk.getDocumentStore();
         mk.commit("/", "+\"foo\":{}+\"bar\":{}", null, null);
-        NodeDocument doc = store.find(NODES, Utils.getIdFromPath("/foo"));
+        NodeDocument doc = store.find(NODES, Utils.getIdFromPath(new TenantPath(TEST_TENANT, "/foo")));
         assertNotNull(doc);
         Set<Revision> commitRoots = Sets.newHashSet();
         commitRoots.addAll(doc.getLocalCommitRoot().keySet());
@@ -153,7 +154,7 @@ public class DocumentSplitTest extends BaseDocumentMKTest {
                     commitRoots.size() + "^\"bar/prop\":" + commitRoots.size(), null, null)));
         }
         mk.runBackgroundOperations();
-        doc = store.find(NODES, Utils.getIdFromPath("/foo"));
+        doc = store.find(NODES, Utils.getIdFromPath(new TenantPath(TEST_TENANT, "/foo")));
         assertNotNull(doc);
         Map<Revision, String> commits = doc.getLocalCommitRoot();
         // two remaining in the local commit root map
@@ -169,7 +170,7 @@ public class DocumentSplitTest extends BaseDocumentMKTest {
     public void splitPropertyRevisions() throws Exception {
         DocumentStore store = mk.getDocumentStore();
         mk.commit("/", "+\"foo\":{}", null, null);
-        NodeDocument doc = store.find(NODES, Utils.getIdFromPath("/foo"));
+        NodeDocument doc = store.find(NODES, Utils.getIdFromPath(new TenantPath(TEST_TENANT, "/foo")));
         assertNotNull(doc);
         Set<Revision> revisions = Sets.newHashSet();
         // create nodes
@@ -178,7 +179,7 @@ public class DocumentSplitTest extends BaseDocumentMKTest {
                     revisions.size(), null, null)));
         }
         mk.runBackgroundOperations();
-        doc = store.find(NODES, Utils.getIdFromPath("/foo"));
+        doc = store.find(NODES, Utils.getIdFromPath(new TenantPath(TEST_TENANT, "/foo")));
         assertNotNull(doc);
         Map<Revision, String> localRevs = doc.getLocalRevisions();
         // one remaining in the local revisions map
@@ -225,7 +226,7 @@ public class DocumentSplitTest extends BaseDocumentMKTest {
         mk2.runBackgroundOperations();
         mk3.runBackgroundOperations();
 
-        NodeDocument doc = ds.find(NODES, Utils.getIdFromPath("/test"));
+        NodeDocument doc = ds.find(NODES, Utils.getIdFromPath(new TenantPath(TEST_TENANT, "/test")));
         assertNotNull(doc);
         Map<Revision, String> revs = doc.getLocalRevisions();
         assertEquals(3, revs.size());
@@ -283,10 +284,10 @@ public class DocumentSplitTest extends BaseDocumentMKTest {
                 }
             }
             // read current value
-            NodeDocument doc = ds.find(NODES, Utils.getIdFromPath("/test"));
+            NodeDocument doc = ds.find(NODES, Utils.getIdFromPath(new TenantPath(TEST_TENANT, "/test")));
             assertNotNull(doc);
             Revision head = ns.getHeadRevision();
-            Revision lastRev = ns.getPendingModifications().get("/test");
+            Revision lastRev = ns.getPendingModifications().get(new TenantPath(TEST_TENANT, "/test"));
             DocumentNodeState n = doc.getNodeAtRevision(mk.getNodeStore(), head, lastRev);
             assertNotNull(n);
             String value = n.getPropertyAsString(name);
@@ -311,14 +312,14 @@ public class DocumentSplitTest extends BaseDocumentMKTest {
         mk.commit("/", "+\"test\":{\"node\":{}}", null, null);
         mk.commit("/test", "+\"foo\":{}+\"bar\":{}", null, null);
         mk.commit("/test", "^\"foo/prop\":0^\"bar/prop\":0", null, null);
-        NodeDocument doc = store.find(NODES, Utils.getIdFromPath("/test/foo"));
+        NodeDocument doc = store.find(NODES, Utils.getIdFromPath(new TenantPath(TEST_TENANT, "/test/foo")));
         assertNotNull(doc);
         String rev = null;
         for (int i = 0; i < NodeDocument.NUM_REVS_THRESHOLD; i++) {
             rev = mk.commit("/test/foo", "^\"prop\":" + i, null, null);
         }
         ns.runBackgroundOperations();
-        doc = store.find(NODES, Utils.getIdFromPath("/test/foo"));
+        doc = store.find(NODES, Utils.getIdFromPath(new TenantPath(TEST_TENANT, "/test/foo")));
         assertNotNull(doc);
         DocumentNodeState node = doc.getNodeAtRevision(ns,
                 Revision.fromString(rev), null);
@@ -335,7 +336,7 @@ public class DocumentSplitTest extends BaseDocumentMKTest {
             mk.commit("/test/foo", "^\"prop\":" + i, null, null);
         }
         ns.runBackgroundOperations();
-        NodeDocument doc = store.find(NODES, Utils.getIdFromPath("/test/foo"));
+        NodeDocument doc = store.find(NODES, Utils.getIdFromPath(new TenantPath(TEST_TENANT, "/test/foo")));
         List<NodeDocument> prevDocs = ImmutableList.copyOf(doc.getAllPreviousDocs());
         assertEquals(1, prevDocs.size());
         assertEquals(SplitDocType.DEFAULT_LEAF, prevDocs.get(0).getSplitDocType());
@@ -345,20 +346,20 @@ public class DocumentSplitTest extends BaseDocumentMKTest {
     public void testSplitPropAndCommitOnly() throws Exception{
         DocumentStore store = mk.getDocumentStore();
         DocumentNodeStore ns = mk.getNodeStore();
-        NodeBuilder b1 = ns.getRoot().builder();
+        NodeBuilder b1 = ns.getRoot(TEST_TENANT).builder();
         b1.child("test").child("foo").child("bar");
         ns.merge(b1, EmptyHook.INSTANCE, CommitInfo.EMPTY);
 
         //Commit on a node which has a child and where the commit root
         // is parent
         for (int i = 0; i < NodeDocument.NUM_REVS_THRESHOLD; i++) {
-            b1 = ns.getRoot().builder();
+            b1 = ns.getRoot(TEST_TENANT).builder();
             b1.child("test").child("foo").setProperty("prop",i);
             b1.child("test").setProperty("prop",i);
             ns.merge(b1, EmptyHook.INSTANCE, CommitInfo.EMPTY);
         }
         ns.runBackgroundOperations();
-        NodeDocument doc = store.find(NODES, Utils.getIdFromPath("/test/foo"));
+        NodeDocument doc = store.find(NODES, Utils.getIdFromPath(new TenantPath(TEST_TENANT, "/test/foo")));
         List<NodeDocument> prevDocs = ImmutableList.copyOf(doc.getAllPreviousDocs());
         assertEquals(1, prevDocs.size());
         assertEquals(SplitDocType.COMMIT_ROOT_ONLY, prevDocs.get(0).getSplitDocType());
@@ -368,19 +369,19 @@ public class DocumentSplitTest extends BaseDocumentMKTest {
     public void splitDocWithHasBinary() throws Exception{
         DocumentStore store = mk.getDocumentStore();
         DocumentNodeStore ns = mk.getNodeStore();
-        NodeBuilder b1 = ns.getRoot().builder();
+        NodeBuilder b1 = ns.getRoot(TEST_TENANT).builder();
         b1.child("test").child("foo").setProperty("binaryProp",ns.createBlob(randomStream(1, 4096)));;
         ns.merge(b1, EmptyHook.INSTANCE, CommitInfo.EMPTY);
 
         //Commit on a node which has a child and where the commit root
         // is parent
         for (int i = 0; i < NodeDocument.NUM_REVS_THRESHOLD; i++) {
-            b1 = ns.getRoot().builder();
+            b1 = ns.getRoot(TEST_TENANT).builder();
             b1.child("test").child("foo").setProperty("prop",i);
             ns.merge(b1, EmptyHook.INSTANCE, CommitInfo.EMPTY);
         }
         ns.runBackgroundOperations();
-        NodeDocument doc = store.find(NODES, Utils.getIdFromPath("/test/foo"));
+        NodeDocument doc = store.find(NODES, Utils.getIdFromPath(new TenantPath(TEST_TENANT, "/test/foo")));
         List<NodeDocument> prevDocs = ImmutableList.copyOf(doc.getAllPreviousDocs());
         assertEquals(1, prevDocs.size());
 
@@ -420,7 +421,7 @@ public class DocumentSplitTest extends BaseDocumentMKTest {
 
         List<String> revs = Lists.newArrayList();
         for (int i = 0; i < NodeDocument.PREV_SPLIT_FACTOR + 1; i++) {
-            NodeDocument doc = store.find(NODES, Utils.getIdFromPath(path));
+            NodeDocument doc = store.find(NODES, Utils.getIdFromPath(new TenantPath(TEST_TENANT, path)));
             assertNotNull(doc);
             assertEquals(i, doc.getPreviousRanges().size());
             for (int j = 0; j < NodeDocument.NUM_REVS_THRESHOLD; j++) {
@@ -430,7 +431,7 @@ public class DocumentSplitTest extends BaseDocumentMKTest {
             }
             ns.runBackgroundOperations();
         }
-        NodeDocument doc = store.find(NODES, Utils.getIdFromPath(path));
+        NodeDocument doc = store.find(NODES, Utils.getIdFromPath(new TenantPath(TEST_TENANT, path)));
         assertNotNull(doc);
         assertEquals(2, doc.getPreviousRanges().size());
 
@@ -495,7 +496,7 @@ public class DocumentSplitTest extends BaseDocumentMKTest {
     // OAK-1692
     @Test
     public void cascadingWithSplitRatio() {
-        String id = Utils.getIdFromPath("/test");
+        String id = Utils.getIdFromPath(new TenantPath(TEST_TENANT, "/test"));
         mk.commit("/", "+\"test\":{}", null, null);
         DocumentStore store = mk.getDocumentStore();
         int clusterId = mk.getNodeStore().getClusterId();
@@ -503,7 +504,7 @@ public class DocumentSplitTest extends BaseDocumentMKTest {
         UpdateOp op = new UpdateOp(id, false);
         // create some baggage from another cluster node
         for (int i = 0; i < 1000; i++) {
-            Revision r = Revision.newRevision(2);
+            Revision r = Revision.newRevision(TEST_TENANT.getTenantId(), 2);
             op.setMapEntry("prop", r, "some long test value with many characters");
             NodeDocument.setRevision(op, r, "c");
         }
@@ -514,7 +515,7 @@ public class DocumentSplitTest extends BaseDocumentMKTest {
 
         // these will be considered for a split
         for (int i = 0; i < NUM_REVS_THRESHOLD / 2; i++) {
-            Revision r = Revision.newRevision(clusterId);
+            Revision r = Revision.newRevision(TEST_TENANT.getTenantId(), clusterId);
             op.setMapEntry("prop", r, "value");
             NodeDocument.setRevision(op, r, "c");
         }
@@ -522,8 +523,8 @@ public class DocumentSplitTest extends BaseDocumentMKTest {
         // for an intermediate document
         TreeSet<Revision> prev = Sets.newTreeSet(mk.getNodeStore().getRevisionComparator());
         for (int i = 0; i < PREV_SPLIT_FACTOR; i++) {
-            Revision low = Revision.newRevision(clusterId);
-            Revision high = Revision.newRevision(clusterId);
+            Revision low = Revision.newRevision(TEST_TENANT.getTenantId(), clusterId);
+            Revision high = Revision.newRevision(TEST_TENANT.getTenantId(), clusterId);
             prev.add(high);
             NodeDocument.setPrevious(op, new Range(high, low, 0));
         }
@@ -562,7 +563,7 @@ public class DocumentSplitTest extends BaseDocumentMKTest {
     @Test
     public void splitRevisionsManyClusterNodes() {
         int numClusterNodes = 5;
-        String id = Utils.getIdFromPath("/test");
+        String id = Utils.getIdFromPath(new TenantPath(TEST_TENANT, "/test"));
         mk.commit("/", "+\"test\":{}", null, null);
         DocumentStore store = mk.getDocumentStore();
         int clusterId = mk.getNodeStore().getClusterId();
@@ -572,7 +573,7 @@ public class DocumentSplitTest extends BaseDocumentMKTest {
         for (int i = 0; i < numClusterNodes; i++) {
             // create some commits for each cluster node
             for (int j = 0; j < NUM_REVS_THRESHOLD; j++) {
-                Revision r = Revision.newRevision(i + 1);
+                Revision r = Revision.newRevision(TEST_TENANT.getTenantId(), i + 1);
                 if (clusterId == r.getClusterId()) {
                     revs.add(r);
                 }
@@ -598,17 +599,17 @@ public class DocumentSplitTest extends BaseDocumentMKTest {
     public void keepRevisionsForMostRecentChanges() throws Exception {
         DocumentStore store = mk.getDocumentStore();
         NodeStore ns = mk.getNodeStore();
-        NodeBuilder builder = ns.getRoot().builder();
+        NodeBuilder builder = ns.getRoot(TEST_TENANT).builder();
         builder.setProperty("foo", -1);
         builder.setProperty("bar", -1);
         ns.merge(builder, EmptyHook.INSTANCE, CommitInfo.EMPTY);
         for (int i = 0; i < NUM_REVS_THRESHOLD; i++) {
-            builder = ns.getRoot().builder();
+            builder = ns.getRoot(TEST_TENANT).builder();
             builder.setProperty("foo", i);
             ns.merge(builder, EmptyHook.INSTANCE, CommitInfo.EMPTY);
         }
         mk.runBackgroundOperations();
-        NodeDocument doc = store.find(NODES, Utils.getIdFromPath("/"));
+        NodeDocument doc = store.find(NODES, Utils.getIdFromPath(new TenantPath(TEST_TENANT, "/")));
         assertNotNull(doc);
         // the local _revisions map must still contain the entry for
         // the initial 'bar' property
@@ -628,21 +629,21 @@ public class DocumentSplitTest extends BaseDocumentMKTest {
     public void keepCommitRootForMostRecentChanges() throws Exception {
         DocumentStore store = mk.getDocumentStore();
         NodeStore ns = mk.getNodeStore();
-        NodeBuilder builder = ns.getRoot().builder();
+        NodeBuilder builder = ns.getRoot(TEST_TENANT).builder();
         builder.setProperty("p", -1);
         NodeBuilder test = builder.child("test");
         test.setProperty("foo", -1);
         test.setProperty("bar", -1);
         ns.merge(builder, EmptyHook.INSTANCE, CommitInfo.EMPTY);
         for (int i = 0; i < NUM_REVS_THRESHOLD; i++) {
-            builder = ns.getRoot().builder();
+            builder = ns.getRoot(TEST_TENANT).builder();
             builder.setProperty("p", i);
             test = builder.child("test");
             test.setProperty("foo", i);
             ns.merge(builder, EmptyHook.INSTANCE, CommitInfo.EMPTY);
         }
         mk.runBackgroundOperations();
-        NodeDocument doc = store.find(NODES, Utils.getIdFromPath("/test"));
+        NodeDocument doc = store.find(NODES, Utils.getIdFromPath(new TenantPath(TEST_TENANT, "/test")));
         assertNotNull(doc);
         // the local _commitRoot map must still contain the entry for
         // the initial 'bar' property
@@ -660,7 +661,7 @@ public class DocumentSplitTest extends BaseDocumentMKTest {
     @Test(expected = IllegalArgumentException.class)
     public void splitPreviousDocument() {
         NodeDocument doc = new NodeDocument(mk.getDocumentStore());
-        doc.put(NodeDocument.ID, Utils.getIdFromPath("/test"));
+        doc.put(NodeDocument.ID, Utils.getIdFromPath(new TenantPath(TEST_TENANT, "/test")));
         doc.put(NodeDocument.SD_TYPE, NodeDocument.SplitDocType.DEFAULT.type);
         SplitOperations.forDocument(doc, DummyRevisionContext.INSTANCE);
     }
@@ -679,23 +680,23 @@ public class DocumentSplitTest extends BaseDocumentMKTest {
         };
         DocumentNodeStore ns = new DocumentMK.Builder()
                 .setDocumentStore(store).setAsyncDelay(0).getNodeStore();
-        NodeBuilder builder = ns.getRoot().builder();
+        NodeBuilder builder = ns.getRoot(TEST_TENANT).builder();
         builder.child("test");
         ns.merge(builder, EmptyHook.INSTANCE, CommitInfo.EMPTY);
         for (int i = 0; i < NUM_REVS_THRESHOLD; i++) {
-            builder = ns.getRoot().builder();
+            builder = ns.getRoot(TEST_TENANT).builder();
             builder.setProperty("p", i);
             builder.child("test").setProperty("p", i);
             builder.child("test").setProperty("q", i);
             ns.merge(builder, EmptyHook.INSTANCE, CommitInfo.EMPTY);
         }
-        builder = ns.getRoot().builder();
+        builder = ns.getRoot(TEST_TENANT).builder();
         builder.child("test").removeProperty("q");
         ns.merge(builder, EmptyHook.INSTANCE, CommitInfo.EMPTY);
 
         ns.runBackgroundOperations();
 
-        NodeDocument doc = store.find(NODES, Utils.getIdFromPath("/test"));
+        NodeDocument doc = store.find(NODES, Utils.getIdFromPath(new TenantPath(TEST_TENANT, "/test")));
         assertNotNull(doc);
 
         readSet.clear();
@@ -720,14 +721,14 @@ public class DocumentSplitTest extends BaseDocumentMKTest {
         DocumentNodeStore ns = mk.getNodeStore();
         
         for (int i = 0; i < NUM_REVS_THRESHOLD * 2; i++) {
-            NodeBuilder builder = ns.getRoot().builder();
+            NodeBuilder builder = ns.getRoot(TEST_TENANT).builder();
             builder.child("test").child("child-" + i);
             merge(ns, builder);
         }
         
         ns.runBackgroundOperations();
         
-        NodeDocument doc = store.find(NODES, Utils.getIdFromPath("/test"));
+        NodeDocument doc = store.find(NODES, Utils.getIdFromPath(new TenantPath(TEST_TENANT, "/test")));
         assertNotNull(doc);
         assertTrue(doc.getLocalCommitRoot().size() < NUM_REVS_THRESHOLD);
     }

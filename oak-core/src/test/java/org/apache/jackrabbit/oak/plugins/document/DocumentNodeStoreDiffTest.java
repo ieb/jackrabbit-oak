@@ -16,7 +16,6 @@
  */
 package org.apache.jackrabbit.oak.plugins.document;
 
-import com.mongodb.DB;
 import org.apache.jackrabbit.oak.api.CommitFailedException;
 import org.apache.jackrabbit.oak.cache.CacheStats;
 import org.apache.jackrabbit.oak.spi.commit.CommitInfo;
@@ -39,7 +38,7 @@ public class DocumentNodeStoreDiffTest extends AbstractMongoConnectionTest {
     public void diff() throws Exception {
         DocumentNodeStore store = mk.getNodeStore();
 
-        NodeBuilder builder = store.getRoot().builder();
+        NodeBuilder builder = store.getRoot(TEST_TENANT).builder();
         builder.child("other");
         for (int i = 0; i < 10; i++) {
             builder.child("test").child("folder").child("node-" + i);
@@ -47,19 +46,19 @@ public class DocumentNodeStoreDiffTest extends AbstractMongoConnectionTest {
         merge(store, builder);
 
         for (int i = 0; i < 50; i++) {
-            builder = store.getRoot().builder();
+            builder = store.getRoot(TEST_TENANT).builder();
             builder.child("other").child("node-" + i);
             merge(store, builder);
         }
 
-        NodeState before = store.getRoot();
+        NodeState before = store.getRoot(TEST_TENANT);
 
-        builder = store.getRoot().builder();
+        builder = store.getRoot(TEST_TENANT).builder();
         builder.child("test").child("folder").child("node-x").child("child");
         NodeState after = merge(store, builder);
 
         for (int i = 0; i < 10; i++) {
-            builder = store.getRoot().builder();
+            builder = store.getRoot(TEST_TENANT).builder();
             builder.child("test").child("folder").child("node-" + i).child("child");
             merge(store, builder);
         }

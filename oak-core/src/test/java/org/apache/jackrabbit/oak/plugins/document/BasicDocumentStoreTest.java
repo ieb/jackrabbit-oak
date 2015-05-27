@@ -43,6 +43,7 @@ import com.google.common.collect.Maps;
 import org.apache.jackrabbit.oak.plugins.document.UpdateOp.Condition;
 import org.apache.jackrabbit.oak.plugins.document.UpdateOp.Key;
 import org.apache.jackrabbit.oak.plugins.document.util.Utils;
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -624,7 +625,7 @@ public class BasicDocumentStoreTest extends AbstractDocumentStoreTest {
             UpdateOp up = new UpdateOp(id, true);
             up.set("_id", id);
             if (growing) {
-                Revision r = new Revision(System.currentTimeMillis(), (int) cnt, 1);
+                Revision r = new Revision(TEST_TENANT.getTenantId(), System.currentTimeMillis(), (int) cnt, 1);
                 up.setMapEntry("foo", r, pval);
                 up.setMapEntry("_commitRoot", r, "1");
                 up.increment("c", 1);
@@ -992,11 +993,11 @@ public class BasicDocumentStoreTest extends AbstractDocumentStoreTest {
     public void removeWithCondition() throws Exception {
         List<UpdateOp> docs = Lists.newArrayList();
         docs.add(newDocument("/foo", 100));
-        removeMe.add(Utils.getIdFromPath("/foo"));
+        removeMe.add(Utils.getIdFromPath(new TenantPath(TEST_TENANT, "/foo")));
         docs.add(newDocument("/bar", 200));
-        removeMe.add(Utils.getIdFromPath("/bar"));
+        removeMe.add(Utils.getIdFromPath(new TenantPath(TEST_TENANT, "/bar")));
         docs.add(newDocument("/baz", 300));
-        removeMe.add(Utils.getIdFromPath("/baz"));
+        removeMe.add(Utils.getIdFromPath(new TenantPath(TEST_TENANT, "/baz")));
         ds.create(Collection.NODES, docs);
 
         for (UpdateOp op : docs) {
@@ -1012,7 +1013,7 @@ public class BasicDocumentStoreTest extends AbstractDocumentStoreTest {
         int removed = ds.remove(Collection.NODES, toRemove);
 
         assertEquals(2, removed);
-        assertNotNull(ds.find(Collection.NODES, Utils.getIdFromPath("/bar")));
+        assertNotNull(ds.find(Collection.NODES, Utils.getIdFromPath(new TenantPath(TEST_TENANT, "/bar"))));
         for (NodeDocument doc : Utils.getAllDocuments(ds)) {
             if (!doc.getPath().equals("/bar")) {
                 fail("document must not exist: " + doc.getId());
@@ -1021,7 +1022,7 @@ public class BasicDocumentStoreTest extends AbstractDocumentStoreTest {
     }
 
     private UpdateOp newDocument(String path, long modified) {
-        String id = Utils.getIdFromPath(path);
+        String id = Utils.getIdFromPath(new TenantPath(TEST_TENANT, path));
         UpdateOp op = new UpdateOp(id, true);
         op.set(NodeDocument.MODIFIED_IN_SECS, modified);
         op.set(Document.ID, id);
@@ -1031,7 +1032,7 @@ public class BasicDocumentStoreTest extends AbstractDocumentStoreTest {
     private void removeDocument(Map<String, Map<Key, Condition>> toRemove,
                                 String path,
                                 long modified) {
-        toRemove.put(Utils.getIdFromPath(path),
+        toRemove.put(Utils.getIdFromPath(new TenantPath(TEST_TENANT, path)),
                 Collections.singletonMap(
                         new Key(NodeDocument.MODIFIED_IN_SECS, null),
                         Condition.newEqualsCondition(modified)));

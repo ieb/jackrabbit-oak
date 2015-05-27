@@ -18,6 +18,8 @@ package org.apache.jackrabbit.oak.plugins.document;
 
 import org.apache.jackrabbit.oak.plugins.document.memory.MemoryDocumentStore;
 import org.apache.jackrabbit.oak.spi.blob.MemoryBlobStore;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
@@ -26,6 +28,8 @@ import static org.junit.Assert.assertEquals;
  * A set of simple cluster tests.
  */
 public class ClusterTest2 {
+
+    private static final Tenant TEST_TENANT = new Tenant("testtenant");
 
     @Test
     public void twoNodes() throws Exception {
@@ -57,8 +61,8 @@ public class ClusterTest2 {
 
         mk2.backgroundRead();
 
-        String n1 = mk1.getNodes("/test", mk1.getHeadRevision(), 0, 0, 10, null);
-        String n2 = mk2.getNodes("/test", mk2.getHeadRevision(), 0, 0, 10, null);
+        String n1 = mk1.getNodes(new TenantPath(TEST_TENANT, "/test"), mk1.getHeadRevision(), 0, 0, 10, null);
+        String n2 = mk2.getNodes(new TenantPath(TEST_TENANT, "/test"), mk2.getHeadRevision(), 0, 0, 10, null);
 
         // mk1 now sees both changes
         assertEquals("{\"x\":1,\":childNodeCount\":0}", n1);

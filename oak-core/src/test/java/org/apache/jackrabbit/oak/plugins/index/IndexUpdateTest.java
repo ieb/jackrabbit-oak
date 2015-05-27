@@ -55,6 +55,7 @@ import org.apache.jackrabbit.oak.spi.query.PropertyValues;
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
 import org.apache.jackrabbit.oak.spi.state.NodeState;
 import org.apache.jackrabbit.oak.spi.state.NodeStore;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
 import org.junit.Test;
 
 import com.google.common.collect.ImmutableSet;
@@ -64,6 +65,8 @@ public class IndexUpdateTest {
 
     private static final EditorHook HOOK = new EditorHook(
             new IndexUpdateProvider(new PropertyIndexEditorProvider()));
+
+    private static final Tenant TEST_TENANT = new Tenant("testtenant");
 
     private NodeState root = INITIAL_CONTENT;
 
@@ -315,7 +318,7 @@ public class IndexUpdateTest {
         EditorHook hook = new EditorHook(new IndexUpdateProvider(provider));
 
         NodeStore store = new MemoryNodeStore();
-        NodeBuilder builder = store.getRoot().builder();
+        NodeBuilder builder = store.getRoot(TEST_TENANT).builder();
 
         createIndexDefinition(builder.child(INDEX_DEFINITIONS_NAME),
                 "rootIndex", true, false, ImmutableSet.of("foo"), null)
@@ -326,7 +329,7 @@ public class IndexUpdateTest {
         store.merge(builder, hook, CommitInfo.EMPTY);
 
         // first check that the async flag exist
-        NodeState ns1 = checkPathExists(store.getRoot(),
+        NodeState ns1 = checkPathExists(store.getRoot(TEST_TENANT),
                 INDEX_DEFINITIONS_NAME, "rootIndex");
         assertTrue(ns1.getProperty(REINDEX_PROPERTY_NAME)
                 .getValue(Type.BOOLEAN));
@@ -348,7 +351,7 @@ public class IndexUpdateTest {
         }
 
         // first check that the index content nodes exist
-        NodeState ns = checkPathExists(store.getRoot(), INDEX_DEFINITIONS_NAME,
+        NodeState ns = checkPathExists(store.getRoot(TEST_TENANT), INDEX_DEFINITIONS_NAME,
                 "rootIndex");
         checkPathExists(ns, INDEX_CONTENT_NODE_NAME);
         assertFalse(ns.getProperty(REINDEX_PROPERTY_NAME)
@@ -356,7 +359,7 @@ public class IndexUpdateTest {
         assertNull(ns.getProperty(ASYNC_PROPERTY_NAME));
 
         // next, lookup
-        PropertyIndexLookup lookup = new PropertyIndexLookup(store.getRoot());
+        PropertyIndexLookup lookup = new PropertyIndexLookup(store.getRoot(TEST_TENANT));
         assertEquals(ImmutableSet.of("testRoot"), find(lookup, "foo",
         "abc"));
     }

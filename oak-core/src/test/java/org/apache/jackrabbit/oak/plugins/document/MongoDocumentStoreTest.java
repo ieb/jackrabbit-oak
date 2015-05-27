@@ -29,9 +29,12 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import com.google.common.collect.Lists;
+
 import org.apache.jackrabbit.oak.plugins.document.memory.MemoryDocumentStore;
 import org.apache.jackrabbit.oak.plugins.document.mongo.MongoDocumentStore;
 import org.apache.jackrabbit.oak.plugins.document.util.Utils;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -48,6 +51,8 @@ import com.mongodb.WriteResult;
  * Tests the document store.
  */
 public class MongoDocumentStoreTest {
+
+    private static final Tenant TEST_TENANT = new Tenant("testtenant");
 
     private static final Logger LOG = LoggerFactory.getLogger(MongoDocumentStoreTest.class);
 
@@ -81,7 +86,7 @@ public class MongoDocumentStoreTest {
         DocumentStore docStore = openDocumentStore();
 
         UpdateOp updateOp = new UpdateOp("/", true);
-        Revision r1 = new Revision(0, 0, 0);
+        Revision r1 = new Revision(TEST_TENANT.getTenantId(), 0, 0, 0);
         updateOp.setMapEntry("property1", r1, "value1");
         updateOp.increment("property2", 1);
         updateOp.set("property3", "value3");
@@ -109,7 +114,7 @@ public class MongoDocumentStoreTest {
     public void batchRemove() throws Exception {
         DocumentStore docStore = openDocumentStore();
         int nUpdates = 10;
-        Revision r1 = new Revision(0, 0, 0);
+        Revision r1 = new Revision(TEST_TENANT.getTenantId(), 0, 0, 0);
         List<String> ids = Lists.newArrayList();
         List<UpdateOp> updateOps = new ArrayList<UpdateOp>();
         for (int i = 0; i < nUpdates; i++) {
@@ -137,7 +142,7 @@ public class MongoDocumentStoreTest {
     @Test
     public void batchAdd() throws Exception {
         DocumentStore docStore = openDocumentStore();
-        Revision r1 = new Revision(0, 0, 0);
+        Revision r1 = new Revision(TEST_TENANT.getTenantId(), 0, 0, 0);
         int nUpdates = 10;
         List<UpdateOp> updateOps = new ArrayList<UpdateOp>();
         for (int i = 0; i < nUpdates; i++) {
@@ -179,8 +184,8 @@ public class MongoDocumentStoreTest {
 
     @Test
     public void containsMapEntry() {
-        Revision r = new Revision(0, 0, 0);
-        Revision unknown = new Revision(0, 1, 0);
+        Revision r = new Revision(TEST_TENANT.getTenantId(), 0, 0, 0);
+        Revision unknown = new Revision(TEST_TENANT.getTenantId(), 0, 1, 0);
         DocumentStore docStore = openDocumentStore();
         UpdateOp op = new UpdateOp("/node", true);
         op.setMapEntry("map", r, "value");
@@ -222,10 +227,10 @@ public class MongoDocumentStoreTest {
         DocumentStore docStore = openDocumentStore();
         DocumentNodeStore store = new DocumentMK.Builder()
                 .setDocumentStore(docStore).setAsyncDelay(0).getNodeStore();
-        Revision rev = Revision.newRevision(0);
+        Revision rev = Revision.newRevision(TEST_TENANT.getTenantId(), 0);
         List<UpdateOp> inserts = new ArrayList<UpdateOp>();
         for (int i = 0; i < DocumentMK.MANY_CHILDREN_THRESHOLD * 2; i++) {
-            DocumentNodeState n = new DocumentNodeState(store, "/node-" + i, rev);
+            DocumentNodeState n = new DocumentNodeState(store, new TenantPath(TEST_TENANT, "/node-" + i), rev);
             inserts.add(n.asOperation(true));
         }
         docStore.create(Collection.NODES, inserts);
@@ -307,7 +312,7 @@ public class MongoDocumentStoreTest {
         }
 
         private void addNodes() {
-            Revision r1 = new Revision(0, 0, 0);
+            Revision r1 = new Revision(TEST_TENANT.getTenantId(), 0, 0, 0);
             for (int i = 0; i < nNodes; i++) {
                 String path = "/" + nodeName + i;
                 UpdateOp updateOp = new UpdateOp(path, true);
@@ -318,7 +323,7 @@ public class MongoDocumentStoreTest {
         }
 
         private void updateNodes() {
-            Revision r2 = new Revision(0, 1, 0);
+            Revision r2 = new Revision(TEST_TENANT.getTenantId(), 0, 1, 0);
             for (int i = 0; i < nNodes; i++) {
                 String path = "/" + nodeName + i;
                 UpdateOp updateOp = new UpdateOp(path, false);

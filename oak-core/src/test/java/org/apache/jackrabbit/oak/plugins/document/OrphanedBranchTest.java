@@ -29,6 +29,8 @@ import org.apache.jackrabbit.oak.plugins.document.util.Utils;
 import org.apache.jackrabbit.oak.spi.commit.CommitInfo;
 import org.apache.jackrabbit.oak.spi.commit.EmptyHook;
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -49,6 +51,7 @@ import static org.junit.Assert.assertTrue;
 @RunWith(Parameterized.class)
 public class OrphanedBranchTest {
 
+    private static final Tenant TEST_TENANT = new Tenant("testtenant");
     private static final Logger LOG = LoggerFactory.getLogger(OrphanedBranchTest.class);
     private DocumentStoreFixture fixture;
     private DocumentNodeStore store;
@@ -88,7 +91,7 @@ public class OrphanedBranchTest {
     public void orphanedBranches() throws Exception {
         int numCreated = 0;
         for (;;) {
-            NodeBuilder builder = store.getRoot().builder();
+            NodeBuilder builder = store.getRoot(TEST_TENANT).builder();
             NodeBuilder child = builder.child("foo");
             int numBranches = store.getBranches().size();
 
@@ -103,7 +106,7 @@ public class OrphanedBranchTest {
             // commit a change to get new head revision.
             // collisions will only be cleaned up if the head
             // revision is newer.
-            builder = store.getRoot().builder();
+            builder = store.getRoot(TEST_TENANT).builder();
             builder.child("bar").setProperty("prop", numCreated);
             store.merge(builder, EmptyHook.INSTANCE, CommitInfo.EMPTY);
 
@@ -111,7 +114,7 @@ public class OrphanedBranchTest {
             store.runBackgroundOperations();
             // after background ops we must not see more collisions
             // than active branches
-            String id = Utils.getIdFromPath("/");
+            String id = Utils.getIdFromPath(new TenantPath(TEST_TENANT, "/"));
             NodeDocument doc = store.getDocumentStore().find(NODES, id);
             assertNotNull(doc);
             Map<Revision, String> collisions = doc.getLocalMap(COLLISIONS);
@@ -121,7 +124,7 @@ public class OrphanedBranchTest {
             // limit to check is number of branches considered active
             // plus NodeDocument.NUM_REVS_THRESHOLD
             int limit = numBranches + NodeDocument.NUM_REVS_THRESHOLD;
-            id = Utils.getIdFromPath("/foo");
+            id = Utils.getIdFromPath(new TenantPath(TEST_TENANT, "/foo"));
             doc = store.getDocumentStore().find(NODES, id);
             assertNotNull(doc);
             Map<Revision, String> map = doc.getLocalMap("prop");
@@ -151,15 +154,15 @@ public class OrphanedBranchTest {
     // OAK-2442
     @Test
     public void removeUncommittedChange() throws Exception {
-        String id = Utils.getIdFromPath("/foo");
-        NodeBuilder builder = store.getRoot().builder();
+        String id = Utils.getIdFromPath(new TenantPath(TEST_TENANT, "/foo"));
+        NodeBuilder builder = store.getRoot(TEST_TENANT).builder();
         builder.child("foo");
         store.merge(builder, EmptyHook.INSTANCE, CommitInfo.EMPTY);
 
         // force previous document
         int count = 0;
         while (store.getDocumentStore().find(NODES, id).getPreviousRanges().isEmpty()) {
-            builder = store.getRoot().builder();
+            builder = store.getRoot(TEST_TENANT).builder();
             builder.child("foo").setProperty("test", count++);
             store.merge(builder, EmptyHook.INSTANCE, CommitInfo.EMPTY);
             store.runBackgroundOperations();
@@ -167,14 +170,14 @@ public class OrphanedBranchTest {
 
         int numBranches = store.getBranches().size();
         count = 0;
-        builder = store.getRoot().builder();
+        builder = store.getRoot(TEST_TENANT).builder();
         NodeBuilder child = builder.child("foo");
         // perform changes until a branch is created
         while (store.getBranches().size() == numBranches) {
             child.setProperty("prop", count++);
         }
         // perform some other change to update head revision
-        builder = store.getRoot().builder();
+        builder = store.getRoot(TEST_TENANT).builder();
         builder.child("foo").setProperty("bar", 0);
         store.merge(builder, EmptyHook.INSTANCE, CommitInfo.EMPTY);
 
@@ -193,7 +196,7 @@ public class OrphanedBranchTest {
         // this will also remove unmerged changes
         count = 0;
         while (store.getDocumentStore().find(NODES, id).getPreviousRanges().size() == 1) {
-            builder = store.getRoot().builder();
+            builder = store.getRoot(TEST_TENANT).builder();
             builder.child("foo").setProperty("p", count++);
             store.merge(builder, EmptyHook.INSTANCE, CommitInfo.EMPTY);
             store.runBackgroundOperations();

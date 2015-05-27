@@ -29,6 +29,7 @@ import javax.annotation.Nullable;
 import org.apache.jackrabbit.oak.spi.commit.CommitInfo;
 import org.apache.jackrabbit.oak.spi.commit.Observer;
 import org.apache.jackrabbit.oak.spi.state.NodeState;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
 import org.junit.Test;
 
 /**
@@ -40,6 +41,8 @@ public class CommitQueueTest {
 
     private static final int COMMITS_PER_WRITER = 100;
 
+    protected static final Tenant TEST_TENANT = new Tenant("testtenant");
+
     @Test
     public void concurrentCommits() throws Exception {
         final DocumentNodeStore store = new DocumentMK.Builder().getNodeStore();
@@ -47,7 +50,7 @@ public class CommitQueueTest {
         final List<Exception> exceptions = Collections.synchronizedList(new ArrayList<Exception>());
 
         Closeable observer = store.addObserver(new Observer() {
-            private Revision before = new Revision(0, 0, store.getClusterId());
+            private Revision before = new Revision(TEST_TENANT.getTenantId(), 0, 0, store.getClusterId());
 
             @Override
             public void contentChanged(@Nonnull NodeState root, @Nullable CommitInfo info) {

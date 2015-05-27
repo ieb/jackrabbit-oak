@@ -18,6 +18,7 @@ package org.apache.jackrabbit.oak.plugins.document;
 
 import java.util.concurrent.TimeUnit;
 
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
 import org.json.simple.JSONObject;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -32,12 +33,14 @@ import static org.junit.Assert.assertTrue;
  */
 public class DocumentMKDiffTest extends AbstractMongoConnectionTest {
 
+
+
     @Test
     public void oak596() {
         String rev1 = mk.commit("/", "+\"node1\":{\"node2\":{\"prop1\":\"val1\",\"prop2\":\"val2\"}}", null, null);
         String rev2 = mk.commit("/", "^\"node1/node2/prop1\":\"val1 new\" ^\"node1/node2/prop2\":null", null, null);
 
-        String diff = mk.diff(rev1, rev2, "/node1/node2", 0);
+        String diff = mk.diff(rev1, rev2, new TenantPath(TEST_TENANT, "/node1/node2"), 0);
         assertTrue(diff.contains("^\"/node1/node2/prop2\":null"));
         assertTrue(diff.contains("^\"/node1/node2/prop1\":\"val1 new\""));
     }
@@ -47,14 +50,14 @@ public class DocumentMKDiffTest extends AbstractMongoConnectionTest {
         String rev0 = mk.getHeadRevision();
 
         String rev1 = mk.commit("/", "+\"level1\":{}", null, null);
-        assertTrue(mk.nodeExists("/level1", null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/level1"), null));
 
         String reverseDiff = mk.diff(rev1, rev0, null, 0);
         assertNotNull(reverseDiff);
         assertTrue(reverseDiff.length() > 0);
 
         mk.commit("", reverseDiff, null, null);
-        assertFalse(mk.nodeExists("/level1", null));
+        assertFalse(mk.nodeExists(new TenantPath(TEST_TENANT, "/level1"), null));
     }
 
     @Test
@@ -63,16 +66,16 @@ public class DocumentMKDiffTest extends AbstractMongoConnectionTest {
 
         String rev1 = mk.commit("/", "+\"level1\":{}", null, null);
         rev1 = mk.commit("/", "+\"level1/level2\":{}", null, null);
-        assertTrue(mk.nodeExists("/level1", null));
-        assertTrue(mk.nodeExists("/level1/level2", null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/level1"), null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/level1/level2"), null));
 
         String reverseDiff = mk.diff(rev1, rev0, null, 0);
         assertNotNull(reverseDiff);
         assertTrue(reverseDiff.length() > 0);
 
         mk.commit("", reverseDiff, null, null);
-        assertFalse(mk.nodeExists("/level1", null));
-        assertFalse(mk.nodeExists("/level1/level2", null));
+        assertFalse(mk.nodeExists(new TenantPath(TEST_TENANT, "/level1"), null));
+        assertFalse(mk.nodeExists(new TenantPath(TEST_TENANT, "/level1/level2"), null));
     }
 
     @Test
@@ -81,16 +84,16 @@ public class DocumentMKDiffTest extends AbstractMongoConnectionTest {
 
         String rev1 = mk.commit("/", "+\"level1a\":{}", null, null);
         rev1 = mk.commit("/", "+\"level1b\":{}", null, null);
-        assertTrue(mk.nodeExists("/level1a", null));
-        assertTrue(mk.nodeExists("/level1b", null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/level1a"), null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/level1b"), null));
 
         String reverseDiff = mk.diff(rev1, rev0, null, 0);
         assertNotNull(reverseDiff);
         assertTrue(reverseDiff.length() > 0);
 
         mk.commit("", reverseDiff, null, null);
-        assertFalse(mk.nodeExists("/level1a", null));
-        assertFalse(mk.nodeExists("/level1b", null));
+        assertFalse(mk.nodeExists(new TenantPath(TEST_TENANT, "/level1a"), null));
+        assertFalse(mk.nodeExists(new TenantPath(TEST_TENANT, "/level1b"), null));
     }
 
     @Test
@@ -100,28 +103,28 @@ public class DocumentMKDiffTest extends AbstractMongoConnectionTest {
         String rev0 = mk.commit("/",
                 "+\"level1\":{}" +
                 "+\"level1/level2\":{}", null, null);
-        assertTrue(mk.nodeExists("/level1", null));
-        assertTrue(mk.nodeExists("/level1/level2", null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/level1"), null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/level1/level2"), null));
 
         // Remove level1/level2
         String rev1 = mk.commit("/", "-\"level1/level2\"", null, null);
-        assertTrue(mk.nodeExists("/level1", null));
-        assertFalse(mk.nodeExists("/level1/level2", null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/level1"), null));
+        assertFalse(mk.nodeExists(new TenantPath(TEST_TENANT, "/level1/level2"), null));
 
         // Generate reverseDiff from rev1 to rev0
-        String reverseDiff = mk.diff(rev1, rev0, "/level1", 0);
+        String reverseDiff = mk.diff(rev1, rev0, new TenantPath(TEST_TENANT, "/level1"), 0);
         assertNotNull(reverseDiff);
         assertTrue(reverseDiff.length() > 0);
 
         // Commit the reverseDiff and check rev0 state is restored
         mk.commit("", reverseDiff, null, null);
-        assertTrue(mk.nodeExists("/level1", null));
-        assertTrue(mk.nodeExists("/level1/level2", null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/level1"), null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/level1/level2"), null));
 
         // Remove level1
         String rev2 = mk.commit("/", "-\"level1\"", null, null);
-        assertFalse(mk.nodeExists("/level1", null));
-        assertFalse(mk.nodeExists("/level1/level2", null));
+        assertFalse(mk.nodeExists(new TenantPath(TEST_TENANT, "/level1"), null));
+        assertFalse(mk.nodeExists(new TenantPath(TEST_TENANT, "/level1/level2"), null));
 
         // Generate reverseDiff from rev2 to rev0
         reverseDiff = mk.diff(rev2, rev0, null, 1);
@@ -130,8 +133,8 @@ public class DocumentMKDiffTest extends AbstractMongoConnectionTest {
 
         // Commit the reverseDiff and check rev0 state is restored
         mk.commit("", reverseDiff, null, null);
-        assertTrue(mk.nodeExists("/level1", null));
-        assertTrue(mk.nodeExists("/level1/level2", null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/level1"), null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/level1/level2"), null));
     }
 
     @Test
@@ -139,114 +142,114 @@ public class DocumentMKDiffTest extends AbstractMongoConnectionTest {
     public void movePath() {
         String rev1 = mk.commit("/", "+\"level1\":{}", null, null);
         rev1 = mk.commit("/", "+\"level1/level2\":{}", null, null);
-        assertTrue(mk.nodeExists("/level1", null));
-        assertTrue(mk.nodeExists("/level1/level2", null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/level1"), null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/level1/level2"), null));
 
         String rev2 = mk.commit("/", ">\"level1\" : \"level1new\"", null, null);
-        assertFalse(mk.nodeExists("/level1", null));
-        assertTrue(mk.nodeExists("/level1new", null));
-        assertTrue(mk.nodeExists("/level1new/level2", null));
+        assertFalse(mk.nodeExists(new TenantPath(TEST_TENANT, "/level1"), null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/level1new"), null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/level1new/level2"), null));
 
         String reverseDiff = mk.diff(rev2, rev1, null, 1);
         assertNotNull(reverseDiff);
         assertTrue(reverseDiff.length() > 0);
 
         mk.commit("", reverseDiff, null, null);
-        assertTrue(mk.nodeExists("/level1", null));
-        assertTrue(mk.nodeExists("/level1/level2", null));
-        assertFalse(mk.nodeExists("/level1new", null));
-        assertFalse(mk.nodeExists("/level1new/level2", null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/level1"), null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/level1/level2"), null));
+        assertFalse(mk.nodeExists(new TenantPath(TEST_TENANT, "/level1new"), null));
+        assertFalse(mk.nodeExists(new TenantPath(TEST_TENANT, "/level1new/level2"), null));
     }
 
     @Test
     public void copyPath() {
         String rev1 = mk.commit("/", "+\"level1\":{}", null, null);
         rev1 = mk.commit("/", "+\"level1/level2\":{}", null, null);
-        assertTrue(mk.nodeExists("/level1", null));
-        assertTrue(mk.nodeExists("/level1/level2", null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/level1"), null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/level1/level2"), null));
 
         String rev2 = mk.commit("/", "*\"level1\" : \"level1new\"", null, null);
-        assertTrue(mk.nodeExists("/level1", null));
-        assertTrue(mk.nodeExists("/level1new", null));
-        assertTrue(mk.nodeExists("/level1new/level2", null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/level1"), null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/level1new"), null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/level1new/level2"), null));
 
         String reverseDiff = mk.diff(rev2, rev1, null, 0);
         assertNotNull(reverseDiff);
         assertTrue(reverseDiff.length() > 0);
 
         mk.commit("", reverseDiff, null, null);
-        assertTrue(mk.nodeExists("/level1", null));
-        assertTrue(mk.nodeExists("/level1/level2", null));
-        assertFalse(mk.nodeExists("/level1new", null));
-        assertFalse(mk.nodeExists("/level1new/level2", null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/level1"), null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/level1/level2"), null));
+        assertFalse(mk.nodeExists(new TenantPath(TEST_TENANT, "/level1new"), null));
+        assertFalse(mk.nodeExists(new TenantPath(TEST_TENANT, "/level1new/level2"), null));
     }
 
     @Test
     public void setProperty() {
         String rev0 = mk.commit("/", "+\"level1\":{}", null, null);
-        assertTrue(mk.nodeExists("/level1", null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/level1"), null));
 
         // Add property.
         String rev1 = mk.commit("/", "^\"level1/prop1\": \"value1\"", null, null);
-        JSONObject obj = parseJSONObject(mk.getNodes("/level1", null, 0, 0, -1, null));
+        JSONObject obj = parseJSONObject(mk.getNodes(new TenantPath(TEST_TENANT, "/level1"), null, 0, 0, -1, null));
         assertPropertyExists(obj, "prop1");
 
         // Generate reverseDiff from rev1 to rev0
-        String reverseDiff = mk.diff(rev1, rev0, "/level1", 0);
+        String reverseDiff = mk.diff(rev1, rev0, new TenantPath(TEST_TENANT, "/level1"), 0);
         assertNotNull(reverseDiff);
         assertTrue(reverseDiff.length() > 0);
 
         // Commit the reverseDiff and check property is gone.
         mk.commit("", reverseDiff, null, null);
-        assertTrue(mk.nodeExists("/level1", null));
-        obj = parseJSONObject(mk.getNodes("/level1", null, 0, 0, -1, null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/level1"), null));
+        obj = parseJSONObject(mk.getNodes(new TenantPath(TEST_TENANT, "/level1"), null, 0, 0, -1, null));
         assertPropertyNotExists(obj, "prop1");
     }
 
     @Test
     public void removeProperty() {
         String rev0 = mk.commit("/", "+\"level1\":{ \"prop1\" : \"value\"}", null, null);
-        assertTrue(mk.nodeExists("/level1", null));
-        JSONObject obj = parseJSONObject(mk.getNodes("/level1", null, 0, 0, -1, null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/level1"), null));
+        JSONObject obj = parseJSONObject(mk.getNodes(new TenantPath(TEST_TENANT, "/level1"), null, 0, 0, -1, null));
         assertPropertyExists(obj, "prop1");
 
         // Remove property
         String rev1 = mk.commit("/", "^\"level1/prop1\" : null", null, null);
-        assertTrue(mk.nodeExists("/level1", null));
-        obj = parseJSONObject(mk.getNodes("/level1", null, 0, 0, -1, null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/level1"), null));
+        obj = parseJSONObject(mk.getNodes(new TenantPath(TEST_TENANT, "/level1"), null, 0, 0, -1, null));
         assertPropertyNotExists(obj, "prop1");
 
         // Generate reverseDiff from rev1 to rev0
-        String reverseDiff = mk.diff(rev1, rev0, "/level1", 0);
+        String reverseDiff = mk.diff(rev1, rev0, new TenantPath(TEST_TENANT, "/level1"), 0);
         assertNotNull(reverseDiff);
         assertTrue(reverseDiff.length() > 0);
 
         // Commit the reverseDiff and check property is added back.
         mk.commit("", reverseDiff, null, null);
-        obj = parseJSONObject(mk.getNodes("/level1", null, 0, 0, -1, null));
+        obj = parseJSONObject(mk.getNodes(new TenantPath(TEST_TENANT, "/level1"), null, 0, 0, -1, null));
         assertPropertyExists(obj, "prop1");
     }
 
     @Test
     public void changeProperty() {
         String rev0 = mk.commit("/", "+\"level1\":{ \"prop1\" : \"value1\"}", null, null);
-        assertTrue(mk.nodeExists("/level1", null));
-        JSONObject obj = parseJSONObject(mk.getNodes("/level1", null, 0, 0, -1, null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/level1"), null));
+        JSONObject obj = parseJSONObject(mk.getNodes(new TenantPath(TEST_TENANT, "/level1"), null, 0, 0, -1, null));
         assertPropertyValue(obj, "prop1", "value1");
 
         // Change property
         String rev1 = mk.commit("/", "^\"level1/prop1\" : \"value2\"", null, null);
-        obj = parseJSONObject(mk.getNodes("/level1", null, 0, 0, -1, null));
+        obj = parseJSONObject(mk.getNodes(new TenantPath(TEST_TENANT, "/level1"), null, 0, 0, -1, null));
         assertPropertyValue(obj, "prop1", "value2");
 
         // Generate reverseDiff from rev1 to rev0
-        String reverseDiff = mk.diff(rev1, rev0, "/level1", 0);
+        String reverseDiff = mk.diff(rev1, rev0, new TenantPath(TEST_TENANT, "/level1"), 0);
         assertNotNull(reverseDiff);
         assertTrue(reverseDiff.length() > 0);
 
         // Commit the reverseDiff and check property is set back.
         mk.commit("", reverseDiff, null, null);
-        obj = parseJSONObject(mk.getNodes("/level1", null, 0, 0, -1, null));
+        obj = parseJSONObject(mk.getNodes(new TenantPath(TEST_TENANT, "/level1"), null, 0, 0, -1, null));
         assertPropertyValue(obj, "prop1", "value1");
     }
 
@@ -270,9 +273,9 @@ public class DocumentMKDiffTest extends AbstractMongoConnectionTest {
         String rev = mk.commit("/node-0", "+\"foo\":{}", null, null);
         branchRev = mk.commit("/branch/node-0", "+\"foo\":{}", branchRev, null);
         // perform diffs
-        String diff = mk.diff(base, rev, "/", 0);
+        String diff = mk.diff(base, rev, new TenantPath(TEST_TENANT, "/"), 0);
         assertTrue(diff, diff.contains("^\"/node-0\""));
-        diff = mk.diff(branchBase, branchRev, "/branch", 0);
+        diff = mk.diff(branchBase, branchRev, new TenantPath(TEST_TENANT, "/branch"), 0);
         assertTrue(diff, diff.contains("^\"/branch/node-0\""));
     }
 
@@ -293,11 +296,11 @@ public class DocumentMKDiffTest extends AbstractMongoConnectionTest {
             sb.append("+\"node-").append(i).append("\":{}");
         }
         String rev = mk.commit("/", sb.toString(), null, null);
-        String jsop = mk.diff(baseRev, rev, "/", 0);
+        String jsop = mk.diff(baseRev, rev, new TenantPath(TEST_TENANT, "/"), 0);
         for (int i = 0; i < DocumentMK.MANY_CHILDREN_THRESHOLD * 2; i++) {
             assertTrue(jsop, jsop.contains("+\"/node-" + i + "\""));
         }
-        jsop = mk.diff(rev, baseRev, "/", 0);
+        jsop = mk.diff(rev, baseRev, new TenantPath(TEST_TENANT, "/"), 0);
         for (int i = 0; i < DocumentMK.MANY_CHILDREN_THRESHOLD * 2; i++) {
             assertTrue(jsop, jsop.contains("-\"/node-" + i + "\""));
         }
@@ -306,23 +309,23 @@ public class DocumentMKDiffTest extends AbstractMongoConnectionTest {
             rev = mk.branch(rev);
         }
         String rev2 = mk.commit("/", "+\"node-new\":{}", rev, null);
-        jsop = mk.diff(rev, rev2, "/", 0);
+        jsop = mk.diff(rev, rev2, new TenantPath(TEST_TENANT, "/"), 0);
         assertTrue(jsop, jsop.contains("+\"/node-new\""));
 
         String rev3 = mk.commit("/", "^\"node-new/prop\":\"value\"", rev2, null);
-        jsop = mk.diff(rev2, rev3, "/", 0);
+        jsop = mk.diff(rev2, rev3, new TenantPath(TEST_TENANT, "/"), 0);
         assertTrue(jsop, jsop.contains("^\"/node-new\""));
 
         String rev4 = mk.commit("/", "+\"node-new/foo\":{}", rev3, null);
-        jsop = mk.diff(rev3, rev4, "/", 0);
+        jsop = mk.diff(rev3, rev4, new TenantPath(TEST_TENANT, "/"), 0);
         assertTrue(jsop, jsop.contains("^\"/node-new\""));
 
         String rev5 = mk.commit("/", "^\"node-new/foo/prop\":\"value\"", rev4, null);
-        jsop = mk.diff(rev4, rev5, "/", 0);
+        jsop = mk.diff(rev4, rev5, new TenantPath(TEST_TENANT, "/"), 0);
         assertTrue(jsop, jsop.contains("^\"/node-new\""));
 
         String rev6 = mk.commit("/", "-\"node-new/foo\"", rev5, null);
-        jsop = mk.diff(rev5, rev6, "/", 0);
+        jsop = mk.diff(rev5, rev6, new TenantPath(TEST_TENANT, "/"), 0);
         assertTrue(jsop, jsop.contains("^\"/node-new\""));
     }
 
@@ -335,7 +338,7 @@ public class DocumentMKDiffTest extends AbstractMongoConnectionTest {
         b = mk.commit("/test", "^\"p\":1", b, null);
         String after = mk.merge(b, null);
 
-        String jsop = mk.diff(before, after, "/", 0).trim();
+        String jsop = mk.diff(before, after, new TenantPath(TEST_TENANT, "/"), 0).trim();
         assertEquals("^\"/test\":{}", jsop);
     }
 }

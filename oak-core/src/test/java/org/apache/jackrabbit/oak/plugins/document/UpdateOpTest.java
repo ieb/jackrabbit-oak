@@ -16,6 +16,7 @@
  */
 package org.apache.jackrabbit.oak.plugins.document;
 
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
 import org.junit.Test;
 
 import static org.junit.Assert.assertFalse;
@@ -26,10 +27,12 @@ import static org.junit.Assert.assertTrue;
  */
 public class UpdateOpTest {
 
+    private static final Tenant TEST_TENANT = new Tenant("testtenant");
+
     @Test
     public void keyEquals() {
-        Revision r1 = Revision.newRevision(1);
-        Revision r2 = Revision.newRevision(1);
+        Revision r1 = Revision.newRevision(TEST_TENANT.getTenantId(),1);
+        Revision r2 = Revision.newRevision(TEST_TENANT.getTenantId(),1);
 
         UpdateOp.Key k1 = new UpdateOp.Key("foo", null);
         UpdateOp.Key k2 = new UpdateOp.Key("bar", null);

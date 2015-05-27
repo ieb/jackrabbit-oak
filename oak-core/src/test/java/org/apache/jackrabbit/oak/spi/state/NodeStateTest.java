@@ -48,7 +48,7 @@ public class NodeStateTest extends OakBaseTest {
 
     @Before
     public void setUp() throws CommitFailedException {
-        NodeBuilder builder = store.getRoot().builder();
+        NodeBuilder builder = store.getRoot(TEST_TENANT).builder();
         builder.setProperty("a", 1);
         builder.setProperty("b", 2);
         builder.setProperty("c", 3);

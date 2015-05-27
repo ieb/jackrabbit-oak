@@ -24,6 +24,8 @@ import org.apache.jackrabbit.oak.plugins.document.util.Utils;
 import org.apache.jackrabbit.oak.spi.commit.CommitInfo;
 import org.apache.jackrabbit.oak.spi.commit.EmptyHook;
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
 import org.apache.jackrabbit.oak.stats.Clock;
 import org.junit.After;
 import org.junit.Test;
@@ -38,7 +40,6 @@ import static org.junit.Assert.assertEquals;
  * Tests DocumentNodeStore on various DocumentStore back-ends.
  */
 public class DocumentNodeStoreIT extends AbstractDocumentStoreTest {
-
 
     public DocumentNodeStoreIT(DocumentStoreFixture dsf) {
         super(dsf);
@@ -68,12 +69,12 @@ public class DocumentNodeStoreIT extends AbstractDocumentStoreTest {
                         // when the diff is made later in the test
                 .setDiffCache(AmnesiaDiffCache.INSTANCE)
                 .getNodeStore();
-        NodeBuilder builder1 = ns1.getRoot().builder();
+        NodeBuilder builder1 = ns1.getRoot(TEST_TENANT).builder();
         builder1.child("node");
-        removeMe.add(getIdFromPath("/node"));
+        removeMe.add(getIdFromPath(new TenantPath(TEST_TENANT, "/node")));
         for (int i = 0; i < DocumentMK.MANY_CHILDREN_THRESHOLD; i++) {
             builder1.child("node-" + i);
-            removeMe.add(getIdFromPath("/node/node-" + i));
+            removeMe.add(getIdFromPath(new TenantPath(TEST_TENANT, "/node/node-" + i)));
         }
         ns1.merge(builder1, EmptyHook.INSTANCE, CommitInfo.EMPTY);
         // make sure commit is visible to other node store instance
@@ -83,9 +84,9 @@ public class DocumentNodeStoreIT extends AbstractDocumentStoreTest {
                 .setDocumentStore(docStore).setClusterId(2)
                 .setAsyncDelay(0).clock(clock).getNodeStore();
 
-        NodeBuilder builder2 = ns2.getRoot().builder();
+        NodeBuilder builder2 = ns2.getRoot(TEST_TENANT).builder();
         builder2.child("node").child("child-a");
-        removeMe.add(getIdFromPath("/node/child-a"));
+        removeMe.add(getIdFromPath(new TenantPath(TEST_TENANT, "/node/child-a")));
         ns2.merge(builder2, EmptyHook.INSTANCE, CommitInfo.EMPTY);
 
         // wait at least _modified resolution. in reality the wait may
@@ -94,19 +95,19 @@ public class DocumentNodeStoreIT extends AbstractDocumentStoreTest {
         clock.waitUntil(System.currentTimeMillis() +
                 SECONDS.toMillis(MODIFIED_IN_SECS_RESOLUTION + 1));
 
-        builder1 = ns1.getRoot().builder();
+        builder1 = ns1.getRoot(TEST_TENANT).builder();
         builder1.child("node").child("child-b");
-        removeMe.add(getIdFromPath("/node/child-b"));
+        removeMe.add(getIdFromPath(new TenantPath(TEST_TENANT, "/node/child-b")));
         ns1.merge(builder1, EmptyHook.INSTANCE, CommitInfo.EMPTY);
         // remember root for diff
-        DocumentNodeState root1 = ns1.getRoot();
+        DocumentNodeState root1 = ns1.getRoot(TEST_TENANT);
 
         builder1 = root1.builder();
         builder1.child("node").child("child-c");
-        removeMe.add(getIdFromPath("/node/child-c"));
+        removeMe.add(getIdFromPath(new TenantPath(TEST_TENANT, "/node/child-c")));
         ns1.merge(builder1, EmptyHook.INSTANCE, CommitInfo.EMPTY);
         // remember root for diff
-        DocumentNodeState root2 = ns1.getRoot();
+        DocumentNodeState root2 = ns1.getRoot(TEST_TENANT);
 
         ns1.runBackgroundOperations();
         ns2.runBackgroundOperations();
@@ -123,12 +124,12 @@ public class DocumentNodeStoreIT extends AbstractDocumentStoreTest {
     // OAK-2297
     @Test
     public void updateAbsentDocument() throws Exception {
-        String id = Utils.getIdFromPath("/test");
+        String id = Utils.getIdFromPath(new TenantPath(TEST_TENANT, "/test"));
         // trigger cache entry for /test
         ds.find(NODES, id);
 
         UpdateOp updateOp = new UpdateOp(id, false);
-        updateOp.setMapEntry("foo", Revision.newRevision(1), "bar");
+        updateOp.setMapEntry("foo", Revision.newRevision(TEST_TENANT.getTenantId(), 1), "bar");
 
         ds.update(NODES, Collections.singletonList(id), updateOp);
     }

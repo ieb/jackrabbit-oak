@@ -33,6 +33,8 @@ import org.apache.jackrabbit.oak.spi.commit.EmptyHook;
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
 import org.apache.jackrabbit.oak.spi.state.NodeState;
 import org.apache.jackrabbit.oak.spi.state.NodeStore;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
 import org.apache.jackrabbit.oak.stats.Clock;
 import org.junit.After;
 import org.junit.Before;
@@ -41,6 +43,7 @@ import org.junit.Test;
 import static org.junit.Assert.assertTrue;
 
 public class ClusterRevisionComparisonTest {
+    private static final Tenant TEST_TENANT = new Tenant("testtenant");
     private MemoryDocumentStore ds = new MemoryDocumentStore();
     private MemoryBlobStore bs = new MemoryBlobStore();
     private Clock clock = new Clock.Virtual();
@@ -82,15 +85,15 @@ public class ClusterRevisionComparisonTest {
         //is considered to be seen in past by C1
         runBgOps(c1);
 
-        DocumentNodeState c1ns1 = c1.getRoot();
+        DocumentNodeState c1ns1 = c1.getRoot(TEST_TENANT);
         Iterables.size(c1ns1.getChildNode("a").getChildNodeEntries());
 
         createNode(c1, "/a/c1");
 
         //7. Purge revision comparator. Also purge entries from nodeCache
         //such that later reads at rT1-C2 triggers read from underlying DocumentStore
-        c1.invalidateNodeCache("/a/c2" , ((DocumentNodeState)c1ns1.getChildNode("a")).getLastRevision());
-        c1.invalidateNodeCache("/a/c3" , ((DocumentNodeState)c1ns1.getChildNode("a")).getLastRevision());
+        c1.invalidateNodeCache(new TenantPath(TEST_TENANT, "/a/c2") , ((DocumentNodeState)c1ns1.getChildNode("a")).getLastRevision());
+        c1.invalidateNodeCache(new TenantPath(TEST_TENANT, "/a/c3") , ((DocumentNodeState)c1ns1.getChildNode("a")).getLastRevision());
 
         //Revision comparator purge by moving in future
         clock.waitUntil(clock.getTime() + DocumentNodeStore.REMEMBER_REVISION_ORDER_MILLIS * 2);
@@ -100,7 +103,7 @@ public class ClusterRevisionComparisonTest {
         assertTrue("/a/c2 disappeared", a.hasChildNode("c2"));
         assertTrue("/a/c3 disappeared", a.hasChildNode("c3"));
 
-        DocumentNodeState c1ns2 = c1.getRoot();
+        DocumentNodeState c1ns2 = c1.getRoot(TEST_TENANT);
 
         //Trigger a diff. With OAK-2144 an exception would be thrown as diff traverses
         //the /a children
@@ -129,15 +132,15 @@ public class ClusterRevisionComparisonTest {
         // Now from C1 view rT1-C2 > rT2-C1 even though T1 < T2
         runBgOps(c1);
 
-        DocumentNodeState c1ns1 = c1.getRoot();
+        DocumentNodeState c1ns1 = c1.getRoot(TEST_TENANT);
         NodeState a = c1ns1.getChildNode("a");
         assertTrue("/a/c1 missing", a.hasChildNode("c1"));
         assertTrue("/a/c2 missing", a.hasChildNode("c2"));
 
         // 6. Purge revision comparator. Also purge entries from nodeCache
         // such that later reads at rT1-C2 triggers read from underlying DocumentStore
-        c1.invalidateNodeCache("/a/c1" , ((DocumentNodeState)a).getLastRevision());
-        c1.invalidateNodeCache("/a/c2" , ((DocumentNodeState)a).getLastRevision());
+        c1.invalidateNodeCache(new TenantPath(TEST_TENANT, "/a/c1"), ((DocumentNodeState)a).getLastRevision());
+        c1.invalidateNodeCache(new TenantPath(TEST_TENANT, "/a/c2"), ((DocumentNodeState)a).getLastRevision());
 
         //Revision comparator purge by moving in future
         clock.waitUntil(clock.getTime() + DocumentNodeStore.REMEMBER_REVISION_ORDER_MILLIS * 2);
@@ -148,14 +151,14 @@ public class ClusterRevisionComparisonTest {
 
         // read again starting at root node with a invalidated cache
         // and purged revision comparator
-        c1ns1 = c1.getRoot();
-        c1.invalidateNodeCache("/", c1ns1.getRevision());
-        c1ns1 = c1.getRoot();
-        c1.invalidateNodeCache("/a", c1ns1.getLastRevision());
+        c1ns1 = c1.getRoot(TEST_TENANT);
+        c1.invalidateNodeCache(new TenantPath(TEST_TENANT, "/"), c1ns1.getRevision());
+        c1ns1 = c1.getRoot(TEST_TENANT);
+        c1.invalidateNodeCache(new TenantPath(TEST_TENANT, "/a"), c1ns1.getLastRevision());
         assertTrue("/a missing", c1ns1.hasChildNode("a"));
         a = c1ns1.getChildNode("a");
-        c1.invalidateNodeCache("/a/c1", ((DocumentNodeState)a).getLastRevision());
-        c1.invalidateNodeCache("/a/c2", ((DocumentNodeState)a).getLastRevision());
+        c1.invalidateNodeCache(new TenantPath(TEST_TENANT, "/a/c1"), ((DocumentNodeState)a).getLastRevision());
+        c1.invalidateNodeCache(new TenantPath(TEST_TENANT, "/a/c2"), ((DocumentNodeState)a).getLastRevision());
         assertTrue("/a/c1 disappeared", a.hasChildNode("c1"));
         assertTrue("/a/c2 disappeared", a.hasChildNode("c2"));
     }
@@ -182,7 +185,7 @@ public class ClusterRevisionComparisonTest {
     }
 
    private NodeState createNode(NodeStore ns, String path) throws CommitFailedException {
-       NodeBuilder nb = ns.getRoot().builder();
+       NodeBuilder nb = ns.getRoot(TEST_TENANT).builder();
        NodeBuilder cb = nb;
        for (String name : PathUtils.elements(path)) {
            cb = cb.child(name);

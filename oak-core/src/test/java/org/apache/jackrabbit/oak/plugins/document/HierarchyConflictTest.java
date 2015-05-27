@@ -31,6 +31,7 @@ import org.apache.jackrabbit.oak.spi.commit.EditorProvider;
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
 import org.apache.jackrabbit.oak.spi.state.NodeState;
 import org.apache.jackrabbit.oak.spi.state.NodeStore;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -47,6 +48,7 @@ import static org.junit.Assert.fail;
  */
 public class HierarchyConflictTest {
 
+    private static final Tenant TEST_TENANT = new Tenant("testtenant");
     private List<Throwable> exceptions;
     private CountDownLatch nodeRemoved;
     private CountDownLatch nodeAdded;
@@ -67,14 +69,14 @@ public class HierarchyConflictTest {
 
     @Test
     public void conflict() throws Throwable {
-        NodeBuilder root = store.getRoot().builder();
+        NodeBuilder root = store.getRoot(TEST_TENANT).builder();
         root.child("foo").child("bar").child("baz");
         merge(store, root, null);
 
-        NodeBuilder r1 = store.getRoot().builder();
+        NodeBuilder r1 = store.getRoot(TEST_TENANT).builder();
         r1.child("addNode");
 
-        final NodeBuilder r2 = store.getRoot().builder();
+        final NodeBuilder r2 = store.getRoot(TEST_TENANT).builder();
         r2.child("removeNode");
 
         final Thread t = new Thread(new Runnable() {
@@ -125,14 +127,14 @@ public class HierarchyConflictTest {
 
     @Test
     public void conflict2() throws Throwable {
-        NodeBuilder root = store.getRoot().builder();
+        NodeBuilder root = store.getRoot(TEST_TENANT).builder();
         root.child("foo").child("bar").child("baz");
         merge(store, root, null);
 
-        final NodeBuilder r1 = store.getRoot().builder();
+        final NodeBuilder r1 = store.getRoot(TEST_TENANT).builder();
         r1.child("addNode");
 
-        NodeBuilder r2 = store.getRoot().builder();
+        NodeBuilder r2 = store.getRoot(TEST_TENANT).builder();
         r2.child("removeNode");
 
         final Thread t = new Thread(new Runnable() {

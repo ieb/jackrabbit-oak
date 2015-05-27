@@ -28,6 +28,8 @@ import java.util.List;
 import java.util.Random;
 
 import org.apache.jackrabbit.oak.spi.blob.MemoryBlobStore;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
 import org.apache.jackrabbit.oak.commons.json.JsonObject;
 import org.apache.jackrabbit.oak.commons.json.JsopBuilder;
 import org.apache.jackrabbit.oak.commons.json.JsopTokenizer;
@@ -40,6 +42,8 @@ import com.mongodb.DB;
  * A simple randomized dual-instance test.
  */
 public class RandomizedClusterTest {
+
+    private static final Tenant TEST_TENANT = new Tenant("testtenant");
 
     private static final boolean MONGO_DB = false;
     // private static final boolean MONGO_DB = true;
@@ -302,7 +306,7 @@ public class RandomizedClusterTest {
     private boolean exists(String node) {
         String head = revList[mkId];
         DocumentMK mk = mkList[mkId];
-        return mk.nodeExists("/" + node, head);
+        return mk.nodeExists(new TenantPath(TEST_TENANT, "/" + node), head);
     }
 
     private boolean get(int maxOp, String node, String head) {
@@ -311,15 +315,15 @@ public class RandomizedClusterTest {
         String value = getValue(mkId, maxOp, node);
         if (value == null) {
             assertFalse("path: " + p + " is supposed to not exist",
-                    mk.nodeExists(p, head));
+                    mk.nodeExists(new TenantPath(TEST_TENANT, p), head));
             return false;
         }
-        if (!mk.nodeExists(p, head)) {
+        if (!mk.nodeExists(new TenantPath(TEST_TENANT, p), head)) {
             assertTrue("path: " + p + " is supposed to exist",
-                    mk.nodeExists(p, head));
+                    mk.nodeExists(new TenantPath(TEST_TENANT, p), head));
         }
         String expected = "{\":childNodeCount\":0,\"x\":" + value + "}";
-        String result = mk.getNodes(p, head, 0, 0, Integer.MAX_VALUE, null);
+        String result = mk.getNodes(new TenantPath(TEST_TENANT, p), head, 0, 0, Integer.MAX_VALUE, null);
         expected = normalize(expected);
         result = normalize(result);
         assertEquals(expected, result);

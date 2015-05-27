@@ -33,7 +33,9 @@ import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.MoreExecutors;
 import com.mongodb.BasicDBObject;
 import com.mongodb.DBCollection;
+
 import junit.framework.Assert;
+
 import org.apache.jackrabbit.oak.api.Blob;
 import org.apache.jackrabbit.oak.plugins.blob.MarkSweepGarbageCollector;
 import org.apache.jackrabbit.oak.plugins.blob.SharedDataStore;
@@ -44,6 +46,7 @@ import org.apache.jackrabbit.oak.spi.blob.GarbageCollectableBlobStore;
 import org.apache.jackrabbit.oak.spi.commit.CommitInfo;
 import org.apache.jackrabbit.oak.spi.commit.EmptyHook;
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
 import org.apache.jackrabbit.oak.stats.Clock;
 import org.junit.Test;
 
@@ -53,11 +56,13 @@ import org.junit.Test;
 public class MongoBlobGCTest extends AbstractMongoConnectionTest {
     private Clock clock;
 
+    private static final Tenant TEST_TENANT = new Tenant("testtenant");
+
     public HashSet<String> setUp(boolean deleteDirect) throws Exception {
         HashSet<String> set = new HashSet<String>();
 
         DocumentNodeStore s = mk.getNodeStore();
-        NodeBuilder a = s.getRoot().builder();
+        NodeBuilder a = s.getRoot(TEST_TENANT).builder();
 
         int number = 10;
         int maxDeleted = 5;
@@ -89,7 +94,7 @@ public class MongoBlobGCTest extends AbstractMongoConnectionTest {
                 deleteFromMongo("c" + id);
             }
         } else {
-            a = s.getRoot().builder();
+            a = s.getRoot(TEST_TENANT).builder();
             for (int id : processed) {
                 a.child("c" + id).remove();
                 s.merge(a, EmptyHook.INSTANCE, CommitInfo.EMPTY);
@@ -109,7 +114,7 @@ public class MongoBlobGCTest extends AbstractMongoConnectionTest {
     public HashSet<String> addInlined() throws Exception {
         HashSet<String> set = new HashSet<String>();
         DocumentNodeStore s = mk.getNodeStore();
-        NodeBuilder a = s.getRoot().builder();
+        NodeBuilder a = s.getRoot(TEST_TENANT).builder();
         int number = 12;
         for (int i = 0; i < number; i++) {
             Blob b = s.createBlob(randomStream(i, 50));

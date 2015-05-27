@@ -20,12 +20,16 @@ import java.util.Comparator;
 
 import javax.annotation.Nonnull;
 
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
+
 /**
  * A revision context for tests.
  */
 public class DummyRevisionContext implements RevisionContext {
 
     static final RevisionContext INSTANCE = new DummyRevisionContext();
+
+    private static final Tenant TEST_TENANT = new Tenant("testtenant");
 
     private final Comparator<Revision> comparator
             = StableRevisionComparator.INSTANCE;
@@ -53,6 +57,6 @@ public class DummyRevisionContext implements RevisionContext {
     @Nonnull
     @Override
     public Revision getHeadRevision() {
-        return Revision.newRevision(1);
+        return Revision.newRevision(TEST_TENANT.getTenantId(), 1);
     }
 }

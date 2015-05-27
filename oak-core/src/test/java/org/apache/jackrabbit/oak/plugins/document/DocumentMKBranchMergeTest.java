@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -140,7 +141,7 @@ public class DocumentMKBranchMergeTest extends BaseDocumentMKTest {
         branchRev = mk.merge(branchRev, "");
         assertPropExists(branchRev, "/", "jcr:primaryType");
 
-        String mergedNode = mk.getNodes("/", branchRev, 0, 0, -1, null);
+        String mergedNode = mk.getNodes(new TenantPath(TEST_TENANT, "/"), branchRev, 0, 0, -1, null);
         String expectedNode = "{\"jcr:primaryType\":\"nam:rep:root\",\":childNodeCount\":0}";
         assertEquals("Wrong property value after merge", expectedNode, mergedNode);
     }

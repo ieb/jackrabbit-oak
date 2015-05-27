@@ -21,6 +21,8 @@ import org.apache.jackrabbit.oak.plugins.document.util.Utils;
 import org.apache.jackrabbit.oak.spi.commit.CommitInfo;
 import org.apache.jackrabbit.oak.spi.commit.EmptyHook;
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -32,12 +34,13 @@ import static junit.framework.Assert.assertNotNull;
  * Test for OAK-1589
  */
 public class MongoDocumentStoreLimitsTest extends AbstractMongoConnectionTest {
+    private static final Tenant TEST_TENANT = new Tenant("testtenant");
 
     @Ignore
     @Test
     public void longName() throws Exception{
         DocumentNodeStore ns = mk.getNodeStore();
-        NodeBuilder builder = ns.getRoot().builder();
+        NodeBuilder builder = ns.getRoot(TEST_TENANT).builder();
 
         builder.child("test");
         ns.merge(builder, EmptyHook.INSTANCE, CommitInfo.EMPTY);
@@ -45,7 +48,7 @@ public class MongoDocumentStoreLimitsTest extends AbstractMongoConnectionTest {
         String longName = Strings.repeat("foo_", 10000);
         String longPath = String.format("/test/%s", longName);
 
-        builder = ns.getRoot().builder();
+        builder = ns.getRoot(TEST_TENANT).builder();
         builder.child("test").child(longName);
 
         try {
@@ -57,7 +60,7 @@ public class MongoDocumentStoreLimitsTest extends AbstractMongoConnectionTest {
 
         // check that the document was created
         // when no exception was thrown
-        String id = Utils.getIdFromPath(longPath);
+        String id = Utils.getIdFromPath(new TenantPath(TEST_TENANT, longPath));
         NodeDocument doc = ns.getDocumentStore().find(Collection.NODES, id, 0);
         assertNotNull(doc);
     }

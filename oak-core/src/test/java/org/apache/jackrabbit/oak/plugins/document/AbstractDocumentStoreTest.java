@@ -22,6 +22,7 @@ import java.util.List;
 
 import javax.sql.DataSource;
 
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
 import org.junit.After;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -31,6 +32,7 @@ import org.slf4j.LoggerFactory;
 @RunWith(Parameterized.class)
 public abstract class AbstractDocumentStoreTest {
 
+    static final Tenant TEST_TENANT = new Tenant("testtenant");
     protected String dsname;
     protected DocumentStore ds;
     protected DocumentStoreFixture dsf;

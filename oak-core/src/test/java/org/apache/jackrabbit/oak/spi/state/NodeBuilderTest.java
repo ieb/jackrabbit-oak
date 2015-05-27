@@ -38,11 +38,11 @@ public class NodeBuilderTest extends OakBaseTest {
 
     @Test
     public void deletes() throws CommitFailedException {
-        NodeBuilder builder = store.getRoot().builder();
+        NodeBuilder builder = store.getRoot(TEST_TENANT).builder();
         builder.child("x").child("y").child("z");
         store.merge(builder, EmptyHook.INSTANCE, CommitInfo.EMPTY);
 
-        builder = store.getRoot().builder();
+        builder = store.getRoot(TEST_TENANT).builder();
         assertTrue("child node x should be present", builder.hasChildNode("x"));
         assertTrue("child node x/y should be present", builder.child("x")
                 .hasChildNode("y"));
@@ -64,7 +64,7 @@ public class NodeBuilderTest extends OakBaseTest {
 
     @Test
     public void rebasePreservesNew() {
-        NodeBuilder root = store.getRoot().builder();
+        NodeBuilder root = store.getRoot(TEST_TENANT).builder();
         NodeBuilder added = root.setChildNode("added");
         assertTrue(root.hasChildNode("added"));
         assertTrue(added.isNew());
@@ -76,7 +76,7 @@ public class NodeBuilderTest extends OakBaseTest {
 
     @Test
     public void rebaseInvariant() {
-        NodeBuilder root = store.getRoot().builder();
+        NodeBuilder root = store.getRoot(TEST_TENANT).builder();
         NodeBuilder added = root.setChildNode("added");
         NodeState base = root.getBaseState();
         store.rebase(root);
@@ -85,14 +85,14 @@ public class NodeBuilderTest extends OakBaseTest {
 
     @Test
     public void rebase() throws CommitFailedException {
-        NodeBuilder root = store.getRoot().builder();
+        NodeBuilder root = store.getRoot(TEST_TENANT).builder();
         modify(store);
         store.rebase(root);
-        assertEquals(store.getRoot(), root.getBaseState());
+        assertEquals(store.getRoot(TEST_TENANT), root.getBaseState());
     }
 
     private static void modify(NodeStore store) throws CommitFailedException {
-        NodeBuilder root = store.getRoot().builder();
+        NodeBuilder root = store.getRoot(TEST_TENANT).builder();
         root.setChildNode("added");
         store.merge(root, EmptyHook.INSTANCE, CommitInfo.EMPTY);
     }

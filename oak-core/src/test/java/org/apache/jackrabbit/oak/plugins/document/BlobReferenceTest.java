@@ -28,6 +28,7 @@ import org.apache.jackrabbit.oak.api.Blob;
 import org.apache.jackrabbit.oak.spi.commit.CommitInfo;
 import org.apache.jackrabbit.oak.spi.commit.EmptyHook;
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
 import org.junit.Test;
 
 /**
@@ -35,10 +36,12 @@ import org.junit.Test;
  */
 public class BlobReferenceTest {
 
+    private static final Tenant TEST_TENANT = new Tenant("testtenant");
+
     @Test
     public void test() throws Exception {
         DocumentNodeStore s = new DocumentMK.Builder().getNodeStore();
-        NodeBuilder a = s.getRoot().builder();
+        NodeBuilder a = s.getRoot(TEST_TENANT).builder();
         HashSet<String> set = new HashSet<String>();
         for (int i = 0; i < 100; i++) {
             Blob b = a.createBlob(randomStream(i, 10));

@@ -16,6 +16,7 @@
  */
 package org.apache.jackrabbit.oak.plugins.document;
 
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
@@ -24,14 +25,16 @@ import static org.junit.Assert.assertTrue;
 
 public class RangeTest {
 
+    private static final Tenant TEST_TENANT = new Tenant("testtenant");
+
     @Test
     public void includes() {
-        Revision lower = new Revision(0xff, 0, 1);
-        Revision low = new Revision(0x100, 0, 1);
-        Revision high = new Revision(0x300, 0, 1);
-        Revision higher = new Revision(0x301, 0, 1);
-        Revision r = new Revision(0x200, 0, 1);
-        Revision other = new Revision(0x200, 0, 2);
+        Revision lower = new Revision(TEST_TENANT.getTenantId(),0xff, 0, 1);
+        Revision low = new Revision(TEST_TENANT.getTenantId(),0x100, 0, 1);
+        Revision high = new Revision(TEST_TENANT.getTenantId(),0x300, 0, 1);
+        Revision higher = new Revision(TEST_TENANT.getTenantId(),0x301, 0, 1);
+        Revision r = new Revision(TEST_TENANT.getTenantId(),0x200, 0, 1);
+        Revision other = new Revision(TEST_TENANT.getTenantId(),0x200, 0, 2);
 
         Range range = new Range(high, low, 0);
 

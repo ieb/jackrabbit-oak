@@ -21,6 +21,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import org.apache.jackrabbit.oak.plugins.document.impl.SimpleNodeScenario;
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
 import org.junit.Test;
 
 /**
@@ -28,23 +29,25 @@ import org.junit.Test;
  */
 public class DocumentMKNodeExistsTest extends BaseDocumentMKTest {
 
+    
+
     @Test
     public void simple() throws Exception {
         SimpleNodeScenario scenario = new SimpleNodeScenario(mk);
         String revisionId = scenario.create();
 
-        boolean exists = mk.nodeExists("/a", revisionId);
+        boolean exists = mk.nodeExists(new TenantPath(TEST_TENANT, "/a"), revisionId);
         assertTrue(exists);
 
-        exists = mk.nodeExists("/a/b", revisionId);
+        exists = mk.nodeExists(new TenantPath(TEST_TENANT, "/a/b"), revisionId);
         assertTrue(exists);
 
         revisionId = scenario.deleteA();
 
-        exists = mk.nodeExists("/a", revisionId);
+        exists = mk.nodeExists(new TenantPath(TEST_TENANT, "/a"), revisionId);
         assertFalse(exists);
 
-        exists = mk.nodeExists("/a/b", revisionId);
+        exists = mk.nodeExists(new TenantPath(TEST_TENANT, "/a/b"), revisionId);
         assertFalse(exists);
     }
 
@@ -53,12 +56,12 @@ public class DocumentMKNodeExistsTest extends BaseDocumentMKTest {
         SimpleNodeScenario scenario = new SimpleNodeScenario(mk);
         scenario.create();
 
-        boolean exists = mk.nodeExists("/a", null);
+        boolean exists = mk.nodeExists(new TenantPath(TEST_TENANT, "/a"), null);
         assertTrue(exists);
 
         scenario.deleteA();
 
-        exists = mk.nodeExists("/a", null);
+        exists = mk.nodeExists(new TenantPath(TEST_TENANT, "/a"), null);
         assertFalse(exists);
     }
 
@@ -68,7 +71,7 @@ public class DocumentMKNodeExistsTest extends BaseDocumentMKTest {
         scenario.create();
 
         try {
-            mk.nodeExists("/a", "123456789");
+            mk.nodeExists(new TenantPath(TEST_TENANT, "/a"), "123456789");
             fail("Expected: Invalid revision id exception");
         } catch (Exception expected) {
             // expected
@@ -80,11 +83,11 @@ public class DocumentMKNodeExistsTest extends BaseDocumentMKTest {
         SimpleNodeScenario scenario = new SimpleNodeScenario(mk);
         scenario.create();
 
-        boolean exists = mk.nodeExists("/a/b", null);
+        boolean exists = mk.nodeExists(new TenantPath(TEST_TENANT, "/a/b"), null);
         assertTrue(exists);
 
         scenario.deleteA();
-        exists = mk.nodeExists("/a/b", null);
+        exists = mk.nodeExists(new TenantPath(TEST_TENANT, "/a/b"), null);
         assertFalse(exists);
     }
 
@@ -95,7 +98,7 @@ public class DocumentMKNodeExistsTest extends BaseDocumentMKTest {
 
         mk.commit("/a", "-\"b\"", null, "Remove /b");
 
-        boolean exists = mk.nodeExists("/a/b/c/d", null);
+        boolean exists = mk.nodeExists(new TenantPath(TEST_TENANT, "/a/b/c/d"), null);
         assertFalse(exists);
     }
 
@@ -104,7 +107,7 @@ public class DocumentMKNodeExistsTest extends BaseDocumentMKTest {
         mk.commit("/", "+\"a\" : {}", null, "Add /a");
         mk.commit("/a", "+\"b\" : {}", null, "Add /a/b");
 
-        boolean exists = mk.nodeExists("/a", null);
+        boolean exists = mk.nodeExists(new TenantPath(TEST_TENANT, "/a"), null);
         assertTrue("The node a is not found in the head revision!", exists);
     }
 
@@ -114,10 +117,10 @@ public class DocumentMKNodeExistsTest extends BaseDocumentMKTest {
         String rev1 = scenario.create();
         String rev2 = scenario.deleteA();
 
-        boolean exists = mk.nodeExists("/a", rev1);
+        boolean exists = mk.nodeExists(new TenantPath(TEST_TENANT, "/a"), rev1);
         assertTrue(exists);
 
-        exists = mk.nodeExists("/a", rev2);
+        exists = mk.nodeExists(new TenantPath(TEST_TENANT, "/a"), rev2);
         assertFalse(exists);
     }
 
@@ -127,10 +130,10 @@ public class DocumentMKNodeExistsTest extends BaseDocumentMKTest {
         scenario.create();
 
         scenario.deleteB();
-        boolean exists = mk.nodeExists("/a/b", null);
+        boolean exists = mk.nodeExists(new TenantPath(TEST_TENANT, "/a/b"), null);
         assertFalse(exists);
 
-        exists = mk.nodeExists("/a/c", null);
+        exists = mk.nodeExists(new TenantPath(TEST_TENANT, "/a/c"), null);
         assertTrue(exists);
     }
 }

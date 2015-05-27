@@ -61,6 +61,7 @@ import org.apache.jackrabbit.oak.spi.security.OpenSecurityProvider;
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
 import org.apache.jackrabbit.oak.spi.state.NodeState;
 import org.apache.jackrabbit.oak.spi.state.NodeStore;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
 import org.apache.jackrabbit.oak.util.NodeUtil;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -79,6 +80,7 @@ import com.google.common.collect.Lists;
 
 public class Oak2077QueriesTest extends BasicOrderedPropertyIndexQueryTest {
     private static final LoggingTracker<ILoggingEvent> LOGGING_TRACKER;
+    private static final Tenant TEST_TENANT = new Tenant("testtenant");
     private NodeStore nodestore;
     private ContentRepository repository;
 
@@ -326,7 +328,7 @@ public class Oak2077QueriesTest extends BasicOrderedPropertyIndexQueryTest {
         checkArgument(lane >= 0 && lane < OrderedIndex.LANES);
         
         String previousValue;
-        NodeBuilder rootBuilder = nodestore.getRoot().builder();
+        NodeBuilder rootBuilder = nodestore.getRoot(TEST_TENANT).builder();
         NodeBuilder builder = rootBuilder.getChildNode(INDEX_DEFINITIONS_NAME);
         builder = builder.getChildNode(TEST_INDEX_NAME);
         builder = builder.getChildNode(INDEX_CONTENT_NODE_NAME);

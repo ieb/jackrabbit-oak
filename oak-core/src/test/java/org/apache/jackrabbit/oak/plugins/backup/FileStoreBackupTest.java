@@ -35,6 +35,7 @@ import org.apache.jackrabbit.oak.spi.commit.EmptyHook;
 import org.apache.jackrabbit.oak.spi.security.OpenSecurityProvider;
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
 import org.apache.jackrabbit.oak.spi.state.NodeStore;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -45,6 +46,7 @@ import static org.junit.Assert.assertTrue;
 
 public class FileStoreBackupTest {
 
+    private static final Tenant TEST_TENANT = new Tenant("testtenant");
     private File src;
     private File destination;
 
@@ -102,7 +104,7 @@ public class FileStoreBackupTest {
 
     private static void addTestContent(NodeStore store)
             throws CommitFailedException {
-        NodeBuilder builder = store.getRoot().builder();
+        NodeBuilder builder = store.getRoot(TEST_TENANT).builder();
         builder.child("test-backup");
         builder.child("root"); // make sure we don't backup the super-root
         store.merge(builder, EmptyHook.INSTANCE, CommitInfo.EMPTY);
@@ -111,7 +113,7 @@ public class FileStoreBackupTest {
     private static void compare(NodeStore store, File destination)
             throws IOException {
         FileStore backup = new FileStore(destination, 8, false);
-        assertEquals(store.getRoot(), new SegmentNodeStore(backup).getRoot());
+        assertEquals(store.getRoot(TEST_TENANT), new SegmentNodeStore(backup).getRoot(TEST_TENANT));
         backup.close();
     }
 
@@ -128,7 +130,7 @@ public class FileStoreBackupTest {
         // ~100k
         Blob blob = store.createBlob(new ByteArrayInputStream(new byte[100000]));
 
-        NodeBuilder builder = store.getRoot().builder();
+        NodeBuilder builder = store.getRoot(TEST_TENANT).builder();
         NodeBuilder c1 = builder.child("test-backup");
         c1.setProperty("blob", blob);
         NodeBuilder c2 = builder.child("test-backup2");

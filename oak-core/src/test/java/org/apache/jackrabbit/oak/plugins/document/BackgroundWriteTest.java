@@ -20,6 +20,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.jackrabbit.oak.plugins.document.memory.MemoryDocumentStore;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
 import org.junit.Test;
 
 import static org.junit.Assert.assertTrue;
@@ -28,6 +30,8 @@ import static org.junit.Assert.assertTrue;
  * Tests related to background write operation in DocumentNodeStore.
  */
 public class BackgroundWriteTest {
+
+    private static final Tenant TEST_TENANT = new Tenant("testtenant");
 
     @Test // OAK-1190
     public void limitMultiUpdate() {
@@ -47,11 +51,11 @@ public class BackgroundWriteTest {
         }
         mk.commit("/", sb.toString(), null, null);
         mk.runBackgroundOperations();
-        Revision r = mk.getNodeStore().newRevision();
+        Revision r = mk.getNodeStore().newRevision(TEST_TENANT);
         UnsavedModifications pending = mk.getNodeStore().getPendingModifications();
-        pending.put("/", r);
+        pending.put(new TenantPath(TEST_TENANT, "/"), r);
         for (String p : paths) {
-            pending.put(p, r);
+            pending.put(new TenantPath(TEST_TENANT, p), r);
         }
         mk.runBackgroundOperations();
         mk.dispose();

@@ -16,6 +16,7 @@
  */
 package org.apache.jackrabbit.oak.plugins.document;
 
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
@@ -30,6 +31,7 @@ import static org.junit.Assert.assertTrue;
  * to a branch are not visible to other branches.
  */
 public class DocumentMKBranchTest extends BaseDocumentMKTest {
+
 
     /**
      * Creates the following revision history:
@@ -58,7 +60,7 @@ public class DocumentMKBranchTest extends BaseDocumentMKTest {
         String rev2 = mk.commit("", "+\"/child2\":{}", null, "");
 
         String branchRev2 = mk.branch(rev2);
-        String json = mk.getNodes("/child1", branchRev2, 0, 0, -1, null);
+        String json = mk.getNodes(new TenantPath(TEST_TENANT, "/child1"), branchRev2, 0, 0, -1, null);
         JSONParser parser = new JSONParser();
         JSONObject obj = (JSONObject) parser.parse(json);
         assertFalse(obj.containsKey("foo"));
@@ -73,7 +75,7 @@ public class DocumentMKBranchTest extends BaseDocumentMKTest {
         branchRev = mk.commit("/", ">\"b\" : \"a\"", branchRev, null);
         mk.merge(branchRev, null);
 
-        String json = mk.getNodes("/a", null, 0, 0, -1, null);
+        String json = mk.getNodes(new TenantPath(TEST_TENANT, "/a"), null, 0, 0, -1, null);
         JSONParser parser = new JSONParser();
         JSONObject obj = (JSONObject) parser.parse(json);
         assertTrue(obj.containsKey("foo"));
@@ -95,7 +97,7 @@ public class DocumentMKBranchTest extends BaseDocumentMKTest {
         String branchRev2 = mk.commit("/", "+\"other\":{}", branchRev1, null);
 
         // get /test on branch and use returned identifier to get next level
-        String json = mk.getNodes("/test", branchRev2, 0, 0, 1000, filter);
+        String json = mk.getNodes(new TenantPath(TEST_TENANT, "/test"), branchRev2, 0, 0, 1000, filter);
 
         JSONObject test = parseJSONObject(json);
         String id = resolveValue(test, ":id").toString();
@@ -120,7 +122,7 @@ public class DocumentMKBranchTest extends BaseDocumentMKTest {
         String rev2 = mk.commit("/", "+\"other\":{}", null, null);
 
         // get /test on trunk and use returned identifier to get next level
-        String json = mk.getNodes("/test", rev2, 0, 0, 1000, filter);
+        String json = mk.getNodes(new TenantPath(TEST_TENANT, "/test"), rev2, 0, 0, 1000, filter);
 
         JSONObject test = parseJSONObject(json);
         String id = resolveValue(test, ":id").toString();

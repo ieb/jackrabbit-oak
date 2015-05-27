@@ -26,6 +26,7 @@ import javax.annotation.Nullable;
 import org.apache.jackrabbit.oak.plugins.document.mongo.MongoDocumentStore;
 import org.apache.jackrabbit.oak.plugins.document.util.Utils;
 import org.apache.jackrabbit.oak.spi.state.NodeState;
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -63,7 +64,7 @@ public class CacheConsistencyTest extends AbstractMongoConnectionTest {
         mk.commit("/node", "+\"child\":{}", null, null);
 
         // make sure the document is not cached
-        store.invalidateCache(NODES, Utils.getIdFromPath("/node"));
+        store.invalidateCache(NODES, Utils.getIdFromPath(new TenantPath(TEST_TENANT, "/node")));
 
         Thread t = new Thread(new Runnable() {
             @Override
@@ -98,7 +99,7 @@ public class CacheConsistencyTest extends AbstractMongoConnectionTest {
         store.semaphores.get(t).release();
         t.join();
 
-        NodeState root = mk.getNodeStore().getRoot();
+        NodeState root = mk.getNodeStore().getRoot(TEST_TENANT);
         assertTrue(root.getChildNode("node").getChildNode("child").exists());
     }
 

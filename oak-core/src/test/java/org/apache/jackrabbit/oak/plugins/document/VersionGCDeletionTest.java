@@ -40,6 +40,8 @@ import org.apache.jackrabbit.oak.spi.commit.EmptyHook;
 import org.apache.jackrabbit.oak.spi.state.ChildNodeEntry;
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
 import org.apache.jackrabbit.oak.spi.state.NodeState;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
 import org.apache.jackrabbit.oak.stats.Clock;
 import org.junit.After;
 import org.junit.Before;
@@ -53,6 +55,8 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
 public class VersionGCDeletionTest {
+    private static final Tenant TEST_TENANT = new Tenant("testtenant");
+
     private Clock clock;
 
     private DocumentNodeStore store;
@@ -82,7 +86,7 @@ public class VersionGCDeletionTest {
         //Baseline the clock
         clock.waitUntil(Revision.getCurrentTimestamp());
 
-        NodeBuilder b1 = store.getRoot().builder();
+        NodeBuilder b1 = store.getRoot(TEST_TENANT).builder();
         b1.child("x").child("y");
         store.merge(b1, EmptyHook.INSTANCE, CommitInfo.EMPTY);
 
@@ -90,7 +94,7 @@ public class VersionGCDeletionTest {
         long delta = TimeUnit.MINUTES.toMillis(10);
 
         //Remove x/y
-        NodeBuilder b2 = store.getRoot().builder();
+        NodeBuilder b2 = store.getRoot(TEST_TENANT).builder();
         b2.child("x").remove();
         store.merge(b2, EmptyHook.INSTANCE, CommitInfo.EMPTY);
 
@@ -130,7 +134,7 @@ public class VersionGCDeletionTest {
         //Baseline the clock
         clock.waitUntil(Revision.getCurrentTimestamp());
 
-        NodeBuilder b1 = store.getRoot().builder();
+        NodeBuilder b1 = store.getRoot(TEST_TENANT).builder();
         NodeBuilder xb = b1.child("x");
         for (int i = 0; i < noOfDocsToDelete; i++){
             xb.child("a"+i).child("b"+i);
@@ -141,7 +145,7 @@ public class VersionGCDeletionTest {
         long delta = TimeUnit.MINUTES.toMillis(10);
 
         //Remove x/y
-        NodeBuilder b2 = store.getRoot().builder();
+        NodeBuilder b2 = store.getRoot(TEST_TENANT).builder();
         b2.child("x").remove();
         store.merge(b2, EmptyHook.INSTANCE, CommitInfo.EMPTY);
 
@@ -188,7 +192,7 @@ public class VersionGCDeletionTest {
                 .setDocumentStore(ms).setAsyncDelay(0).getNodeStore();
 
         // create nodes
-        NodeBuilder builder = store.getRoot().builder();
+        NodeBuilder builder = store.getRoot(TEST_TENANT).builder();
         NodeBuilder node = builder.child("node");
         for (int i = 0; i < 200; i++) {
             node.child("c-" + i);
@@ -198,7 +202,7 @@ public class VersionGCDeletionTest {
         clock.waitUntil(clock.getTime() + HOURS.toMillis(1));
 
         // remove nodes
-        builder = store.getRoot().builder();
+        builder = store.getRoot(TEST_TENANT).builder();
         node = builder.child("node");
         for (int i = 0; i < 90; i++) {
             node.getChildNode("c-" + i).remove();
@@ -211,7 +215,7 @@ public class VersionGCDeletionTest {
 
         List<String> expected = Lists.newArrayList();
         // fill caches
-        NodeState n = store.getRoot().getChildNode("node");
+        NodeState n = store.getRoot(TEST_TENANT).getChildNode("node");
         for (ChildNodeEntry entry : n.getChildNodeEntries()) {
             expected.add(entry.getName());
         }
@@ -225,7 +229,7 @@ public class VersionGCDeletionTest {
             @Override
             public List<String> call() throws Exception {
                 List<String> names = Lists.newArrayList();
-                NodeState n = store.getRoot().getChildNode("node");
+                NodeState n = store.getRoot(TEST_TENANT).getChildNode("node");
                 for (ChildNodeEntry entry : n.getChildNodeEntries()) {
                     names.add(entry.getName());
                 }
@@ -280,11 +284,11 @@ public class VersionGCDeletionTest {
      * /x /x/y /x/y/z
      */
     private static class NodeDocComparator implements Comparator<NodeDocument> {
-        private static Comparator<String> reverse = Collections.reverseOrder(PathComparator.INSTANCE);
+        private static Comparator<TenantPath> reverse = Collections.reverseOrder(PathComparator.INSTANCE);
 
         @Override
         public int compare(NodeDocument o1, NodeDocument o2) {
-            return reverse.compare(o1.getPath(), o2.getPath());
+            return reverse.compare(new TenantPath(TEST_TENANT, o1.getPath()),new TenantPath(TEST_TENANT, o2.getPath()));
         }
     }
 }

@@ -16,6 +16,7 @@
  */
 package org.apache.jackrabbit.oak.plugins.document;
 
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
 import org.json.simple.JSONObject;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -52,10 +53,10 @@ public class DocumentMKRebaseTest extends BaseDocumentMKTest {
         String trunk = mk.commit("", "+\"/a\":{}", null, null);
         String rebased = mk.rebase(branch, null);
 
-        JSONObject json = parseJSONObject(mk.getNodes("/", rebased, 0, 0, -1, null));
+        JSONObject json = parseJSONObject(mk.getNodes(new TenantPath(TEST_TENANT, "/"), rebased, 0, 0, -1, null));
         assertPropertyValue(json, ":childNodeCount", 1L);
         assertNotNull(json.get("a"));
-        json = parseJSONObject(mk.getNodes("/", null, 0, 0, -1, null));
+        json = parseJSONObject(mk.getNodes(new TenantPath(TEST_TENANT, "/"), null, 0, 0, -1, null));
         assertPropertyValue(json, ":childNodeCount", 1L);
         assertNotNull(json.get("a"));
         assertEquals(trunk, mk.getHeadRevision());
@@ -71,14 +72,14 @@ public class DocumentMKRebaseTest extends BaseDocumentMKTest {
         String rebased = mk.rebase(branch, null);
 
         assertChildNodeCount("/x", null, 1);
-        assertNotNull(mk.getNodes("/x/a", null, 0, 0, -1, null));
+        assertNotNull(mk.getNodes(new TenantPath(TEST_TENANT, "/x/a"), null, 0, 0, -1, null));
 
         assertChildNodeCount("/x", branch, 1);
-        assertNotNull(mk.getNodes("/x/b", branch, 0, 0, -1, null));
+        assertNotNull(mk.getNodes(new TenantPath(TEST_TENANT, "/x/b"), branch, 0, 0, -1, null));
 
         assertChildNodeCount("/x", rebased, 2);
-        assertNotNull(mk.getNodes("/x/a", rebased, 0, 0, -1, null));
-        assertNotNull(mk.getNodes("/x/b", rebased, 0, 0, -1, null));
+        assertNotNull(mk.getNodes(new TenantPath(TEST_TENANT, "/x/a"), rebased, 0, 0, -1, null));
+        assertNotNull(mk.getNodes(new TenantPath(TEST_TENANT, "/x/b"), rebased, 0, 0, -1, null));
     }
 
     @Test
@@ -90,13 +91,13 @@ public class DocumentMKRebaseTest extends BaseDocumentMKTest {
         String rebased = mk.rebase(branch, null);
 
         assertChildNodeCount("/x", null, 2);
-        assertNotNull(mk.getNodes("/x/a", null, 0, 0, -1, null));
-        assertNotNull(mk.getNodes("/x/y", null, 0, 0, -1, null));
+        assertNotNull(mk.getNodes(new TenantPath(TEST_TENANT, "/x/a"), null, 0, 0, -1, null));
+        assertNotNull(mk.getNodes(new TenantPath(TEST_TENANT, "/x/y"), null, 0, 0, -1, null));
 
         assertChildNodeCount("/x", branch, 0);
 
         assertChildNodeCount("/x", rebased, 1);
-        assertNotNull(mk.getNodes("/x/a", rebased, 0, 0, -1, null));
+        assertNotNull(mk.getNodes(new TenantPath(TEST_TENANT, "/x/a"), rebased, 0, 0, -1, null));
     }
 
     @Test
@@ -107,15 +108,15 @@ public class DocumentMKRebaseTest extends BaseDocumentMKTest {
         mk.commit("", "^\"/x/y/q\":99", null, null);
         String rebased = mk.rebase(branch, null);
 
-        String branchNode = mk.getNodes("/x/y", branch, 0, 0, -1, null);
+        String branchNode = mk.getNodes(new TenantPath(TEST_TENANT, "/x/y"), branch, 0, 0, -1, null);
         assertTrue(branchNode.contains("\"p\":42"));
         assertFalse(branchNode.contains("\"q\":99"));
 
-        String rebasedNode = mk.getNodes("/x/y", rebased, 0, 0, -1, null);
+        String rebasedNode = mk.getNodes(new TenantPath(TEST_TENANT, "/x/y"), rebased, 0, 0, -1, null);
         assertTrue(rebasedNode.contains("\"p\":42"));
         assertTrue(rebasedNode.contains("\"q\":99"));
 
-        String trunkNode = mk.getNodes("/x/y", null, 0, 0, -1, null);
+        String trunkNode = mk.getNodes(new TenantPath(TEST_TENANT, "/x/y"), null, 0, 0, -1, null);
         assertFalse(trunkNode.contains("\"p\":42"));
         assertTrue(trunkNode.contains("\"q\":99"));
     }
@@ -128,15 +129,15 @@ public class DocumentMKRebaseTest extends BaseDocumentMKTest {
         mk.commit("", "^\"/x/y/q\":99", null, null);
         String rebased = mk.rebase(branch, null);
 
-        String branchNode = mk.getNodes("/x/y", branch, 0, 0, -1, null);
+        String branchNode = mk.getNodes(new TenantPath(TEST_TENANT, "/x/y"), branch, 0, 0, -1, null);
         assertFalse(branchNode.contains("\"p\":42"));
         assertFalse(branchNode.contains("\"q\":99"));
 
-        String rebasedNode = mk.getNodes("/x/y", rebased, 0, 0, -1, null);
+        String rebasedNode = mk.getNodes(new TenantPath(TEST_TENANT, "/x/y"), rebased, 0, 0, -1, null);
         assertFalse(rebasedNode.contains("\"p\":42"));
         assertTrue(rebasedNode.contains("\"q\":99"));
 
-        String trunkNode = mk.getNodes("/x/y", null, 0, 0, -1, null);
+        String trunkNode = mk.getNodes(new TenantPath(TEST_TENANT, "/x/y"), null, 0, 0, -1, null);
         assertTrue(trunkNode.contains("\"p\":42"));
         assertTrue(trunkNode.contains("\"q\":99"));
     }
@@ -149,15 +150,15 @@ public class DocumentMKRebaseTest extends BaseDocumentMKTest {
         mk.commit("", "^\"/x/y/q\":99", null, null);
         String rebased = mk.rebase(branch, null);
 
-        String branchNode = mk.getNodes("/x/y", branch, 0, 0, -1, null);
+        String branchNode = mk.getNodes(new TenantPath(TEST_TENANT, "/x/y"), branch, 0, 0, -1, null);
         assertTrue(branchNode.contains("\"p\":41"));
         assertFalse(branchNode.contains("\"q\":99"));
 
-        String rebasedNode = mk.getNodes("/x/y", rebased, 0, 0, -1, null);
+        String rebasedNode = mk.getNodes(new TenantPath(TEST_TENANT, "/x/y"), rebased, 0, 0, -1, null);
         assertTrue(rebasedNode.contains("\"p\":41"));
         assertTrue(rebasedNode.contains("\"q\":99"));
 
-        String trunkNode = mk.getNodes("/x/y", null, 0, 0, -1, null);
+        String trunkNode = mk.getNodes(new TenantPath(TEST_TENANT, "/x/y"), null, 0, 0, -1, null);
         assertTrue(trunkNode.contains("\"p\":42"));
         assertTrue(trunkNode.contains("\"q\":99"));
     }
@@ -170,13 +171,13 @@ public class DocumentMKRebaseTest extends BaseDocumentMKTest {
         mk.commit("", "^\"/x/y/p\":99", null, null);
         mk.rebase(branch, null);
 
-        String branchNode = mk.getNodes("/x/y", branch, 0, 0, -1, null);
+        String branchNode = mk.getNodes(new TenantPath(TEST_TENANT, "/x/y"), branch, 0, 0, -1, null);
         assertTrue(branchNode.contains("\"p\":99"));
 
-        String rebasedNode = mk.getNodes("/x/y", branch, 0, 0, -1, null);
+        String rebasedNode = mk.getNodes(new TenantPath(TEST_TENANT, "/x/y"), branch, 0, 0, -1, null);
         assertTrue(rebasedNode.contains("\"p\":99"));
 
-        String trunkNode = mk.getNodes("/x/y", null, 0, 0, -1, null);
+        String trunkNode = mk.getNodes(new TenantPath(TEST_TENANT, "/x/y"), null, 0, 0, -1, null);
         assertTrue(trunkNode.contains("\"p\":99"));
     }
 
@@ -190,8 +191,8 @@ public class DocumentMKRebaseTest extends BaseDocumentMKTest {
 
         branch = mk.rebase(branch, null);
 
-        assertTrue(mk.nodeExists("/x/a/b", branch));
-        String conflict = mk.getNodes("/x/:conflict", branch, 100, 0, -1, null);
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/x/a/b"), branch));
+        String conflict = mk.getNodes(new TenantPath(TEST_TENANT, "/x/:conflict"), branch, 100, 0, -1, null);
         assertEquals(
                 "{\":childNodeCount\":1,\"addExistingNode\":{\":childNodeCount\":1,\"a\":{\":childNodeCount\":0}}}",
                 conflict);
@@ -207,9 +208,9 @@ public class DocumentMKRebaseTest extends BaseDocumentMKTest {
 
         branch = mk.rebase(branch, null);
 
-        String branchNode = mk.getNodes("/x/y", branch, 0, 0, -1, null);
+        String branchNode = mk.getNodes(new TenantPath(TEST_TENANT, "/x/y"), branch, 0, 0, -1, null);
         assertTrue(branchNode.contains("\"p\":99"));
-        String conflict = mk.getNodes("/x/y/:conflict", branch, 100, 0, -1, null);
+        String conflict = mk.getNodes(new TenantPath(TEST_TENANT, "/x/y/:conflict"), branch, 100, 0, -1, null);
         assertEquals(
                 "{\":childNodeCount\":1,\"addExistingProperty\":{\"q\":42,\"p\":42,\":childNodeCount\":0}}",
                 conflict);
@@ -225,9 +226,9 @@ public class DocumentMKRebaseTest extends BaseDocumentMKTest {
 
         branch = mk.rebase(branch, null);
 
-        String branchNode = mk.getNodes("/x/y", branch, 0, 0, -1, null);
+        String branchNode = mk.getNodes(new TenantPath(TEST_TENANT, "/x/y"), branch, 0, 0, -1, null);
         assertFalse(branchNode.contains("\"p\":99"));
-        String conflict = mk.getNodes("/x/y/:conflict", branch, 100, 0, -1, null);
+        String conflict = mk.getNodes(new TenantPath(TEST_TENANT, "/x/y/:conflict"), branch, 100, 0, -1, null);
         assertEquals(
                 "{\":childNodeCount\":1,\"changeDeletedProperty\":{\"p\":99,\":childNodeCount\":0}}",
                 conflict);
@@ -243,9 +244,9 @@ public class DocumentMKRebaseTest extends BaseDocumentMKTest {
 
         branch = mk.rebase(branch, null);
 
-        String branchNode = mk.getNodes("/x/y", branch, 0, 0, -1, null);
+        String branchNode = mk.getNodes(new TenantPath(TEST_TENANT, "/x/y"), branch, 0, 0, -1, null);
         assertTrue(branchNode.contains("\"p\":99"));
-        String conflict = mk.getNodes("/x/y/:conflict", branch, 100, 0, -1, null);
+        String conflict = mk.getNodes(new TenantPath(TEST_TENANT, "/x/y/:conflict"), branch, 100, 0, -1, null);
         assertEquals(
                 "{\":childNodeCount\":1,\"deleteChangedProperty\":{\"p\":42,\":childNodeCount\":0}}",
                 conflict);
@@ -261,9 +262,9 @@ public class DocumentMKRebaseTest extends BaseDocumentMKTest {
 
         branch = mk.rebase(branch, null);
 
-        String branchNode = mk.getNodes("/x/y", branch, 0, 0, -1, null);
+        String branchNode = mk.getNodes(new TenantPath(TEST_TENANT, "/x/y"), branch, 0, 0, -1, null);
         assertTrue(branchNode.contains("\"p\":99"));
-        String conflict = mk.getNodes("/x/y/:conflict", branch, 100, 0, -1, null);
+        String conflict = mk.getNodes(new TenantPath(TEST_TENANT, "/x/y/:conflict"), branch, 100, 0, -1, null);
         assertEquals(
                 "{\":childNodeCount\":1,\"changeChangedProperty\":{\"p\":41,\":childNodeCount\":0}}",
                 conflict);
@@ -279,9 +280,9 @@ public class DocumentMKRebaseTest extends BaseDocumentMKTest {
 
         branch = mk.rebase(branch, null);
 
-        String branchNode = mk.getNodes("/x/y", branch, 0, 0, -1, null);
+        String branchNode = mk.getNodes(new TenantPath(TEST_TENANT, "/x/y"), branch, 0, 0, -1, null);
         assertTrue(branchNode.contains("\"p\":42"));
-        String conflict = mk.getNodes("/x/:conflict", branch, 100, 0, -1, null);
+        String conflict = mk.getNodes(new TenantPath(TEST_TENANT, "/x/:conflict"), branch, 100, 0, -1, null);
         assertEquals(
                 "{\":childNodeCount\":1,\"deleteChangedNode\":{\":childNodeCount\":1,\"y\":{\":childNodeCount\":0}}}",
                 conflict);
@@ -297,8 +298,8 @@ public class DocumentMKRebaseTest extends BaseDocumentMKTest {
 
         branch = mk.rebase(branch, null);
 
-        assertFalse(mk.nodeExists("/x", branch));
-        String conflict = mk.getNodes("/:conflict", branch, 100, 0, -1, null);
+        assertFalse(mk.nodeExists(new TenantPath(TEST_TENANT, "/x"), branch));
+        String conflict = mk.getNodes(new TenantPath(TEST_TENANT, "/:conflict"), branch, 100, 0, -1, null);
         assertEquals(
                 "{\":childNodeCount\":1,\"changeDeletedNode\":{\":childNodeCount\":1,\"x\":{\"p\":42,\"" +
                         ":childNodeCount\":1,\"y\":{\":childNodeCount\":0}}}}",
@@ -315,9 +316,9 @@ public class DocumentMKRebaseTest extends BaseDocumentMKTest {
 
         branch = mk.rebase(branch, null);
 
-        String branchNode = mk.getNodes("/x/y", branch, 0, 0, -1, null);
+        String branchNode = mk.getNodes(new TenantPath(TEST_TENANT, "/x/y"), branch, 0, 0, -1, null);
         assertFalse(branchNode.contains("\"p\":42"));
-        String conflict = mk.getNodes("/x/y/:conflict", branch, 100, 0, -1, null);
+        String conflict = mk.getNodes(new TenantPath(TEST_TENANT, "/x/y/:conflict"), branch, 100, 0, -1, null);
         assertEquals(
                 "{\":childNodeCount\":1,\"deleteDeletedProperty\":{\"p\":42,\":childNodeCount\":0}}",
                 conflict);
@@ -333,8 +334,8 @@ public class DocumentMKRebaseTest extends BaseDocumentMKTest {
 
         branch = mk.rebase(branch, null);
 
-        assertFalse(mk.nodeExists("/x/y", branch));
-        String conflict = mk.getNodes("/x/:conflict", branch, 100, 0, -1, null);
+        assertFalse(mk.nodeExists(new TenantPath(TEST_TENANT, "/x/y"), branch));
+        String conflict = mk.getNodes(new TenantPath(TEST_TENANT, "/x/:conflict"), branch, 100, 0, -1, null);
         assertEquals(
                 "{\":childNodeCount\":1,\"deleteDeletedNode\":{\":childNodeCount\":1,\"y\":{\":childNodeCount\":0}}}",
                 conflict);
@@ -348,12 +349,12 @@ public class DocumentMKRebaseTest extends BaseDocumentMKTest {
         branch = mk.commit("", "^\"/x/q\":43", branch, null);
         branch = mk.rebase(branch, null);
 
-        String branchNode = mk.getNodes("/x", branch, 0, 0, -1, null);
+        String branchNode = mk.getNodes(new TenantPath(TEST_TENANT, "/x"), branch, 0, 0, -1, null);
         assertTrue(branchNode.contains("\"p\":42"));
         assertTrue(branchNode.contains("\"q\":43"));
 
         mk.merge(branch, null);
-        String trunkNode = mk.getNodes("/x", branch, 0, 0, -1, null);
+        String trunkNode = mk.getNodes(new TenantPath(TEST_TENANT, "/x"), branch, 0, 0, -1, null);
         assertTrue(trunkNode.contains("\"p\":42"));
         assertTrue(trunkNode.contains("\"q\":43"));
     }

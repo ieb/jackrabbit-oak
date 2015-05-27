@@ -27,6 +27,8 @@ import org.apache.jackrabbit.oak.plugins.document.Revision;
 import org.apache.jackrabbit.oak.spi.commit.CommitInfo;
 import org.apache.jackrabbit.oak.spi.commit.EmptyHook;
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -40,9 +42,11 @@ import static org.junit.Assert.assertTrue;
  */
 public class UtilsTest {
 
+    private static final Tenant TEST_TENANT = new Tenant("testtenant");
+
     @Test
     public void getPreviousIdFor() {
-        Revision r = new Revision(System.currentTimeMillis(), 0, 0);
+        Revision r = new Revision(TEST_TENANT.getTenantId(),System.currentTimeMillis(), 0, 0);
         assertEquals("2:p/" + r.toString() + "/0",
                 Utils.getPreviousIdFor("/", r, 0));
         assertEquals("3:p/test/" + r.toString() + "/1",
@@ -62,9 +66,9 @@ public class UtilsTest {
         String longPath = PathUtils.concat("/"+Strings.repeat("p", Utils.PATH_LONG + 1), "foo");
         assertTrue(Utils.isLongPath(longPath));
 
-        assertNull(Utils.getParentId(Utils.getIdFromPath(longPath)));
+        assertNull(Utils.getParentId(Utils.getIdFromPath(new TenantPath(TEST_TENANT, longPath))));
 
-        assertNull(Utils.getParentId(Utils.getIdFromPath("/")));
+        assertNull(Utils.getParentId(Utils.getIdFromPath(new TenantPath(TEST_TENANT, "/"))));
         assertEquals("1:/foo",Utils.getParentId("2:/foo/bar"));
     }
 
@@ -78,7 +82,7 @@ public class UtilsTest {
     @Ignore("Performance test")
     @Test
     public void performance_getPreviousIdFor() {
-        Revision r = new Revision(System.currentTimeMillis(), 0, 0);
+        Revision r = new Revision(TEST_TENANT.getTenantId(),System.currentTimeMillis(), 0, 0);
         String path = "/some/test/path/foo";
         // warm up
         for (int i = 0; i < 1 * 1000 * 1000; i++) {
@@ -95,7 +99,7 @@ public class UtilsTest {
     @Ignore("Performance test")
     @Test
     public void performance_revisionToString() {
-        Revision r = new Revision(System.currentTimeMillis(), 0, 0);
+        Revision r = new Revision(TEST_TENANT.getTenantId(),System.currentTimeMillis(), 0, 0);
         // warm up
         for (int i = 0; i < 1 * 1000 * 1000; i++) {
             r.toString();
@@ -110,11 +114,11 @@ public class UtilsTest {
 
     @Test
     public void max() {
-        Revision a = new Revision(42, 0, 1);
-        Revision b = new Revision(43, 0, 1);
+        Revision a = new Revision(TEST_TENANT.getTenantId(),42, 0, 1);
+        Revision b = new Revision(TEST_TENANT.getTenantId(),43, 0, 1);
         assertSame(b, Utils.max(a, b));
 
-        Revision a1 = new Revision(42, 1, 1);
+        Revision a1 = new Revision(TEST_TENANT.getTenantId(),42, 1, 1);
         assertSame(a1, Utils.max(a, a1));
 
         assertSame(a, Utils.max(a, null));
@@ -126,7 +130,7 @@ public class UtilsTest {
     public void getAllDocuments() throws CommitFailedException {
         DocumentNodeStore store = new DocumentMK.Builder().getNodeStore();
         try {
-            NodeBuilder builder = store.getRoot().builder();
+            NodeBuilder builder = store.getRoot(TEST_TENANT).builder();
             for (int i = 0; i < 1000; i++) {
                 builder.child("test-" + i);
             }

@@ -25,6 +25,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import com.google.common.collect.ImmutableMap;
+
 import org.apache.jackrabbit.oak.NodeStoreFixture;
 import org.apache.jackrabbit.oak.OakBaseTest;
 import org.apache.jackrabbit.oak.api.CommitFailedException;
@@ -43,7 +44,7 @@ public class CheckpointTest extends OakBaseTest {
 
     @Before
     public void setUp() throws Exception {
-        NodeBuilder builder = store.getRoot().builder();
+        NodeBuilder builder = store.getRoot(TEST_TENANT).builder();
         NodeBuilder test = builder.child("test");
         test.setProperty("a", 1);
         test.setProperty("b", 2);
@@ -63,15 +64,15 @@ public class CheckpointTest extends OakBaseTest {
     public void checkpoint() throws CommitFailedException {
         String cp = store.checkpoint(Long.MAX_VALUE);
 
-        NodeBuilder builder = store.getRoot().builder();
+        NodeBuilder builder = store.getRoot(TEST_TENANT).builder();
         builder.setChildNode("new");
         store.merge(builder, EmptyHook.INSTANCE, CommitInfo.EMPTY);
 
-        assertFalse(root.equals(store.getRoot()));
-        assertEquals(root, store.retrieve(cp));
+        assertFalse(root.equals(store.getRoot(TEST_TENANT)));
+        assertEquals(root, store.retrieve(TEST_TENANT, cp));
 
         assertTrue(store.release(cp));
-        assertNull(store.retrieve(cp));
+        assertNull(store.retrieve(TEST_TENANT, cp));
     }
 
     @Test
@@ -84,7 +85,7 @@ public class CheckpointTest extends OakBaseTest {
 
     @Test
     public void retrieveAny() {
-        assertTrue(store.retrieve("r42-0-0") == null);
+        assertTrue(store.retrieve(TEST_TENANT, "r42-0-0") == null);
     }
 
 }

@@ -48,6 +48,7 @@ import org.apache.jackrabbit.oak.spi.query.Cursors;
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
 import org.apache.jackrabbit.oak.spi.state.NodeState;
 import org.apache.jackrabbit.oak.spi.state.NodeStore;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -56,6 +57,7 @@ import org.junit.Test;
  */
 public class NodeTypeIndexTest {
 
+    private static final Tenant TEST_TENANT = new Tenant("testtenant");
     private NodeStore store = new MemoryNodeStore();
 
     @Before
@@ -68,7 +70,7 @@ public class NodeTypeIndexTest {
 
     @Test
     public void nodeType() throws Exception {
-        NodeBuilder root = store.getRoot().builder();
+        NodeBuilder root = store.getRoot(TEST_TENANT).builder();
 
         // remove "rep:security" as it interferes with tests
         root.getChildNode("rep:security").remove();
@@ -84,7 +86,7 @@ public class NodeTypeIndexTest {
         store.merge(root, new EditorHook(new IndexUpdateProvider(
                 new PropertyIndexEditorProvider())), CommitInfo.EMPTY);
 
-        NodeState rootState = store.getRoot();
+        NodeState rootState = store.getRoot(TEST_TENANT);
         NodeTypeIndex index = new NodeTypeIndex();
         FilterImpl filter;
 

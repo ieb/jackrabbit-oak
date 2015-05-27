@@ -21,6 +21,7 @@ import org.apache.jackrabbit.oak.plugins.memory.MemoryNodeStore;
 import org.apache.jackrabbit.oak.spi.commit.CommitInfo;
 import org.apache.jackrabbit.oak.spi.commit.EmptyHook;
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
 import org.junit.Test;
 
 import static org.junit.Assert.assertTrue;
@@ -30,23 +31,25 @@ import static org.junit.Assert.assertTrue;
  */
 public class LargeTreeOperationTest {
 
+    private static final Tenant TEST_TENANT = new Tenant("testtenant");
+
     @Test
     public void removeLargeSubtree() throws CommitFailedException {
         DocumentNodeStore ns = new DocumentMK.Builder()
                 .setUseSimpleRevision(true).getNodeStore();
 
-        NodeBuilder builder = ns.getRoot().builder();
+        NodeBuilder builder = ns.getRoot(TEST_TENANT).builder();
         NodeBuilder test = builder.child("test");
         for (int i = 0; i < DocumentRootBuilder.UPDATE_LIMIT * 3; i++) {
             test.child("child-" + i);
         }
         ns.merge(builder, EmptyHook.INSTANCE, CommitInfo.EMPTY);
 
-        builder = ns.getRoot().builder();
-        Revision r1 = ns.newRevision();
+        builder = ns.getRoot(TEST_TENANT).builder();
+        Revision r1 = ns.newRevision(TEST_TENANT);
         // must trigger branch commit
         builder.getChildNode("test").remove();
-        Revision r2 = ns.newRevision();
+        Revision r2 = ns.newRevision(TEST_TENANT);
 
         assertTrue("remove of large subtree must trigger branch commits",
                 r2.getTimestamp() - r1.getTimestamp() > 1);
@@ -66,7 +69,7 @@ public class LargeTreeOperationTest {
 
     private void setLargeSubtree(String... path) throws CommitFailedException {
         MemoryNodeStore memStore = new MemoryNodeStore();
-        NodeBuilder builder = memStore.getRoot().builder();
+        NodeBuilder builder = memStore.getRoot(TEST_TENANT).builder();
         NodeBuilder test = builder.child("test");
         for (int i = 0; i < DocumentRootBuilder.UPDATE_LIMIT * 3; i++) {
             test.child("child-" + i);
@@ -76,14 +79,14 @@ public class LargeTreeOperationTest {
         DocumentNodeStore ns = new DocumentMK.Builder()
                 .setUseSimpleRevision(true).getNodeStore();
 
-        builder = ns.getRoot().builder();
+        builder = ns.getRoot(TEST_TENANT).builder();
         for (String name : path) {
             builder = builder.child(name);
         }
-        Revision r1 = ns.newRevision();
+        Revision r1 = ns.newRevision(TEST_TENANT);
         // must trigger branch commit
-        builder.setChildNode("test", memStore.getRoot().getChildNode("test"));
-        Revision r2 = ns.newRevision();
+        builder.setChildNode("test", memStore.getRoot(TEST_TENANT).getChildNode("test"));
+        Revision r2 = ns.newRevision(TEST_TENANT);
 
         assertTrue("setting a large subtree must trigger branch commits",
                 r2.getTimestamp() - r1.getTimestamp() > 1);

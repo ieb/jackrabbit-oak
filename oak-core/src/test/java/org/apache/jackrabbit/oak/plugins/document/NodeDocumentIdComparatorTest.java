@@ -24,7 +24,10 @@ import java.util.Collections;
 import java.util.List;
 
 import com.google.common.collect.Lists;
+
 import org.apache.jackrabbit.oak.plugins.document.util.Utils;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
@@ -34,14 +37,16 @@ import static org.junit.Assert.assertEquals;
  */
 public class NodeDocumentIdComparatorTest {
 
+    private static final Tenant TEST_TENANT = new Tenant("testtenant");
+
     @Test
     public void sort() {
         List<String> paths = new ArrayList<String>();
-        paths.add(Utils.getIdFromPath("/foo"));
-        paths.add(Utils.getIdFromPath("/foo/bar"));
-        paths.add(Utils.getIdFromPath("/bar/qux"));
-        paths.add(Utils.getIdFromPath("/"));
-        paths.add(Utils.getIdFromPath("/bar"));
+        paths.add(Utils.getIdFromPath(new TenantPath(TEST_TENANT, "/foo")));
+        paths.add(Utils.getIdFromPath(new TenantPath(TEST_TENANT, "/foo/bar")));
+        paths.add(Utils.getIdFromPath(new TenantPath(TEST_TENANT, "/bar/qux")));
+        paths.add(Utils.getIdFromPath(new TenantPath(TEST_TENANT, "/")));
+        paths.add(Utils.getIdFromPath(new TenantPath(TEST_TENANT, "/bar")));
 
         Collections.sort(paths, NodeDocumentIdComparator.INSTANCE);
 

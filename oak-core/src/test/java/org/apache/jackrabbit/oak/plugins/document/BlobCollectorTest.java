@@ -23,6 +23,7 @@ import java.util.HashSet;
 import java.util.List;
 
 import com.google.common.collect.Lists;
+
 import org.apache.jackrabbit.oak.api.Blob;
 import org.apache.jackrabbit.oak.api.Type;
 import org.apache.jackrabbit.oak.plugins.document.util.Utils;
@@ -30,6 +31,8 @@ import org.apache.jackrabbit.oak.plugins.memory.PropertyBuilder;
 import org.apache.jackrabbit.oak.spi.commit.CommitInfo;
 import org.apache.jackrabbit.oak.spi.commit.EmptyHook;
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
 import org.junit.After;
 import org.junit.Test;
 
@@ -37,6 +40,7 @@ import static org.apache.jackrabbit.oak.plugins.document.MongoBlobGCTest.randomS
 import static org.junit.Assert.assertEquals;
 
 public class BlobCollectorTest {
+    private static final Tenant TEST_TENANT = new Tenant("testtenant");
     private DocumentNodeStore store = new DocumentMK.Builder().getNodeStore();
     private BlobCollector blobCollector = new BlobCollector(store);
 
@@ -47,7 +51,7 @@ public class BlobCollectorTest {
 
     @Test
     public void testCollect() throws Exception {
-        NodeBuilder b1 = store.getRoot().builder();
+        NodeBuilder b1 = store.getRoot(TEST_TENANT).builder();
         List<Blob> blobs = Lists.newArrayList();
 
         b1.child("x").child("y");
@@ -55,7 +59,7 @@ public class BlobCollectorTest {
 
         //1. Set some single value Binary property
         for(int i = 0; i < 2; i++){
-            b1 = store.getRoot().builder();
+            b1 = store.getRoot(TEST_TENANT).builder();
             Blob b = store.createBlob(randomStream(i, 4096));
             b1.child("x").child("y").setProperty("b" + i, b);
             blobs.add(b);
@@ -70,13 +74,13 @@ public class BlobCollectorTest {
             p1.addValue(b);
             blobs.add(b);
         }
-        b1 = store.getRoot().builder();
+        b1 = store.getRoot(TEST_TENANT).builder();
         b1.child("x").child("y").setProperty(p1.getPropertyState());
         store.merge(b1, EmptyHook.INSTANCE, CommitInfo.EMPTY);
 
         //3. Create some new rev for the property b1 and b2
         for(int i = 0; i < 2; i++){
-            b1 = store.getRoot().builder();
+            b1 = store.getRoot(TEST_TENANT).builder();
             //Change the see to create diff binary
             Blob b = store.createBlob(randomStream(i+1, 4096));
             b1.child("x").child("y").setProperty("b" + i, b);
@@ -85,7 +89,7 @@ public class BlobCollectorTest {
         }
 
         NodeDocument doc =
-                store.getDocumentStore().find(Collection.NODES, Utils.getIdFromPath("/x/y"));
+                store.getDocumentStore().find(Collection.NODES, Utils.getIdFromPath(new TenantPath(TEST_TENANT, "/x/y")));
         List<Blob> collectedBlobs = Lists.newArrayList();
         blobCollector.collect(doc, collectedBlobs);
 

@@ -49,6 +49,8 @@ import org.apache.jackrabbit.oak.spi.state.DefaultNodeStateDiff;
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
 import org.apache.jackrabbit.oak.spi.state.NodeState;
 import org.apache.jackrabbit.oak.spi.state.NodeStore;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.junit.After;
@@ -62,6 +64,8 @@ public class ClusterTest {
 
     private static final boolean MONGO_DB = false;
     // private static final boolean MONGO_DB = true;
+
+    private static final Tenant TEST_TENANT = new Tenant("testtenant");
 
     private List<DocumentMK> mks = Lists.newArrayList();
     private MemoryDocumentStore ds;
@@ -88,7 +92,7 @@ public class ClusterTest {
         mk3.backgroundRead();
 
         mk2.commit("/", "^\"test/x\":1", null, null);
-        String n3 = mk3.getNodes("/test", mk3.getHeadRevision(), 0, 0, 10, null);
+        String n3 = mk3.getNodes(new TenantPath(TEST_TENANT, "/test"), mk3.getHeadRevision(), 0, 0, 10, null);
         // mk3 didn't see the previous change yet;
         // it is questionable if this should prevent any changes to this node
         // (currently it does not)
@@ -101,7 +105,7 @@ public class ClusterTest {
         mk1.backgroundRead();
 
         String r1 = mk1.getHeadRevision();
-        String n1 = mk1.getNodes("/test", r1, 0, 0, 10, null);
+        String n1 = mk1.getNodes(new TenantPath(TEST_TENANT, "/test"), r1, 0, 0, 10, null);
         // mk1 only sees the change of mk3 so far
         assertEquals("{\"y\":2,\":childNodeCount\":0}", n1);
 
@@ -111,7 +115,7 @@ public class ClusterTest {
         mk1.backgroundRead();
 
         String r1b = mk1.getHeadRevision();
-        String n1b = mk1.getNodes("/test", r1b, 0, 0, 10, null);
+        String n1b = mk1.getNodes(new TenantPath(TEST_TENANT, "/test"), r1b, 0, 0, 10, null);
         JSONParser parser = new JSONParser();
         JSONObject obj = (JSONObject) parser.parse(n1b);
         // mk1 now sees both changes
@@ -186,7 +190,7 @@ public class ClusterTest {
         disposeMK(mk1);
 
         DocumentMK mk2 = createMK(2);
-        String nodes = mk2.getNodes("/", null, 0, 0, 100, null);
+        String nodes = mk2.getNodes(new TenantPath(TEST_TENANT, "/"), null, 0, 0, 100, null);
         assertEquals("{\"branchVisible\":{},\"regular\":{},\":childNodeCount\":2}", nodes);
     }
 
@@ -204,11 +208,11 @@ public class ClusterTest {
         DocumentNodeStore ns3 = mk3.getNodeStore();
         // the next line is required for the test even if it
         // just reads from the node store. do not remove!
-        traverse(ns3.getRoot(), "/");
+        traverse(ns3.getRoot(TEST_TENANT), "/");
 
         String b3 = mk3.branch(null);
         b3 = mk3.commit("/", "+\"mk3\":{}", b3, null);
-        assertTrue(mk3.nodeExists("/test", b3));
+        assertTrue(mk3.nodeExists(new TenantPath(TEST_TENANT, "/test"), b3));
 
         mk2.commit("/", "+\"test/mk21\":{}", null, null);
         mk2.runBackgroundOperations();
@@ -216,7 +220,7 @@ public class ClusterTest {
         mk3.runBackgroundOperations(); // pick up changes from mk2
         String base3 = mk3.getHeadRevision();
 
-        assertFalse(mk3.nodeExists("/test/mk21", b3));
+        assertFalse(mk3.nodeExists(new TenantPath(TEST_TENANT, "/test/mk21"), b3));
         b3 = mk3.rebase(b3, base3);
 
         mk2.commit("/", "+\"test/mk22\":{}", null, null);
@@ -224,9 +228,9 @@ public class ClusterTest {
 
         mk3.runBackgroundOperations(); // pick up changes from mk2
 
-        DocumentNodeState base = ns3.getNode("/", Revision.fromString(base3));
+        DocumentNodeState base = ns3.getNode(new TenantPath(TEST_TENANT, "/"), Revision.fromString(base3));
         assertNotNull(base);
-        NodeState branchHead = ns3.getNode("/", Revision.fromString(b3));
+        NodeState branchHead = ns3.getNode(new TenantPath(TEST_TENANT, "/"), Revision.fromString(b3));
         assertNotNull(branchHead);
         TrackingDiff diff = new TrackingDiff();
         branchHead.compareAgainstBaseState(base, diff);
@@ -291,8 +295,8 @@ public class ClusterTest {
         mk2.runBackgroundOperations();
 
         // node becomes visible after running background operations
-        String n1 = mk1.getNodes("/", mk1.getHeadRevision(), 0, 0, 10, null);
-        String n2 = mk2.getNodes("/", mk2.getHeadRevision(), 0, 0, 10, null);
+        String n1 = mk1.getNodes(new TenantPath(TEST_TENANT, "/"), mk1.getHeadRevision(), 0, 0, 10, null);
+        String n2 = mk2.getNodes(new TenantPath(TEST_TENANT, "/"), mk2.getHeadRevision(), 0, 0, 10, null);
         assertEquals(n1, n2);
     }
 
@@ -302,17 +306,17 @@ public class ClusterTest {
         DocumentMK mk2 = createMK(2);
 
         String m2h;
-        m2h = mk2.getNodes("/", mk2.getHeadRevision(), 0, 0, 2, null);
+        m2h = mk2.getNodes(new TenantPath(TEST_TENANT, "/"), mk2.getHeadRevision(), 0, 0, 2, null);
         assertEquals("{\":childNodeCount\":0}", m2h);
         String oldHead = mk2.getHeadRevision();
 
         mk1.commit("/", "+\"test\":{}", null, null);
-        String m1h = mk1.getNodes("/", mk1.getHeadRevision(), 0, 0, 2, null);
+        String m1h = mk1.getNodes(new TenantPath(TEST_TENANT, "/"), mk1.getHeadRevision(), 0, 0, 2, null);
         assertEquals("{\"test\":{},\":childNodeCount\":1}", m1h);
 
         // not available yet...
         assertEquals("{\":childNodeCount\":0}", m2h);
-        m2h = mk2.getNodes("/test", mk2.getHeadRevision(), 0, 0, 2, null);
+        m2h = mk2.getNodes(new TenantPath(TEST_TENANT, "/test"), mk2.getHeadRevision(), 0, 0, 2, null);
 
         // the delay is 10 ms - wait at most 1000 millis
         for (int i = 0; i < 100; i++) {
@@ -327,7 +331,7 @@ public class ClusterTest {
         }
 
         // so now it should be available
-        m2h = mk2.getNodes("/", mk2.getHeadRevision(), 0, 0, 5, null);
+        m2h = mk2.getNodes(new TenantPath(TEST_TENANT, "/"), mk2.getHeadRevision(), 0, 0, 5, null);
         assertEquals("{\"test\":{},\":childNodeCount\":1}", m2h);
     }
 
@@ -372,7 +376,7 @@ public class ClusterTest {
         rootStates1.clear();
         rootStates2.clear();
 
-        NodeBuilder builder = ns1.getRoot().builder();
+        NodeBuilder builder = ns1.getRoot(TEST_TENANT).builder();
         builder.child("foo");
         merge(ns1, builder);
 

@@ -76,7 +76,7 @@ public class ConcurrentPropertyUpdateTest extends BaseDocumentMKTest {
     @Test
     public void concurrentUpdates() throws Exception {
         final DocumentNodeStore store = mk.getNodeStore();
-        NodeBuilder builder = store.getRoot().builder();
+        NodeBuilder builder = store.getRoot(TEST_TENANT).builder();
         builder.child("test").setProperty("prop", System.currentTimeMillis());
         store.merge(builder, HOOK, CommitInfo.EMPTY);
         List<Callable<Object>> tasks = Lists.newArrayList();
@@ -86,7 +86,7 @@ public class ConcurrentPropertyUpdateTest extends BaseDocumentMKTest {
                 public Object call() throws Exception {
                     for (int i = 0; i < 100; i++) {
                         try {
-                            NodeBuilder builder = store.getRoot().builder();
+                            NodeBuilder builder = store.getRoot(TEST_TENANT).builder();
                             builder.getChildNode("test").setProperty(
                                     "prop", Math.random());
                             store.merge(builder, HOOK, CommitInfo.EMPTY);

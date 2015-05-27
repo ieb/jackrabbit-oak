@@ -20,6 +20,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -27,6 +28,7 @@ import org.junit.Test;
  * Tests with emphasis on remove node and property operations.
  */
 public class DocumentMKCommitRemoveTest extends BaseDocumentMKTest {
+
 
     @Test
     public void removeSingleNode() throws Exception {
@@ -53,7 +55,7 @@ public class DocumentMKCommitRemoveTest extends BaseDocumentMKTest {
     public void removeNodeTwice() throws Exception {
         String base = mk.commit("", "+\"/a\":{}", null, null);
         mk.commit("", "-\"/a\"", base, null);
-        assertTrue(mk.nodeExists("/a", base));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/a"), base));
         mk.commit("", "-\"/a\"", base, null);
     }
 
@@ -61,38 +63,38 @@ public class DocumentMKCommitRemoveTest extends BaseDocumentMKTest {
     public void removeAndAddNode() throws Exception {
         String base = mk.commit("", "+\"/a\":{}", null, null);
         String rev = mk.commit("", "-\"/a\"", base, null);
-        assertTrue(mk.nodeExists("/a", base));
-        assertFalse(mk.nodeExists("/a", rev));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/a"), base));
+        assertFalse(mk.nodeExists(new TenantPath(TEST_TENANT, "/a"), rev));
         mk.commit("", "+\"/a\":{}", rev, null);
     }
 
     @Test
     public void removeNodeWithChildren() throws Exception {
         mk.commit("/", "+\"a\" : { \"b\" : {},  \"c\" : {}, \"d\" : {}}", null, null);
-        assertTrue(mk.nodeExists("/a", null));
-        assertTrue(mk.nodeExists("/a/b", null));
-        assertTrue(mk.nodeExists("/a/c", null));
-        assertTrue(mk.nodeExists("/a/d", null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/a"), null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/a/b"), null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/a/c"), null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/a/d"), null));
 
         mk.commit("/", "-\"a/b\"", null, null);
-        assertTrue(mk.nodeExists("/a", null));
-        assertFalse(mk.nodeExists("/a/b", null));
-        assertTrue(mk.nodeExists("/a/c", null));
-        assertTrue(mk.nodeExists("/a/d", null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/a"), null));
+        assertFalse(mk.nodeExists(new TenantPath(TEST_TENANT, "/a/b"), null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/a/c"), null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/a/d"), null));
     }
 
     @Test
     public void removeNodeWithNestedChildren() throws Exception {
         mk.commit("/", "+\"a\" : { \"b\" : { \"c\" : { \"d\" : {} } } }", null, null);
-        assertTrue(mk.nodeExists("/a", null));
-        assertTrue(mk.nodeExists("/a/b", null));
-        assertTrue(mk.nodeExists("/a/b/c", null));
-        assertTrue(mk.nodeExists("/a/b/c/d", null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/a"), null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/a/b"), null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/a/b/c"), null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/a/b/c/d"), null));
 
         mk.commit("/", "-\"a\"", null, null);
-        assertFalse(mk.nodeExists("/a", null));
-        assertFalse(mk.nodeExists("/a/b", null));
-        assertFalse(mk.nodeExists("/a/b/c", null));
-        assertFalse(mk.nodeExists("/a/b/c/d", null));
+        assertFalse(mk.nodeExists(new TenantPath(TEST_TENANT, "/a"), null));
+        assertFalse(mk.nodeExists(new TenantPath(TEST_TENANT, "/a/b"), null));
+        assertFalse(mk.nodeExists(new TenantPath(TEST_TENANT, "/a/b/c"), null));
+        assertFalse(mk.nodeExists(new TenantPath(TEST_TENANT, "/a/b/c/d"), null));
     }
 }

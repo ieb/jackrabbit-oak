@@ -59,6 +59,8 @@ import org.apache.jackrabbit.oak.spi.commit.CommitInfo;
 import org.apache.jackrabbit.oak.spi.commit.EmptyHook;
 import org.apache.jackrabbit.oak.spi.state.ChildNodeEntry;
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
 import org.apache.jackrabbit.oak.stats.Clock;
 import org.junit.After;
 import org.junit.Before;
@@ -68,6 +70,8 @@ import org.junit.runners.Parameterized;
 
 @RunWith(Parameterized.class)
 public class VersionGarbageCollectorTest {
+
+    private static final Tenant TEST_TENANT = new Tenant("testtenant");
 
     private DocumentStoreFixture fixture;
 
@@ -143,7 +147,7 @@ public class VersionGarbageCollectorTest {
     @Test
     public void testGCDeletedDocument() throws Exception{
         //1. Create nodes
-        NodeBuilder b1 = store.getRoot().builder();
+        NodeBuilder b1 = store.getRoot(TEST_TENANT).builder();
         b1.child("x").child("y");
         b1.child("z");
         store.merge(b1, EmptyHook.INSTANCE, CommitInfo.EMPTY);
@@ -156,7 +160,7 @@ public class VersionGarbageCollectorTest {
         assertEquals(0, stats.deletedDocGCCount);
 
         //Remove x/y
-        NodeBuilder b2 = store.getRoot().builder();
+        NodeBuilder b2 = store.getRoot(TEST_TENANT).builder();
         b2.child("x").child("y").remove();
         store.merge(b2, EmptyHook.INSTANCE, CommitInfo.EMPTY);
 
@@ -176,11 +180,11 @@ public class VersionGarbageCollectorTest {
         assertEquals(1, stats.deletedDocGCCount);
 
         //4. Check that a revived doc (deleted and created again) does not get gc
-        NodeBuilder b3 = store.getRoot().builder();
+        NodeBuilder b3 = store.getRoot(TEST_TENANT).builder();
         b3.child("z").remove();
         store.merge(b3, EmptyHook.INSTANCE, CommitInfo.EMPTY);
 
-        NodeBuilder b4 = store.getRoot().builder();
+        NodeBuilder b4 = store.getRoot(TEST_TENANT).builder();
         b4.child("z");
         store.merge(b4, EmptyHook.INSTANCE, CommitInfo.EMPTY);
 
@@ -195,7 +199,7 @@ public class VersionGarbageCollectorTest {
         long maxAge = 1; //hrs
         long delta = TimeUnit.MINUTES.toMillis(10);
 
-        NodeBuilder b1 = store.getRoot().builder();
+        NodeBuilder b1 = store.getRoot(TEST_TENANT).builder();
         b1.child("test").child("foo").child("bar");
         b1.child("test2").child("foo");
         store.merge(b1, EmptyHook.INSTANCE, CommitInfo.EMPTY);
@@ -203,7 +207,7 @@ public class VersionGarbageCollectorTest {
         //Commit on a node which has a child and where the commit root
         // is parent
         for (int i = 0; i < NUM_REVS_THRESHOLD; i++) {
-            b1 = store.getRoot().builder();
+            b1 = store.getRoot(TEST_TENANT).builder();
             //This updates a middle node i.e. one which has child bar
             //Should result in SplitDoc of type PROP_COMMIT_ONLY
             b1.child("test").child("foo").setProperty("prop",i);
@@ -244,7 +248,7 @@ public class VersionGarbageCollectorTest {
         long maxAge = 1; //hrs
         long delta = TimeUnit.MINUTES.toMillis(10);
 
-        NodeBuilder b1 = store.getRoot().builder();
+        NodeBuilder b1 = store.getRoot(TEST_TENANT).builder();
         // adding the test node will cause the commit root to be placed
         // on the root document, because the children flag is set on the
         // root document
@@ -253,14 +257,14 @@ public class VersionGarbageCollectorTest {
         assertTrue(getDoc("/test").getLocalRevisions().isEmpty());
         // setting the test property afterwards will use the new test document
         // as the commit root. this what we want for the test.
-        b1 = store.getRoot().builder();
+        b1 = store.getRoot(TEST_TENANT).builder();
         b1.child("test").setProperty("test", "value");
         store.merge(b1, EmptyHook.INSTANCE, CommitInfo.EMPTY);
         assertTrue(!getDoc("/test").getLocalRevisions().isEmpty());
 
         for (int i = 0; i < PREV_SPLIT_FACTOR; i++) {
             for (int j = 0; j < NUM_REVS_THRESHOLD; j++) {
-                b1 = store.getRoot().builder();
+                b1 = store.getRoot(TEST_TENANT).builder();
                 b1.child("test").setProperty("prop", i * NUM_REVS_THRESHOLD + j);
                 store.merge(b1, EmptyHook.INSTANCE, CommitInfo.EMPTY);
             }
@@ -268,7 +272,7 @@ public class VersionGarbageCollectorTest {
         }
         // trigger another split, now that we have 10 previous docs
         // this will create an intermediate previous doc
-        store.addSplitCandidate(Utils.getIdFromPath("/test"));
+        store.addSplitCandidate(Utils.getIdFromPath(new TenantPath(TEST_TENANT, "/test")));
         store.runBackgroundOperations();
 
         Map<Revision, Range> prevRanges = getDoc("/test").getPreviousRanges();
@@ -299,7 +303,7 @@ public class VersionGarbageCollectorTest {
         long delta = TimeUnit.MINUTES.toMillis(10);
 
         Set<String> names = Sets.newHashSet();
-        NodeBuilder b1 = store.getRoot().builder();
+        NodeBuilder b1 = store.getRoot(TEST_TENANT).builder();
         for (int i = 0; i < 10; i++) {
             String name = "test-" + i;
             b1.child(name);
@@ -307,11 +311,11 @@ public class VersionGarbageCollectorTest {
         }
         store.merge(b1, EmptyHook.INSTANCE, CommitInfo.EMPTY);
 
-        for (ChildNodeEntry entry : store.getRoot().getChildNodeEntries()) {
+        for (ChildNodeEntry entry : store.getRoot(TEST_TENANT).getChildNodeEntries()) {
             entry.getNodeState();
         }
 
-        b1 = store.getRoot().builder();
+        b1 = store.getRoot(TEST_TENANT).builder();
         b1.getChildNode("test-7").remove();
         names.remove("test-7");
 
@@ -323,7 +327,7 @@ public class VersionGarbageCollectorTest {
         assertEquals(1, stats.deletedDocGCCount);
 
         Set<String> children = Sets.newHashSet();
-        for (ChildNodeEntry entry : store.getRoot().getChildNodeEntries()) {
+        for (ChildNodeEntry entry : store.getRoot(TEST_TENANT).getChildNodeEntries()) {
             children.add(entry.getName());
         }
         assertEquals(names, children);
@@ -336,7 +340,7 @@ public class VersionGarbageCollectorTest {
         long delta = TimeUnit.MINUTES.toMillis(10);
 
         for (int i = 0; i < NUM_REVS_THRESHOLD + 1; i++) {
-            NodeBuilder builder = store.getRoot().builder();
+            NodeBuilder builder = store.getRoot(TEST_TENANT).builder();
             builder.child("foo").setProperty("prop", "v" + i);
             builder.child("bar").setProperty("prop", "v" + i);
             store.merge(builder, EmptyHook.INSTANCE, CommitInfo.EMPTY);
@@ -361,11 +365,11 @@ public class VersionGarbageCollectorTest {
     public void gcDefaultLeafSplitDocs() throws Exception {
         Revision.setClock(clock);
 
-        NodeBuilder builder = store.getRoot().builder();
+        NodeBuilder builder = store.getRoot(TEST_TENANT).builder();
         builder.child("test").setProperty("prop", -1);
         merge(store, builder);
 
-        String id = Utils.getIdFromPath("/test");
+        String id = Utils.getIdFromPath(new TenantPath(TEST_TENANT, "/test"));
         long start = Revision.getCurrentTimestamp();
         // simulate continuous writes once a second for one day
         // collect garbage older than one hour
@@ -377,7 +381,7 @@ public class VersionGarbageCollectorTest {
         }
         for (int i = 0; i < 3600 * hours; i++) {
             clock.waitUntil(start + i * 1000);
-            builder = store.getRoot().builder();
+            builder = store.getRoot(TEST_TENANT).builder();
             builder.child("test").setProperty("prop", i);
             merge(store, builder);
             if (i % 10 == 0) {
@@ -410,7 +414,7 @@ public class VersionGarbageCollectorTest {
         createTestNode("bar");
 
         // remove again
-        NodeBuilder builder = store.getRoot().builder();
+        NodeBuilder builder = store.getRoot(TEST_TENANT).builder();
         builder.getChildNode("foo").remove();
         builder.getChildNode("bar").remove();
         merge(store, builder);
@@ -449,17 +453,17 @@ public class VersionGarbageCollectorTest {
         String name = PathUtils.getName(doc.getPath());
         // recreate node, which hasn't been removed yet
         name = name.equals("foo") ? "bar" : "foo";
-        builder = store.getRoot().builder();
+        builder = store.getRoot(TEST_TENANT).builder();
         builder.child(name);
         merge(store, builder);
 
         // loop over child node entries -> will populate nodeChildrenCache
-        for (ChildNodeEntry cne : store.getRoot().getChildNodeEntries()) {
+        for (ChildNodeEntry cne : store.getRoot(TEST_TENANT).getChildNodeEntries()) {
             cne.getName();
         }
         // invalidate cached DocumentNodeState
-        DocumentNodeState state = (DocumentNodeState) store.getRoot().getChildNode(name);
-        store.invalidateNodeCache(state.getPath(), state.getRevision());
+        DocumentNodeState state = (DocumentNodeState) store.getRoot(TEST_TENANT).getChildNode(name);
+        store.invalidateNodeCache(new TenantPath(TEST_TENANT, state.getPath()), state.getRevision());
 
         while (!f.isDone()) {
             docs.poll();
@@ -467,12 +471,12 @@ public class VersionGarbageCollectorTest {
 
         // read children again after GC finished
         List<String> names = Lists.newArrayList();
-        for (ChildNodeEntry cne : store.getRoot().getChildNodeEntries()) {
+        for (ChildNodeEntry cne : store.getRoot(TEST_TENANT).getChildNodeEntries()) {
             names.add(cne.getName());
         }
         assertEquals(1, names.size());
 
-        doc = ds.find(NODES, Utils.getIdFromPath("/" + names.get(0)));
+        doc = ds.find(NODES, Utils.getIdFromPath(new TenantPath(TEST_TENANT, "/" + names.get(0))));
         assertNotNull(doc);
         assertEquals(0, Iterators.size(doc.getAllPreviousDocs()));
 
@@ -483,13 +487,13 @@ public class VersionGarbageCollectorTest {
 
     private void createTestNode(String name) throws CommitFailedException {
         DocumentStore ds = store.getDocumentStore();
-        NodeBuilder builder = store.getRoot().builder();
+        NodeBuilder builder = store.getRoot(TEST_TENANT).builder();
         builder.child(name);
         merge(store, builder);
-        String id = Utils.getIdFromPath("/" + name);
+        String id = Utils.getIdFromPath(new TenantPath(TEST_TENANT, "/" + name));
         int i = 0;
         while (ds.find(NODES, id).getPreviousRanges().isEmpty()) {
-            builder = store.getRoot().builder();
+            builder = store.getRoot(TEST_TENANT).builder();
             builder.getChildNode(name).setProperty("p", i++);
             merge(store, builder);
             store.runBackgroundOperations();
@@ -502,7 +506,7 @@ public class VersionGarbageCollectorTest {
     }
 
     private NodeDocument getDoc(String path){
-        return store.getDocumentStore().find(NODES, Utils.getIdFromPath(path), 0);
+        return store.getDocumentStore().find(NODES, Utils.getIdFromPath(new TenantPath(TEST_TENANT, path)), 0);
     }
 
 }

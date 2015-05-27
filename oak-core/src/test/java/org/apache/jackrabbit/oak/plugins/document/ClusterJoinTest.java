@@ -16,6 +16,7 @@
  */
 package org.apache.jackrabbit.oak.plugins.document;
 
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
 import org.json.simple.JSONObject;
 import org.junit.Test;
 
@@ -51,7 +52,7 @@ public class ClusterJoinTest extends AbstractMongoConnectionTest {
             assertChildNodeCount("/", rev1, 1);
             // read children @rev2, should not contain /bar, /bla
             // because there was no background read yet
-            JSONObject obj = parseJSONObject(mk.getNodes("/", rev2, 0, 0, 10, null));
+            JSONObject obj = parseJSONObject(mk.getNodes(new TenantPath(TEST_TENANT, "/"), rev2, 0, 0, 10, null));
             // make changes from second DocumentMK visible
             mk2.runBackgroundOperations();
             mk.runBackgroundOperations();
@@ -68,7 +69,7 @@ public class ClusterJoinTest extends AbstractMongoConnectionTest {
             // @rev3 is after background read
             rev3 = mk.getHeadRevision();
             // now all nodes must be visible
-            obj = parseJSONObject(mk.getNodes("/", rev3, 0, 0, 10, null));
+            obj = parseJSONObject(mk.getNodes(new TenantPath(TEST_TENANT, "/"), rev3, 0, 0, 10, null));
             for (Object key : obj.keySet()) {
                 String name = key.toString();
                 if (name.startsWith(":")) {

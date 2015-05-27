@@ -29,6 +29,8 @@ import org.apache.jackrabbit.oak.plugins.document.DocumentStoreFixture.RDBFixtur
 import org.apache.jackrabbit.oak.spi.commit.CommitInfo;
 import org.apache.jackrabbit.oak.spi.commit.EmptyHook;
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
 import org.apache.jackrabbit.oak.stats.Clock;
 import org.junit.After;
 import org.junit.Before;
@@ -45,6 +47,8 @@ import static org.junit.Assert.fail;
 
 @RunWith(Parameterized.class)
 public class LastRevRecoveryAgentTest {
+    private static final Tenant TEST_TENANT = new Tenant("testtenant");
+
     private final DocumentStoreFixture fixture;
 
     private DocumentNodeStore ds1;
@@ -115,7 +119,7 @@ public class LastRevRecoveryAgentTest {
     @Test
     public void testIsRecoveryRequired() throws Exception{
         //1. Create base structure /x/y
-        NodeBuilder b1 = ds1.getRoot().builder();
+        NodeBuilder b1 = ds1.getRoot(TEST_TENANT).builder();
         b1.child("x").child("y");
         ds1.merge(b1, EmptyHook.INSTANCE, CommitInfo.EMPTY);
         ds1.runBackgroundOperations();
@@ -123,7 +127,7 @@ public class LastRevRecoveryAgentTest {
         ds2.runBackgroundOperations();
 
         //2. Add a new node /x/y/z in C2
-        NodeBuilder b2 = ds2.getRoot().builder();
+        NodeBuilder b2 = ds2.getRoot(TEST_TENANT).builder();
         b2.child("x").child("y").child("z").setProperty("foo", "bar");
         ds2.merge(b2, EmptyHook.INSTANCE, CommitInfo.EMPTY);
 
@@ -153,7 +157,7 @@ public class LastRevRecoveryAgentTest {
     @Test
     public void testRepeatedRecovery() throws Exception {
         //1. Create base structure /x/y
-        NodeBuilder b1 = ds1.getRoot().builder();
+        NodeBuilder b1 = ds1.getRoot(TEST_TENANT).builder();
         b1.child("x").child("y");
         ds1.merge(b1, EmptyHook.INSTANCE, CommitInfo.EMPTY);
         ds1.runBackgroundOperations();
@@ -161,7 +165,7 @@ public class LastRevRecoveryAgentTest {
         ds2.runBackgroundOperations();
 
         //2. Add a new node /x/y/z in C2
-        NodeBuilder b2 = ds2.getRoot().builder();
+        NodeBuilder b2 = ds2.getRoot(TEST_TENANT).builder();
         b2.child("x").child("y").child("z").setProperty("foo", "bar");
         ds2.merge(b2, EmptyHook.INSTANCE, CommitInfo.EMPTY);
 
@@ -187,14 +191,14 @@ public class LastRevRecoveryAgentTest {
         ds1.setMaxBackOffMillis(0);
         ds2.setMaxBackOffMillis(0);
 
-        NodeBuilder b1 = ds1.getRoot().builder();
+        NodeBuilder b1 = ds1.getRoot(TEST_TENANT).builder();
         b1.child("x").child("y").setProperty("p", "v1");
         merge(ds1, b1);
 
         ds1.runBackgroundOperations();
         ds2.runBackgroundOperations();
 
-        NodeBuilder b2 = ds2.getRoot().builder();
+        NodeBuilder b2 = ds2.getRoot(TEST_TENANT).builder();
         b2.child("x").child("y").setProperty("p", "v2");
         merge(ds2, b2);
 
@@ -204,7 +208,7 @@ public class LastRevRecoveryAgentTest {
 
         // this write will conflict because ds2 did not run
         // background ops after setting p=v2
-        b1 = ds1.getRoot().builder();
+        b1 = ds1.getRoot(TEST_TENANT).builder();
         b1.child("x").child("y").setProperty("p", "v11");
         try {
             merge(ds1, b1);
@@ -217,14 +221,14 @@ public class LastRevRecoveryAgentTest {
         ds1.runBackgroundOperations();
 
         // now the write must succeed
-        b1 = ds1.getRoot().builder();
+        b1 = ds1.getRoot(TEST_TENANT).builder();
         b1.child("x").child("y").setProperty("p", "v11");
         merge(ds1, b1);
     }
 
     private static NodeDocument getDocument(DocumentNodeStore nodeStore,
                                             String path) {
-        return nodeStore.getDocumentStore().find(NODES, getIdFromPath(path));
+        return nodeStore.getDocumentStore().find(NODES, getIdFromPath(new TenantPath(TEST_TENANT, path)));
     }
 
     private static void merge(DocumentNodeStore store, NodeBuilder builder)

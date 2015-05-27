@@ -54,6 +54,7 @@ import org.apache.jackrabbit.oak.spi.blob.GarbageCollectableBlobStore;
 import org.apache.jackrabbit.oak.spi.commit.CommitInfo;
 import org.apache.jackrabbit.oak.spi.commit.EmptyHook;
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
 import org.apache.jackrabbit.oak.stats.Clock;
 import org.junit.After;
 import org.junit.Before;
@@ -65,6 +66,7 @@ import org.slf4j.LoggerFactory;
  * Test for gc in a shared data store among hetrogeneous oak node stores.
  */
 public class SharedBlobStoreGCTest {
+    private static final Tenant TEST_TENANT = new Tenant("testtenant");
     private static final Logger log = LoggerFactory.getLogger(SharedBlobStoreGCTest.class);
 
     private Cluster cluster1;
@@ -211,7 +213,7 @@ public class SharedBlobStoreGCTest {
          * @throws Exception
          */
         public void init() throws Exception {
-            NodeBuilder a = ds.getRoot().builder();
+            NodeBuilder a = ds.getRoot(TEST_TENANT).builder();
 
             int number = 10;
             // track the number of the assets to be deleted
@@ -237,7 +239,7 @@ public class SharedBlobStoreGCTest {
             }
             ds.merge(a, EmptyHook.INSTANCE, CommitInfo.EMPTY);
 
-            a = ds.getRoot().builder();
+            a = ds.getRoot(TEST_TENANT).builder();
             for (int id : deletes) {
                 a.child("c" + id).remove();
                 ds.merge(a, EmptyHook.INSTANCE, CommitInfo.EMPTY);

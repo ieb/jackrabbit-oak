@@ -559,7 +559,9 @@ public class MemoryNodeBuilderTest {
             .setProperty("c", "cValue")
             .getNodeState();
 
-        return new AbstractNodeState() {
+        return new AbstractNodeState(C.getTenantPath()) {
+            
+            
             @Override
             public boolean exists() {
                 return exists;

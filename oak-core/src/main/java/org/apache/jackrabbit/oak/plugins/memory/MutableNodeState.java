@@ -70,6 +70,7 @@ class MutableNodeState extends AbstractNodeState {
     private boolean replaced;
 
     MutableNodeState(@Nonnull NodeState base) {
+        super(base.getTenantPath());
         checkNotNull(base);
         this.base = ModifiedNodeState.unwrap(base, properties, nodes);
     }

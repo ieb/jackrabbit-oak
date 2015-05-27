@@ -30,6 +30,8 @@ import org.apache.jackrabbit.oak.api.Type;
 import org.apache.jackrabbit.oak.commons.json.JsopBuilder;
 import org.apache.jackrabbit.oak.plugins.document.DocumentNodeState.Children;
 import org.apache.jackrabbit.oak.plugins.document.util.Utils;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
 import org.junit.Test;
 
 import com.google.common.collect.Lists;
@@ -39,6 +41,8 @@ import com.mongodb.DB;
  * A set of simple tests.
  */
 public class SimpleTest {
+
+    private static final Tenant TEST_TENANT = new Tenant("testtenant");
 
     private static final boolean MONGO_DB = false;
     // private static final boolean MONGO_DB = true;
@@ -51,11 +55,11 @@ public class SimpleTest {
 
     @Test
     public void pathToId() {
-        assertEquals("0:/", Utils.getIdFromPath("/"));
+        assertEquals("0:/", Utils.getIdFromPath(new TenantPath(TEST_TENANT, "/")));
         assertEquals("/", Utils.getPathFromId("0:/"));
-        assertEquals("1:/test", Utils.getIdFromPath("/test"));
+        assertEquals("1:/test", Utils.getIdFromPath(new TenantPath(TEST_TENANT, "/test")));
         assertEquals("/test", Utils.getPathFromId("1:/test"));
-        assertEquals("10:/1/2/3/3/4/6/7/8/9/a", Utils.getIdFromPath("/1/2/3/3/4/6/7/8/9/a"));
+        assertEquals("10:/1/2/3/3/4/6/7/8/9/a", Utils.getIdFromPath(new TenantPath(TEST_TENANT, "/1/2/3/3/4/6/7/8/9/a")));
         assertEquals("/1/2/3/3/4/6/7/8/9/a", Utils.getPathFromId("10:/1/2/3/3/4/6/7/8/9/a"));
     }
 
@@ -75,13 +79,13 @@ public class SimpleTest {
         DocumentStore s = mk.getDocumentStore();
         DocumentNodeStore ns = mk.getNodeStore();
         Revision rev = Revision.fromString(mk.getHeadRevision());
-        DocumentNodeState n = new DocumentNodeState(ns, "/test", rev);
+        DocumentNodeState n = new DocumentNodeState(ns, new TenantPath(TEST_TENANT, "/test"), rev);
         n.setProperty("name", "\"Hello\"");
         UpdateOp op = n.asOperation(true);
         // mark as commit root
         NodeDocument.setRevision(op, rev, "c");
         assertTrue(s.create(Collection.NODES, Lists.newArrayList(op)));
-        DocumentNodeState n2 = ns.getNode("/test", rev);
+        DocumentNodeState n2 = ns.getNode(new TenantPath(TEST_TENANT, "/test"), rev);
         assertNotNull(n2);
         PropertyState p = n2.getProperty("name");
         assertNotNull(p);
@@ -99,25 +103,25 @@ public class SimpleTest {
         String rev3 = mk.commit("/test", "+\"b\":{}", null, null);
         String rev4 = mk.commit("/test", "^\"a/x\":1", null, null);
 
-        String r0 = mk.getNodes("/", rev0, 0, 0, Integer.MAX_VALUE, ":id");
+        String r0 = mk.getNodes(new TenantPath(TEST_TENANT, "/"), rev0, 0, 0, Integer.MAX_VALUE, ":id");
         assertEquals("{\":id\":\"/@r0-0-1\",\":childNodeCount\":0}", r0);
-        String r1 = mk.getNodes("/", rev1, 0, 0, Integer.MAX_VALUE, ":id");
+        String r1 = mk.getNodes(new TenantPath(TEST_TENANT, "/"), rev1, 0, 0, Integer.MAX_VALUE, ":id");
         assertEquals("{\":id\":\"/@r1-0-1\",\"test\":{},\":childNodeCount\":1}", r1);
-        String r2 = mk.getNodes("/", rev2, 0, 0, Integer.MAX_VALUE, ":id");
+        String r2 = mk.getNodes(new TenantPath(TEST_TENANT, "/"), rev2, 0, 0, Integer.MAX_VALUE, ":id");
         assertEquals("{\":id\":\"/@r2-0-1\",\"test\":{},\":childNodeCount\":1}", r2);
         String r3;
-        r3 = mk.getNodes("/", rev3, 0, 0, Integer.MAX_VALUE, ":id");
+        r3 = mk.getNodes(new TenantPath(TEST_TENANT, "/"), rev3, 0, 0, Integer.MAX_VALUE, ":id");
         assertEquals("{\":id\":\"/@r3-0-1\",\"test\":{},\":childNodeCount\":1}", r3);
-        r3 = mk.getNodes("/test", rev3, 0, 0, Integer.MAX_VALUE, ":id");
+        r3 = mk.getNodes(new TenantPath(TEST_TENANT, "/test"), rev3, 0, 0, Integer.MAX_VALUE, ":id");
         assertEquals("{\":id\":\"/test@r3-0-1\",\"a\":{},\"b\":{},\":childNodeCount\":2}", r3);
         String r4;
-        r4 = mk.getNodes("/", rev4, 0, 0, Integer.MAX_VALUE, ":id");
+        r4 = mk.getNodes(new TenantPath(TEST_TENANT, "/"), rev4, 0, 0, Integer.MAX_VALUE, ":id");
         assertEquals("{\":id\":\"/@r4-0-1\",\"test\":{},\":childNodeCount\":1}", r4);
-        r4 = mk.getNodes("/test", rev4, 0, 0, Integer.MAX_VALUE, ":id");
+        r4 = mk.getNodes(new TenantPath(TEST_TENANT, "/test"), rev4, 0, 0, Integer.MAX_VALUE, ":id");
         assertEquals("{\":id\":\"/test@r4-0-1\",\"a\":{},\"b\":{},\":childNodeCount\":2}", r4);
-        r4 = mk.getNodes("/test/a", rev4, 0, 0, Integer.MAX_VALUE, ":id");
+        r4 = mk.getNodes(new TenantPath(TEST_TENANT, "/test/a"), rev4, 0, 0, Integer.MAX_VALUE, ":id");
         assertEquals("{\":id\":\"/test/a@r4-0-1\",\"x\":1,\":childNodeCount\":0}", r4);
-        r4 = mk.getNodes("/test/b", rev4, 0, 0, Integer.MAX_VALUE, ":id");
+        r4 = mk.getNodes(new TenantPath(TEST_TENANT, "/test/b"), rev4, 0, 0, Integer.MAX_VALUE, ":id");
         assertEquals("{\":id\":\"/test/b@r3-0-1\",\":childNodeCount\":0}", r4);
 
         mk.dispose();
@@ -149,24 +153,24 @@ public class SimpleTest {
         String rev3 = mk.commit("/", "+\"t3\":{}", null, null);
         String rev4 = mk.commit("/", "^\"t3/x\":1", null, null);
 
-        String r0 = mk.getNodes("/", rev0, 0, 0, Integer.MAX_VALUE, null);
+        String r0 = mk.getNodes(new TenantPath(TEST_TENANT, "/"), rev0, 0, 0, Integer.MAX_VALUE, null);
         assertEquals("{\":childNodeCount\":0}", r0);
-        String r1 = mk.getNodes("/", rev1, 0, 0, Integer.MAX_VALUE, null);
+        String r1 = mk.getNodes(new TenantPath(TEST_TENANT, "/"), rev1, 0, 0, Integer.MAX_VALUE, null);
         assertEquals("{\"t1\":{},\":childNodeCount\":1}", r1);
-        String r2 = mk.getNodes("/", rev2, 0, 0, Integer.MAX_VALUE, null);
+        String r2 = mk.getNodes(new TenantPath(TEST_TENANT, "/"), rev2, 0, 0, Integer.MAX_VALUE, null);
         assertEquals("{\"t1\":{},\"t2\":{},\":childNodeCount\":2}", r2);
-        String r3 = mk.getNodes("/", rev3, 0, 0, Integer.MAX_VALUE, null);
+        String r3 = mk.getNodes(new TenantPath(TEST_TENANT, "/"), rev3, 0, 0, Integer.MAX_VALUE, null);
         assertEquals("{\"t1\":{},\"t2\":{},\"t3\":{},\":childNodeCount\":3}", r3);
 
-        String diff01 = mk.diff(rev0, rev1, "/", 0).trim();
+        String diff01 = mk.diff(rev0, rev1, new TenantPath(TEST_TENANT, "/"), 0).trim();
         assertEquals("+\"/t1\":{}", diff01);
-        String diff12 = mk.diff(rev1, rev2, "/", 0).trim();
+        String diff12 = mk.diff(rev1, rev2, new TenantPath(TEST_TENANT, "/"), 0).trim();
         assertEquals("+\"/t2\":{}", diff12);
-        String diff23 = mk.diff(rev2, rev3, "/", 0).trim();
+        String diff23 = mk.diff(rev2, rev3, new TenantPath(TEST_TENANT, "/"), 0).trim();
         assertEquals("+\"/t3\":{}", diff23);
-        String diff13 = mk.diff(rev1, rev3, "/", 0).trim();
+        String diff13 = mk.diff(rev1, rev3, new TenantPath(TEST_TENANT, "/"), 0).trim();
         assertEquals("+\"/t2\":{}\n+\"/t3\":{}", diff13);
-        String diff34 = mk.diff(rev3, rev4, "/", 0).trim();
+        String diff34 = mk.diff(rev3, rev4, new TenantPath(TEST_TENANT, "/"), 0).trim();
         assertEquals("^\"/t3\":{}", diff34);
         mk.dispose();
     }
@@ -178,13 +182,13 @@ public class SimpleTest {
         String rev1 = mk.commit("/", "+\"test\":{\"name\": \"Hello\"} ^ \"x\": 1", null, null);
         String rev2 = mk.commit("/", "-\"test\" ^ \"x\": 2", null, null);
         String rev3 = mk.commit("/", "+\"test\":{\"name\": \"Hallo\"} ^ \"x\": 3", null, null);
-        String test0 = mk.getNodes("/test", rev0, 0, 0, Integer.MAX_VALUE, null);
+        String test0 = mk.getNodes(new TenantPath(TEST_TENANT, "/test"), rev0, 0, 0, Integer.MAX_VALUE, null);
         assertNull(null, test0);
-        String test1 = mk.getNodes("/test", rev1, 0, 0, Integer.MAX_VALUE, null);
+        String test1 = mk.getNodes(new TenantPath(TEST_TENANT, "/test"), rev1, 0, 0, Integer.MAX_VALUE, null);
         assertEquals("{\"name\":\"Hello\",\":childNodeCount\":0}", test1);
-        String test2 = mk.getNodes("/test", rev2, 0, 0, Integer.MAX_VALUE, null);
+        String test2 = mk.getNodes(new TenantPath(TEST_TENANT, "/test"), rev2, 0, 0, Integer.MAX_VALUE, null);
         assertNull(null, test2);
-        String test3 = mk.getNodes("/test", rev3, 0, 0, Integer.MAX_VALUE, null);
+        String test3 = mk.getNodes(new TenantPath(TEST_TENANT, "/test"), rev3, 0, 0, Integer.MAX_VALUE, null);
         assertEquals("{\"name\":\"Hallo\",\":childNodeCount\":0}", test3);
         mk.dispose();
     }
@@ -195,9 +199,9 @@ public class SimpleTest {
         String rev = mk.commit("/", "+\"test\":{\"x\":\"1\",\"child\": {}}", null, null);
         rev = mk.commit("/", "-\"test\"", rev, null);
         rev = mk.commit("/", "+\"test\":{}  +\"test2\": {}", null, null);
-        String test = mk.getNodes("/test", rev, 0, 0, Integer.MAX_VALUE, null);
+        String test = mk.getNodes(new TenantPath(TEST_TENANT, "/test"), rev, 0, 0, Integer.MAX_VALUE, null);
         assertEquals("{\":childNodeCount\":0}", test);
-        String test2 = mk.getNodes("/test2", rev, 0, 0, Integer.MAX_VALUE, null);
+        String test2 = mk.getNodes(new TenantPath(TEST_TENANT, "/test2"), rev, 0, 0, Integer.MAX_VALUE, null);
         assertEquals("{\":childNodeCount\":0}", test2);
         mk.dispose();
     }
@@ -207,9 +211,9 @@ public class SimpleTest {
         DocumentMK mk = createMK();
         String rev = mk.commit("/", "+\"test\":{\"x\":\"1\",\"child\": {}}", null, null);
         rev = mk.commit("/", ">\"test\": \"/test2\"", rev, null);
-        String test = mk.getNodes("/test2", rev, 0, 0, Integer.MAX_VALUE, null);
+        String test = mk.getNodes(new TenantPath(TEST_TENANT, "/test2"), rev, 0, 0, Integer.MAX_VALUE, null);
         assertEquals("{\"x\":\"1\",\"child\":{},\":childNodeCount\":1}", test);
-        test = mk.getNodes("/test", rev, 0, 0, Integer.MAX_VALUE, null);
+        test = mk.getNodes(new TenantPath(TEST_TENANT, "/test"), rev, 0, 0, Integer.MAX_VALUE, null);
         assertNull(test);
         mk.dispose();
     }
@@ -219,9 +223,9 @@ public class SimpleTest {
         DocumentMK mk = createMK();
         String rev = mk.commit("/", "+\"test\":{\"x\":\"1\",\"child\": {}}", null, null);
         rev = mk.commit("/", "*\"test\": \"/test2\"", rev, null);
-        String test = mk.getNodes("/test2", rev, 0, 0, Integer.MAX_VALUE, null);
+        String test = mk.getNodes(new TenantPath(TEST_TENANT, "/test2"), rev, 0, 0, Integer.MAX_VALUE, null);
         assertEquals("{\"x\":\"1\",\"child\":{},\":childNodeCount\":1}", test);
-        test = mk.getNodes("/test", rev, 0, 0, Integer.MAX_VALUE, null);
+        test = mk.getNodes(new TenantPath(TEST_TENANT, "/test"), rev, 0, 0, Integer.MAX_VALUE, null);
         assertEquals("{\"x\":\"1\",\"child\":{},\":childNodeCount\":1}", test);
         mk.dispose();
     }
@@ -231,11 +235,11 @@ public class SimpleTest {
         DocumentMK mk = createMK();
         String rev = mk.commit(
                 "/", "+\"test1\":{\"name.first\": \"Hello\"} +\"test2\":{\"_id\": \"a\"} +\"test3\":{\"$x\": \"1\"}", null, null);
-        String test1 = mk.getNodes("/test1", rev, 0, 0, Integer.MAX_VALUE, null);
+        String test1 = mk.getNodes(new TenantPath(TEST_TENANT, "/test1"), rev, 0, 0, Integer.MAX_VALUE, null);
         assertEquals("{\"name.first\":\"Hello\",\":childNodeCount\":0}", test1);
-        String test2 = mk.getNodes("/test2", rev, 0, 0, Integer.MAX_VALUE, null);
+        String test2 = mk.getNodes(new TenantPath(TEST_TENANT, "/test2"), rev, 0, 0, Integer.MAX_VALUE, null);
         assertEquals("{\"_id\":\"a\",\":childNodeCount\":0}", test2);
-        String test3 = mk.getNodes("/test3", rev, 0, 0, Integer.MAX_VALUE, null);
+        String test3 = mk.getNodes(new TenantPath(TEST_TENANT, "/test3"), rev, 0, 0, Integer.MAX_VALUE, null);
         assertEquals("{\"$x\":\"1\",\":childNodeCount\":0}", test3);
         mk.dispose();
     }
@@ -246,23 +250,23 @@ public class SimpleTest {
         DocumentNodeStore ns = mk.getNodeStore();
 
         String rev = mk.commit("/", "+\"test\":{\"name\": \"Hello\"}", null, null);
-        String test = mk.getNodes("/test", rev, 0, 0, Integer.MAX_VALUE, null);
+        String test = mk.getNodes(new TenantPath(TEST_TENANT, "/test"), rev, 0, 0, Integer.MAX_VALUE, null);
         assertEquals("{\"name\":\"Hello\",\":childNodeCount\":0}", test);
 
         String r0 = mk.commit("/test", "+\"a\":{\"name\": \"World\"}", null, null);
         String r1 = mk.commit("/test", "+\"b\":{\"name\": \"!\"}", null, null);
-        test = mk.getNodes("/test", r0, 0, 0, Integer.MAX_VALUE, null);
-        DocumentNodeState n = ns.getNode("/", Revision.fromString(r0));
+        test = mk.getNodes(new TenantPath(TEST_TENANT, "/test"), r0, 0, 0, Integer.MAX_VALUE, null);
+        DocumentNodeState n = ns.getNode(new TenantPath(TEST_TENANT, "/"), Revision.fromString(r0));
         assertNotNull(n);
         Children c = ns.getChildren(n, null, Integer.MAX_VALUE);
         assertEquals("[test]", c.toString());
-        n = ns.getNode("/test", Revision.fromString(r1));
+        n = ns.getNode(new TenantPath(TEST_TENANT, "/test"), Revision.fromString(r1));
         assertNotNull(n);
         c = ns.getChildren(n, null, Integer.MAX_VALUE);
         assertEquals("[a, b]", c.toString());
 
         rev = mk.commit("", "^\"/test\":1", null, null);
-        test = mk.getNodes("/", rev, 0, 0, Integer.MAX_VALUE, null);
+        test = mk.getNodes(new TenantPath(TEST_TENANT, "/"), rev, 0, 0, Integer.MAX_VALUE, null);
         assertEquals("{\"test\":1,\"test\":{},\":childNodeCount\":1}", test);
 
         // System.out.println(test);
@@ -279,19 +283,19 @@ public class SimpleTest {
         mk.commit("/testDel", "+\"b\":{\"name\": \"!\"}", null, null);
         String r1 = mk.commit("/testDel", "+\"c\":{\"name\": \"!\"}", null, null);
 
-        DocumentNodeState n = ns.getNode("/testDel", Revision.fromString(r1));
+        DocumentNodeState n = ns.getNode(new TenantPath(TEST_TENANT, "/testDel"), Revision.fromString(r1));
         assertNotNull(n);
         Children c = ns.getChildren(n, null, Integer.MAX_VALUE);
         assertEquals(3, c.children.size());
 
         String r2 = mk.commit("/testDel", "-\"c\"", null, null);
-        n = ns.getNode("/testDel", Revision.fromString(r2));
+        n = ns.getNode(new TenantPath(TEST_TENANT, "/testDel"), Revision.fromString(r2));
         assertNotNull(n);
         c = ns.getChildren(n, null, Integer.MAX_VALUE);
         assertEquals(2, c.children.size());
 
         String r3 = mk.commit("/", "-\"testDel\"", null, null);
-        n = ns.getNode("/testDel", Revision.fromString(r3));
+        n = ns.getNode(new TenantPath(TEST_TENANT, "/testDel"), Revision.fromString(r3));
         assertNull(n);
     }
 
@@ -320,13 +324,13 @@ public class SimpleTest {
             jsop.tag('+').key(s).object().key(s).value("x").endObject();
             rev = mk.commit("/", jsop.toString(),
                     null, null);
-            nodes = mk.getNodes("/" + s, rev, 0, 0, 100, null);
+            nodes = mk.getNodes(new TenantPath(TEST_TENANT, "/" + s), rev, 0, 0, 100, null);
             jsop = new JsopBuilder();
             jsop.object().key(s).value("x").
                     key(":childNodeCount").value(0).endObject();
             String n = jsop.toString();
             assertEquals(n, nodes);
-            nodes = mk.getNodes("/", rev, 0, 0, 100, null);
+            nodes = mk.getNodes(new TenantPath(TEST_TENANT, "/"), rev, 0, 0, 100, null);
             jsop = new JsopBuilder();
             jsop.object().key(s).object().endObject().
             key(":childNodeCount").value(1).endObject();
@@ -354,13 +358,13 @@ public class SimpleTest {
             jsop.tag('+').key(s).object().key(s).value("x").endObject();
             rev = mk.commit("/", jsop.toString(),
                     null, null);
-            nodes = mk.getNodes("/" + s, rev, 0, 0, 10, null);
+            nodes = mk.getNodes(new TenantPath(TEST_TENANT, "/" + s), rev, 0, 0, 10, null);
             jsop = new JsopBuilder();
             jsop.object().key(s).value("x").
                     key(":childNodeCount").value(0).endObject();
             String n = jsop.toString();
             assertEquals(n, nodes);
-            nodes = mk.getNodes("/", rev, 0, 0, 10, null);
+            nodes = mk.getNodes(new TenantPath(TEST_TENANT, "/"), rev, 0, 0, 10, null);
             jsop = new JsopBuilder();
             jsop.object().key(s).object().endObject().
             key(":childNodeCount").value(1).endObject();
@@ -387,8 +391,8 @@ public class SimpleTest {
                 ">\"/root/a\":\"/root/c\"\n",
                 head, "");
 
-        assertFalse(mk.nodeExists("/root/a", head));
-        assertTrue(mk.nodeExists("/root/c/b", head));
+        assertFalse(mk.nodeExists(new TenantPath(TEST_TENANT, "/root/a"), head));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/root/c/b"), head));
     }
 
     @Test

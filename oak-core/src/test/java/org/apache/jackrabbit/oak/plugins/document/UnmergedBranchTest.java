@@ -25,12 +25,16 @@ import java.util.TreeMap;
 
 import org.apache.jackrabbit.oak.plugins.document.memory.MemoryDocumentStore;
 import org.apache.jackrabbit.oak.plugins.document.util.Utils;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
 import org.junit.Test;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class UnmergedBranchTest {
+
+    private static final Tenant TEST_TENANT = new Tenant("testtenant");
 
     @Test
     public void purgeUnmergedBranch() throws Exception {
@@ -86,7 +90,7 @@ public class UnmergedBranchTest {
     }
 
     private NodeDocument getRootDoc(DocumentMK mk){
-        return mk.getNodeStore().getDocumentStore().find(Collection.NODES, Utils.getIdFromPath("/"));
+        return mk.getNodeStore().getDocumentStore().find(Collection.NODES, Utils.getIdFromPath(new TenantPath(TEST_TENANT, "/")));
     }
 
     private static DocumentMK create(DocumentStore ds, int clusterId){

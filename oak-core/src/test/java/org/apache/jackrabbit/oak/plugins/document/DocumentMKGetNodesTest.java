@@ -19,6 +19,8 @@ package org.apache.jackrabbit.oak.plugins.document;
 import static org.junit.Assert.fail;
 
 import org.apache.jackrabbit.oak.plugins.document.impl.SimpleNodeScenario;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
 import org.json.simple.JSONObject;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -28,10 +30,12 @@ import org.junit.Test;
  */
 public class DocumentMKGetNodesTest extends BaseDocumentMKTest {
 
+    private static final Tenant TEST_TENANT = new Tenant("testtenant");
+
     @Test
     public void nonExistingRevision() throws Exception {
         try {
-            mk.getNodes("/", "123", 1, 0, -1, null);
+            mk.getNodes(new TenantPath(TEST_TENANT, "/"), "123", 1, 0, -1, null);
             fail("Exception expected");
         } catch (Exception expected) {
             // expected
@@ -41,7 +45,7 @@ public class DocumentMKGetNodesTest extends BaseDocumentMKTest {
     @Test
     public void invalidRevision() throws Exception {
         try {
-            mk.getNodes("/", "invalid", 1, 0, -1, null);
+            mk.getNodes(new TenantPath(TEST_TENANT, "/"), "invalid", 1, 0, -1, null);
             fail("Exception expected");
         } catch (Exception expected) {
             // expected
@@ -53,14 +57,14 @@ public class DocumentMKGetNodesTest extends BaseDocumentMKTest {
         SimpleNodeScenario scenario = new SimpleNodeScenario(mk);
         scenario.create();
 
-        JSONObject root = parseJSONObject(mk.getNodes("/", null, 0, 0, -1, null));
+        JSONObject root = parseJSONObject(mk.getNodes(new TenantPath(TEST_TENANT, "/"), null, 0, 0, -1, null));
         assertPropertyValue(root, ":childNodeCount", 1L);
 
-        JSONObject a = parseJSONObject(mk.getNodes("/a", null, 0, 0, -1, null));
+        JSONObject a = parseJSONObject(mk.getNodes(new TenantPath(TEST_TENANT, "/a"), null, 0, 0, -1, null));
         assertPropertyValue(a, ":childNodeCount", 2L);
 
         scenario.deleteA();
-        root = parseJSONObject(mk.getNodes("/", null, 0, 0, -1, null));
+        root = parseJSONObject(mk.getNodes(new TenantPath(TEST_TENANT, "/"), null, 0, 0, -1, null));
         assertPropertyValue(root, ":childNodeCount", 0L);
     }
 
@@ -70,7 +74,7 @@ public class DocumentMKGetNodesTest extends BaseDocumentMKTest {
         SimpleNodeScenario scenario = new SimpleNodeScenario(mk);
         scenario.create();
 
-        JSONObject root = parseJSONObject(mk.getNodes("/", null, -1, 0, -1, null));
+        JSONObject root = parseJSONObject(mk.getNodes(new TenantPath(TEST_TENANT, "/"), null, -1, 0, -1, null));
         assertPropertyValue(root, ":childNodeCount", 1L);
     }
 
@@ -79,7 +83,7 @@ public class DocumentMKGetNodesTest extends BaseDocumentMKTest {
         SimpleNodeScenario scenario = new SimpleNodeScenario(mk);
         scenario.create();
 
-        JSONObject root = parseJSONObject(mk.getNodes("/", null, 0, 0, -1, null));
+        JSONObject root = parseJSONObject(mk.getNodes(new TenantPath(TEST_TENANT, "/"), null, 0, 0, -1, null));
         assertPropertyValue(root, ":childNodeCount", 1L);
 
         JSONObject a = resolveObjectValue(root, "a");
@@ -92,7 +96,7 @@ public class DocumentMKGetNodesTest extends BaseDocumentMKTest {
         SimpleNodeScenario scenario = new SimpleNodeScenario(mk);
         scenario.create();
 
-        JSONObject root = parseJSONObject(mk.getNodes("/", null, 1, 0, -1, null));
+        JSONObject root = parseJSONObject(mk.getNodes(new TenantPath(TEST_TENANT, "/"), null, 1, 0, -1, null));
         assertPropertyValue(root, ":childNodeCount", 1L);
 
         JSONObject a = resolveObjectValue(root, "a");
@@ -112,7 +116,7 @@ public class DocumentMKGetNodesTest extends BaseDocumentMKTest {
         SimpleNodeScenario scenario = new SimpleNodeScenario(mk);
         scenario.create();
 
-        JSONObject root = parseJSONObject(mk.getNodes("/", null, -1, 0, -1, null));
+        JSONObject root = parseJSONObject(mk.getNodes(new TenantPath(TEST_TENANT, "/"), null, -1, 0, -1, null));
         assertPropertyValue(root, ":childNodeCount", 1L);
 
         JSONObject a = resolveObjectValue(root, "a");

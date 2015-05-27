@@ -23,10 +23,13 @@ import com.google.common.collect.Sets;
 
 import org.apache.jackrabbit.oak.plugins.document.memory.MemoryDocumentStore;
 import org.apache.jackrabbit.oak.plugins.document.util.Utils;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
 import org.junit.Before;
 import org.junit.Test;
 
 import javax.annotation.Nonnull;
+
 import java.util.List;
 import java.util.Set;
 
@@ -39,6 +42,7 @@ import static org.junit.matchers.JUnitMatchers.hasItem;
 
 public class OptimizedChildFetchTest extends BaseDocumentMKTest {
 
+    private static final Tenant TEST_TENANT = new Tenant("testtenant");
     private TestDocumentStore ds = new TestDocumentStore();
 
     @Before
@@ -76,7 +80,7 @@ public class OptimizedChildFetchTest extends BaseDocumentMKTest {
 
         //Check that call is made to fetch child for non
         //leaf nodes
-        mk.getNodes("/root/a", rev, 0, 0, 10, null);
+        mk.getNodes(new TenantPath(TEST_TENANT, "/root/a"), rev, 0, 0, 10, null);
         assertThat(ds.paths, hasItem("3:/root/a/"));
 
         resetMK();
@@ -84,8 +88,8 @@ public class OptimizedChildFetchTest extends BaseDocumentMKTest {
 
         //Check that no query is made to fetch children for
         //leaf nodes
-        assertNotNull(mk.getNodes("/root/c", rev, 0, 0, 10, null));
-        assertNotNull(mk.getNodes("/root/a/b", rev, 0, 0, 10, null));
+        assertNotNull(mk.getNodes(new TenantPath(TEST_TENANT, "/root/c"), rev, 0, 0, 10, null));
+        assertNotNull(mk.getNodes(new TenantPath(TEST_TENANT, "/root/a/b"), rev, 0, 0, 10, null));
         assertTrue(ds.paths.isEmpty());
     }
 
@@ -96,7 +100,7 @@ public class OptimizedChildFetchTest extends BaseDocumentMKTest {
     }
 
     private boolean hasChildren(String path) {
-        NodeDocument nd = mk.getDocumentStore().find(Collection.NODES, Utils.getIdFromPath(path));
+        NodeDocument nd = mk.getDocumentStore().find(Collection.NODES, Utils.getIdFromPath(new TenantPath(TEST_TENANT, path)));
         return nd.hasChildren();
     }
 

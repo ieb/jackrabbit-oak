@@ -30,6 +30,7 @@ import org.apache.jackrabbit.oak.spi.commit.EditorHook;
 import org.apache.jackrabbit.oak.spi.commit.EditorProvider;
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
 import org.apache.jackrabbit.oak.spi.state.NodeState;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
 import org.junit.Test;
 
 /**
@@ -37,6 +38,8 @@ import org.junit.Test;
  * retrying BranchState.merge().
  */
 public class MergeRetryTest {
+
+    private static final Tenant TEST_TENANT = new Tenant("testtenant");
 
     // this hook adds a 'foo' child if it does not exist
     private static final CommitHook HOOK = new EditorHook(new EditorProvider() {
@@ -68,10 +71,10 @@ public class MergeRetryTest {
         DocumentNodeStore ns1 = createMK(1, 1000, ds, bs);
         DocumentNodeStore ns2 = createMK(2, 1000, ds, bs);
         try {
-            NodeBuilder builder1 = ns1.getRoot().builder();
+            NodeBuilder builder1 = ns1.getRoot(TEST_TENANT).builder();
             builder1.child("bar");
 
-            NodeBuilder builder2 = ns2.getRoot().builder();
+            NodeBuilder builder2 = ns2.getRoot(TEST_TENANT).builder();
             builder2.child("qux");
 
             ns1.merge(builder1, HOOK, CommitInfo.EMPTY);
@@ -94,10 +97,10 @@ public class MergeRetryTest {
         DocumentNodeStore ns1 = createMK(1, 1000, ds, bs);
         DocumentNodeStore ns2 = createMK(2, 1000, ds, bs);
         try {
-            NodeBuilder builder1 = ns1.getRoot().builder();
+            NodeBuilder builder1 = ns1.getRoot(TEST_TENANT).builder();
             createTree(builder1.child("bar"), 2);
 
-            NodeBuilder builder2 = ns2.getRoot().builder();
+            NodeBuilder builder2 = ns2.getRoot(TEST_TENANT).builder();
             createTree(builder2.child("qux"), 2);
 
             ns1.merge(builder1, HOOK, CommitInfo.EMPTY);

@@ -26,6 +26,7 @@ import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.jackrabbit.oak.plugins.document.memory.MemoryDocumentStore;
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.junit.After;
@@ -152,7 +153,7 @@ public class ConcurrentConflictTest extends BaseDocumentMKTest {
                     }
                     int sum = 0;
                     for (Map.Entry<Integer, JSONObject> entry : nodes.entrySet()) {
-                        String json = mk.getNodes("/node-" + entry.getKey(), rev, 0, 0, 1000, null);
+                        String json = mk.getNodes(new TenantPath(TEST_TENANT, "/node-" + entry.getKey()), rev, 0, 0, 1000, null);
                         JSONParser parser = new JSONParser();
                         JSONObject obj = (JSONObject) parser.parse(json);
                         entry.setValue(obj);
@@ -215,7 +216,7 @@ public class ConcurrentConflictTest extends BaseDocumentMKTest {
     static long calculateSum(DocumentMK mk, String rev) throws Exception {
         long sum = 0;
         for (int i = 0; i < NUM_NODES; i++) {
-            String json = mk.getNodes("/node-" + i, rev, 0, 0, 1000, null);
+            String json = mk.getNodes(new TenantPath(TEST_TENANT, "/node-" + i), rev, 0, 0, 1000, null);
             JSONParser parser = new JSONParser();
             JSONObject obj = (JSONObject) parser.parse(json);
             sum += (Long) obj.get("value");

@@ -35,6 +35,8 @@ import org.apache.jackrabbit.oak.plugins.document.util.Utils;
 import org.apache.jackrabbit.oak.spi.commit.CommitInfo;
 import org.apache.jackrabbit.oak.spi.commit.EmptyHook;
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
 import org.apache.jackrabbit.oak.stats.Clock;
 import org.junit.After;
 import org.junit.Before;
@@ -58,6 +60,8 @@ import static org.junit.Assert.assertTrue;
  */
 @RunWith(Parameterized.class)
 public class VersionGCWithSplitTest {
+
+    private static final Tenant TEST_TENANT = new Tenant("testtenant");
 
     private DocumentStoreFixture fixture;
 
@@ -112,16 +116,16 @@ public class VersionGCWithSplitTest {
     public void gcWithConcurrentSplit() throws Exception {
         Revision.setClock(clock);
 
-        NodeBuilder builder = store.getRoot().builder();
+        NodeBuilder builder = store.getRoot(TEST_TENANT).builder();
         builder.child("test").setProperty("prop", -1);
         merge(store, builder);
 
-        final String id = Utils.getIdFromPath("/test");
+        final String id = Utils.getIdFromPath(new TenantPath(TEST_TENANT, "/test"));
 
         DocumentStore docStore = store.getDocumentStore();
         int count = 0;
         while (docStore.find(NODES, id).getPreviousRanges().size() < PREV_SPLIT_FACTOR) {
-            builder = store.getRoot().builder();
+            builder = store.getRoot(TEST_TENANT).builder();
             builder.child("test").setProperty("prop", count);
             merge(store, builder);
             if (count++ % NUM_REVS_THRESHOLD == 0) {
@@ -155,7 +159,7 @@ public class VersionGCWithSplitTest {
 
         // perform more changes until intermediate docs are created
         while (docStore.find(NODES, id).getPreviousRanges().size() >= PREV_SPLIT_FACTOR) {
-            builder = store.getRoot().builder();
+            builder = store.getRoot(TEST_TENANT).builder();
             builder.child("test").setProperty("prop", count);
             merge(store, builder);
             if (count++ % NUM_REVS_THRESHOLD == 0) {

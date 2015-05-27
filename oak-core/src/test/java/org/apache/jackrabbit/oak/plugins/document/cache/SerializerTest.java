@@ -27,25 +27,28 @@ import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import com.google.common.collect.Ordering;
+
 import org.apache.jackrabbit.oak.plugins.document.DocumentStore;
 import org.apache.jackrabbit.oak.plugins.document.memory.MemoryDocumentStore;
 import org.apache.jackrabbit.oak.plugins.document.NodeDocument;
 import org.apache.jackrabbit.oak.plugins.document.Revision;
 import org.apache.jackrabbit.oak.plugins.document.StableRevisionComparator;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class SerializerTest {
+    private static final Tenant TEST_TENANT = new Tenant("testtenant");
     private DocumentStore store = new MemoryDocumentStore();
 
     @Test
     public void revisionSerialization() {
-        Revision r = new Revision(System.currentTimeMillis(), 1, 5);
+        Revision r = new Revision(TEST_TENANT.getTenantId(),System.currentTimeMillis(), 1, 5);
         assertEquals(r, deserialize(r));
 
-        r = new Revision(System.currentTimeMillis(), 1, 5, true);
+        r = new Revision(TEST_TENANT.getTenantId(),System.currentTimeMillis(), 1, 5, true);
         assertEquals(r, deserialize(r));
     }
 
@@ -92,7 +95,7 @@ public class SerializerTest {
     private static Map<Revision,Object> createRevisionMap(){
         Map<Revision,Object> map = new TreeMap<Revision, Object>(StableRevisionComparator.REVERSE);
         for(int i = 0; i < 10; i++){
-            map.put(new Revision(System.currentTimeMillis() + i, 0, 2),"foo"+i);
+            map.put(new Revision(TEST_TENANT.getTenantId(),System.currentTimeMillis() + i, 0, 2),"foo"+i);
         }
         return map;
     }

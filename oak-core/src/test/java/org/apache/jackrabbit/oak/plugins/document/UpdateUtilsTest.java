@@ -20,6 +20,8 @@ import java.util.Comparator;
 import java.util.Map;
 
 import org.apache.jackrabbit.oak.plugins.document.util.Utils;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
@@ -32,11 +34,13 @@ import static org.junit.Assert.assertTrue;
  */
 public class UpdateUtilsTest {
 
+    private static final Tenant TEST_TENANT = new Tenant("testtenant");
+
     @Test
     public void applyChanges() {
         Comparator<Revision> comp = StableRevisionComparator.INSTANCE;
-        Revision r = Revision.newRevision(1);
-        String id = Utils.getIdFromPath("/foo");
+        Revision r = Revision.newRevision(TEST_TENANT.getTenantId(),1);
+        String id = Utils.getIdFromPath(new TenantPath(TEST_TENANT, "/foo"));
         Document d = new Document();
         d.put(Document.ID, id);
 
@@ -80,8 +84,8 @@ public class UpdateUtilsTest {
     @Test
     public void checkConditions() {
         Comparator<Revision> comp = StableRevisionComparator.INSTANCE;
-        Revision r = Revision.newRevision(1);
-        String id = Utils.getIdFromPath("/foo");
+        Revision r = Revision.newRevision(TEST_TENANT.getTenantId(),1);
+        String id = Utils.getIdFromPath(new TenantPath(TEST_TENANT, "/foo"));
         Document d = new Document();
         d.put(Document.ID, id);
 
@@ -115,7 +119,7 @@ public class UpdateUtilsTest {
         assertFalse(UpdateUtils.checkConditions(d, op.getConditions()));
 
         op = newUpdateOp(id);
-        op.equals("t", Revision.newRevision(1), "value");
+        op.equals("t", Revision.newRevision(TEST_TENANT.getTenantId(),1), "value");
         assertFalse(UpdateUtils.checkConditions(d, op.getConditions()));
 
         op = newUpdateOp(id);

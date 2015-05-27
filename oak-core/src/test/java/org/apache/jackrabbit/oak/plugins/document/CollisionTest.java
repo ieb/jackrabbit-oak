@@ -19,6 +19,8 @@ package org.apache.jackrabbit.oak.plugins.document;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.jackrabbit.oak.plugins.document.util.Utils;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
 import org.junit.Test;
 
 import static org.apache.jackrabbit.oak.plugins.document.Collection.NODES;
@@ -29,6 +31,7 @@ import static org.junit.Assert.assertEquals;
 public class CollisionTest {
 
     private static final AtomicInteger COUNTER = new AtomicInteger();
+    private static final Tenant TEST_TENANT = new Tenant("testenant");
 
     // OAK-2342
     @Test
@@ -44,7 +47,7 @@ public class CollisionTest {
         createCollision(mk1);
         createCollision(mk2);
 
-        String id = getIdFromPath("/");
+        String id = getIdFromPath(new TenantPath(TEST_TENANT, "/"));
         assertEquals(2, store.find(NODES, id).getLocalMap(COLLISIONS).size());
 
         // restart node store

@@ -25,6 +25,7 @@ import java.util.List;
 import javax.annotation.Nonnull;
 
 import com.google.common.collect.Lists;
+
 import org.apache.jackrabbit.oak.api.CommitFailedException;
 import org.apache.jackrabbit.oak.commons.PathUtils;
 import org.apache.jackrabbit.oak.plugins.commit.AnnotatingConflictHandler;
@@ -40,12 +41,14 @@ import org.apache.jackrabbit.oak.spi.commit.EmptyHook;
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
 import org.apache.jackrabbit.oak.spi.state.NodeState;
 import org.apache.jackrabbit.oak.spi.state.NodeStore;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
 import org.junit.Before;
 import org.junit.Test;
 
 import static org.junit.Assert.assertFalse;
 
 public class NodeStoreDiffTest {
+    private static final Tenant TEST_TENANT = new Tenant("testtenant");
     private NodeStore ns;
     private final TestDocumentStore tds = new TestDocumentStore();
 
@@ -72,11 +75,11 @@ public class NodeStoreDiffTest {
         //Root rev = 3-0-1
 
         //2. Create a node under /var/a but hold on commit
-        NodeBuilder b1 = ns.getRoot().builder();
+        NodeBuilder b1 = ns.getRoot(TEST_TENANT).builder();
         createNodes(b1, "/var/a/a1");
 
         //3. Remove a node under /var/b and commit it
-        NodeBuilder b2 = ns.getRoot().builder();
+        NodeBuilder b2 = ns.getRoot(TEST_TENANT).builder();
         b2.child("var").child("b").child("b1").remove();
         merge(b2);
 
@@ -104,7 +107,7 @@ public class NodeStoreDiffTest {
         createNodes("/fake/b");
 
         //2 - Start change
-        NodeBuilder b2 = ns.getRoot().builder();
+        NodeBuilder b2 = ns.getRoot(TEST_TENANT).builder();
         createNodes(b2, "/etc/workflow/instance1");
 
         tds.reset();
@@ -156,7 +159,7 @@ public class NodeStoreDiffTest {
     }
 
     private NodeState createNodes(String... paths) throws CommitFailedException {
-        NodeBuilder nb = ns.getRoot().builder();
+        NodeBuilder nb = ns.getRoot(TEST_TENANT).builder();
         createNodes(nb, paths);
         NodeState result = merge(nb);
         return result;

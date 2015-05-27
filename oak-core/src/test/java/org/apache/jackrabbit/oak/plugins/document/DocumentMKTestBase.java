@@ -16,6 +16,8 @@
  */
 package org.apache.jackrabbit.oak.plugins.document;
 
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
@@ -30,6 +32,8 @@ import static org.junit.Assert.assertTrue;
  * <code>DocumentMKTestBase</code> provides utility methods for DocumentMK tests.
  */
 public abstract class DocumentMKTestBase {
+
+    private static final Tenant TEST_TENANT = new Tenant("testtenant");
 
     protected abstract DocumentMK getDocumentMK();
 
@@ -76,18 +80,18 @@ public abstract class DocumentMKTestBase {
                                         String revision,
                                         long numChildNodes) {
         JSONObject json = parseJSONObject(getDocumentMK().getNodes(
-                path, revision, 0, 0, -1, null));
+                new TenantPath(TEST_TENANT, path), revision, 0, 0, -1, null));
         assertPropertyValue(json, ":childNodeCount", numChildNodes);
     }
 
     protected void assertPropExists(String rev, String path, String property) {
-        String nodes = getDocumentMK().getNodes(path, rev, 0 /*depth*/, 0 /*offset*/, -1 /*maxChildNodes*/, null /*filter*/);
+        String nodes = getDocumentMK().getNodes(new TenantPath(TEST_TENANT, path), rev, 0 /*depth*/, 0 /*offset*/, -1 /*maxChildNodes*/, null /*filter*/);
         JSONObject obj = parseJSONObject(nodes);
         assertPropertyExists(obj, property);
     }
 
     protected void assertPropNotExists(String rev, String path, String property) {
-        String nodes = getDocumentMK().getNodes(path, rev, 0 /*depth*/, 0 /*offset*/, -1 /*maxChildNodes*/, null /*filter*/);
+        String nodes = getDocumentMK().getNodes(new TenantPath(TEST_TENANT, path), rev, 0 /*depth*/, 0 /*offset*/, -1 /*maxChildNodes*/, null /*filter*/);
         if (nodes == null) {
             return;
         }
@@ -96,7 +100,7 @@ public abstract class DocumentMKTestBase {
     }
 
     protected void assertPropValue(String rev, String path, String property, String value) {
-        String nodes = getDocumentMK().getNodes(path, rev, 0 /*depth*/, 0 /*offset*/, -1 /*maxChildNodes*/, null /*filter*/);
+        String nodes = getDocumentMK().getNodes(new TenantPath(TEST_TENANT, path), rev, 0 /*depth*/, 0 /*offset*/, -1 /*maxChildNodes*/, null /*filter*/);
         JSONObject obj = parseJSONObject(nodes);
         assertPropertyValue(obj, property, value);
     }
@@ -153,7 +157,7 @@ public abstract class DocumentMKTestBase {
 
     private void doAssertNodes(boolean checkExists, String revision, String...paths) {
         for (String path : paths) {
-            boolean exists = getDocumentMK().nodeExists(path, revision);
+            boolean exists = getDocumentMK().nodeExists(new TenantPath(TEST_TENANT, path), revision);
             if (checkExists) {
                 assertTrue(path + " does not exist", exists);
             } else {

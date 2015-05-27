@@ -25,6 +25,7 @@ import java.util.concurrent.TimeUnit;
 import org.apache.jackrabbit.oak.spi.commit.CommitInfo;
 import org.apache.jackrabbit.oak.spi.commit.EmptyHook;
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
 import org.apache.jackrabbit.oak.stats.Clock;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -39,6 +40,8 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 public class CheckpointsTest {
+
+    private static final Tenant TEST_TENANT = new Tenant("testtenant");
 
     private Clock clock;
 
@@ -67,7 +70,7 @@ public class CheckpointsTest {
         Revision r1 = null;
         for(int i = 0; i < Checkpoints.CLEANUP_INTERVAL; i++){
             r1 = Revision.fromString(store.checkpoint(expiryTime));
-            store.setHeadRevision(Revision.newRevision(0));
+            store.setHeadRevision(Revision.newRevision(TEST_TENANT.getTenantId(),0));
         }
         assertEquals(r1, store.getCheckpoints().getOldestRevisionToKeep());
         assertEquals(Checkpoints.CLEANUP_INTERVAL, store.getCheckpoints().size());
@@ -109,7 +112,7 @@ public class CheckpointsTest {
         Revision r1 = Revision.fromString(store.checkpoint(et1));
 
         //Do some commit to change headRevision
-        NodeBuilder b2 = store.getRoot().builder();
+        NodeBuilder b2 = store.getRoot(TEST_TENANT).builder();
         b2.child("x");
         store.merge(b2, EmptyHook.INSTANCE, CommitInfo.EMPTY);
 
@@ -138,7 +141,7 @@ public class CheckpointsTest {
         Revision r1 = Revision.fromString(cp1);
 
         //Do some commit to change headRevision
-        NodeBuilder b2 = store.getRoot().builder();
+        NodeBuilder b2 = store.getRoot(TEST_TENANT).builder();
         b2.child("x");
         store.merge(b2, EmptyHook.INSTANCE, CommitInfo.EMPTY);
 

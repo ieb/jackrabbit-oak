@@ -26,6 +26,8 @@ import com.mongodb.BasicDBObject;
 
 import org.apache.jackrabbit.oak.plugins.document.util.RevisionsKey;
 import org.apache.jackrabbit.oak.plugins.document.util.Utils;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
 import org.junit.Test;
 
 /**
@@ -40,6 +42,8 @@ public class MeasureMemory {
 
     static final DocumentNodeStore STORE = new DocumentMK.Builder()
             .setAsyncDelay(0).getNodeStore();
+
+    private static final Tenant TEST_TENANT = new Tenant("testtenant");
 
     @Test
     public void overhead() throws Exception {
@@ -134,7 +138,7 @@ public class MeasureMemory {
             @Override
             public Object[] call() {
                 RevisionsKey k = new RevisionsKey(
-                        Revision.newRevision(0), Revision.newRevision(0));
+                        Revision.newRevision(TEST_TENANT.getTenantId(), 0), Revision.newRevision(TEST_TENANT.getTenantId(), 0));
                 return new Object[]{k, k.getMemory() + OVERHEAD};
             }
         });
@@ -167,12 +171,12 @@ public class MeasureMemory {
     }
 
     static DocumentNodeState generateNode(int propertyCount) {
-        DocumentNodeState n = new DocumentNodeState(STORE, new String("/hello/world"),
-                new Revision(1, 2, 3));
+        DocumentNodeState n = new DocumentNodeState(STORE, new TenantPath(TEST_TENANT, new String("/hello/world")),
+                new Revision(TEST_TENANT.getTenantId(), 1, 2, 3));
         for (int i = 0; i < propertyCount; i++) {
             n.setProperty("property" + i, "\"values " + i + "\"");
         }
-        n.setLastRevision(new Revision(1, 2, 3));
+        n.setLastRevision(new Revision(TEST_TENANT.getTenantId(), 1, 2, 3));
         return n;
     }
 

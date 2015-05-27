@@ -19,6 +19,8 @@ package org.apache.jackrabbit.oak.plugins.document;
 import org.apache.jackrabbit.oak.spi.commit.CommitInfo;
 import org.apache.jackrabbit.oak.spi.commit.EmptyHook;
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
 import org.junit.Test;
 
 import static org.apache.jackrabbit.oak.plugins.document.Collection.NODES;
@@ -31,13 +33,15 @@ import static org.junit.Assert.assertNotNull;
  */
 public class LastRevTest {
 
+    private static final Tenant TEST_TENANT = new Tenant("testtenant");
+
     @Test
     public void lastRev() throws Exception {
         DocumentNodeStore store = new DocumentMK.Builder()
                 .setAsyncDelay(0).getNodeStore();
         DocumentStore docStore = store.getDocumentStore();
 
-        NodeBuilder root = store.getRoot().builder();
+        NodeBuilder root = store.getRoot(TEST_TENANT).builder();
         for (int i = 0; i < 10; i++) {
             NodeBuilder child = root.child("child-" + i);
             for (int j = 0; j < 10; j++) {
@@ -61,7 +65,7 @@ public class LastRevTest {
 
     private static void assertLastRevSize(DocumentStore store,
                                           String path, int size) {
-        NodeDocument doc = store.find(NODES, getIdFromPath(path));
+        NodeDocument doc = store.find(NODES, getIdFromPath(new TenantPath(TEST_TENANT, path)));
         assertNotNull(doc);
         assertEquals("_lastRev: " + doc.getLastRev(), size, doc.getLastRev().size());
     }

@@ -249,6 +249,7 @@ public class ModifiedNodeState extends AbstractNodeState {
             @Nonnull NodeState base,
             @Nonnull Map<String, PropertyState> properties,
             @Nonnull Map<String, MutableNodeState> nodes) {
+        super(base.getTenantPath());
         this.base = checkNotNull(base);
 
         if (checkNotNull(properties).isEmpty()) {

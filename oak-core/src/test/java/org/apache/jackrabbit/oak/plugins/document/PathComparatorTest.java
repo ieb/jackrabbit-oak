@@ -22,6 +22,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
 import org.junit.Test;
 
 import com.google.common.collect.Lists;
@@ -32,15 +34,16 @@ import static org.junit.Assert.assertEquals;
  * Tests for {@link PathComparator}.
  */
 public class PathComparatorTest {
+    private static final Tenant TEST_TENANT = new Tenant("testtenant");
 
     @Test
     public void sort() {
-        List<String> paths = new ArrayList<String>();
-        paths.add("/foo");
-        paths.add("/foo/bar");
-        paths.add("/bar/qux");
-        paths.add("/");
-        paths.add("/bar");
+        List<TenantPath> paths = new ArrayList<TenantPath>();
+        paths.add(new TenantPath(TEST_TENANT,"/foo"));
+        paths.add(new TenantPath(TEST_TENANT,"/foo/bar"));
+        paths.add(new TenantPath(TEST_TENANT,"/bar/qux"));
+        paths.add(new TenantPath(TEST_TENANT,"/"));
+        paths.add(new TenantPath(TEST_TENANT,"/bar"));
 
         Collections.sort(paths, PathComparator.INSTANCE);
 

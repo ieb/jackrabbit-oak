@@ -16,6 +16,7 @@
  */
 package org.apache.jackrabbit.oak.plugins.document;
 
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
 import org.junit.After;
 import org.junit.Before;
 
@@ -24,6 +25,7 @@ import org.junit.Before;
  */
 public class BaseDocumentMKTest extends DocumentMKTestBase {
 
+    static final Tenant TEST_TENANT = new Tenant("testtenant");
     protected DocumentMK mk;
 
     @Before

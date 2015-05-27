@@ -20,6 +20,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
 import org.json.simple.JSONObject;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -32,73 +33,73 @@ public class DocumentMKCommitCopyTest extends BaseDocumentMKTest {
     @Test
     public void copyNode() throws Exception {
         mk.commit("/", "+\"a\" : {}", null, null);
-        assertTrue(mk.nodeExists("/a", null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/a"), null));
 
         mk.commit("/", "*\"a\" : \"b\"", null, null);
-        assertTrue(mk.nodeExists("/a", null));
-        assertTrue(mk.nodeExists("/b", null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/a"), null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/b"), null));
     }
 
     @Test
     public void copyNodeWithChild() throws Exception {
         mk.commit("/", "+\"a\" : { \"b\" : {} }", null, null);
-        assertTrue(mk.nodeExists("/a", null));
-        assertTrue(mk.nodeExists("/a/b", null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/a"), null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/a/b"), null));
 
         mk.commit("/", "*\"a\" : \"c\"", null, null);
-        assertTrue(mk.nodeExists("/a", null));
-        assertTrue(mk.nodeExists("/a/b", null));
-        assertTrue(mk.nodeExists("/c", null));
-        assertTrue(mk.nodeExists("/c/b", null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/a"), null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/a/b"), null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/c"), null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/c/b"), null));
     }
 
     @Test
     public void copyNodeWithChildren() throws Exception {
         mk.commit("/", "+\"a\" : { \"b\" : {},  \"c\" : {}, \"d\" : {}}", null, null);
-        assertTrue(mk.nodeExists("/a", null));
-        assertTrue(mk.nodeExists("/a/b", null));
-        assertTrue(mk.nodeExists("/a/c", null));
-        assertTrue(mk.nodeExists("/a/d", null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/a"), null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/a/b"), null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/a/c"), null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/a/d"), null));
 
         mk.commit("/", "*\"a\" : \"e\"", null, null);
-        assertTrue(mk.nodeExists("/e", null));
-        assertTrue(mk.nodeExists("/e/b", null));
-        assertTrue(mk.nodeExists("/e/c", null));
-        assertTrue(mk.nodeExists("/e/d", null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/e"), null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/e/b"), null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/e/c"), null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/e/d"), null));
     }
 
     @Test
     public void copyNodeWithNestedChildren() throws Exception {
         mk.commit("/", "+\"a\" : { \"b\" : { \"c\" : { \"d\" : {} } } }", null, null);
-        assertTrue(mk.nodeExists("/a", null));
-        assertTrue(mk.nodeExists("/a/b", null));
-        assertTrue(mk.nodeExists("/a/b/c", null));
-        assertTrue(mk.nodeExists("/a/b/c/d", null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/a"), null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/a/b"), null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/a/b/c"), null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/a/b/c/d"), null));
 
         mk.commit("/", "*\"a\" : \"e\"", null, null);
-        assertTrue(mk.nodeExists("/e", null));
-        assertTrue(mk.nodeExists("/e/b", null));
-        assertTrue(mk.nodeExists("/e/b/c", null));
-        assertTrue(mk.nodeExists("/e/b/c/d", null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/e"), null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/e/b"), null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/e/b/c"), null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/e/b/c/d"), null));
 
         mk.commit("/", "*\"e/b\" : \"f\"", null, null);
-        assertTrue(mk.nodeExists("/f", null));
-        assertTrue(mk.nodeExists("/f/c", null));
-        assertTrue(mk.nodeExists("/f/c/d", null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/f"), null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/f/c"), null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/f/c/d"), null));
     }
 
     @Test
     @Ignore
     public void copyNodeWithProperties() throws Exception {
         mk.commit("/", "+\"a\" : { \"key1\" : \"value1\" }", null, null);
-        assertTrue(mk.nodeExists("/a", null));
-        String nodes = mk.getNodes("/", null, 1 /*depth*/, 0 /*offset*/, -1 /*maxChildNodes*/, null /*filter*/);
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/a"), null));
+        String nodes = mk.getNodes(new TenantPath(TEST_TENANT, "/"), null, 1 /*depth*/, 0 /*offset*/, -1 /*maxChildNodes*/, null /*filter*/);
         JSONObject obj = parseJSONObject(nodes);
         assertPropertyValue(obj, "a/key1", "value1");
 
         mk.commit("/", "*\"a\" : \"c\"", null, null);
-        assertTrue(mk.nodeExists("/c", null));
-        nodes = mk.getNodes("/", null, 1 /*depth*/, 0 /*offset*/, -1 /*maxChildNodes*/, null /*filter*/);
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/c"), null));
+        nodes = mk.getNodes(new TenantPath(TEST_TENANT, "/"), null, 1 /*depth*/, 0 /*offset*/, -1 /*maxChildNodes*/, null /*filter*/);
         obj = parseJSONObject(nodes);
         assertPropertyValue(obj, "c/key1", "value1");
     }
@@ -106,7 +107,7 @@ public class DocumentMKCommitCopyTest extends BaseDocumentMKTest {
     @Test
     public void copyFromNonExistentNode() throws Exception {
         mk.commit("/", "+\"a\" : {}", null, null);
-        assertTrue(mk.nodeExists("/a", null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/a"), null));
 
         try {
             mk.commit("/", "*\"b\" : \"c\"", null, null);
@@ -136,8 +137,8 @@ public class DocumentMKCommitCopyTest extends BaseDocumentMKTest {
         mk.commit("/", "+\"a/b\":{}\n" +
                         "*\"a/b\":\"c\"", null, null);
 
-        assertTrue(mk.nodeExists("/a/b", null));
-        assertTrue(mk.nodeExists("/c", null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/a/b"), null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/c"), null));
     }
 
     @Test
@@ -146,8 +147,8 @@ public class DocumentMKCommitCopyTest extends BaseDocumentMKTest {
         mk.commit("/", "+\"a/b\":{}", null, null);
         mk.commit("/", "*\"a/b\":\"c\"", null, null);
 
-        assertTrue(mk.nodeExists("/a/b", null));
-        assertTrue(mk.nodeExists("/c", null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/a/b"), null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/c"), null));
     }
 
     @Test
@@ -157,10 +158,10 @@ public class DocumentMKCommitCopyTest extends BaseDocumentMKTest {
         mk.commit("/", "+\"a/b\":{ \"c\" : {}, \"d\" : {} }\n" +
                         "*\"a/b\":\"e\"", null, null);
 
-        assertTrue(mk.nodeExists("/a/b/c", null));
-        assertTrue(mk.nodeExists("/a/b/d", null));
-        assertTrue(mk.nodeExists("/e/c", null));
-        assertTrue(mk.nodeExists("/e/d", null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/a/b/c"), null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/a/b/d"), null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/e/c"), null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/e/d"), null));
     }
 
     @Test
@@ -170,8 +171,8 @@ public class DocumentMKCommitCopyTest extends BaseDocumentMKTest {
         mk.commit("/", "+\"a/b/c/d\":{}\n"
                      + "*\"a\":\"e\"", null, null);
 
-        assertTrue(mk.nodeExists("/a/b/c/d", null));
-        assertTrue(mk.nodeExists("/e/b/c/d", null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/a/b/c/d"), null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/e/b/c/d"), null));
     }
 
     @Test
@@ -181,8 +182,8 @@ public class DocumentMKCommitCopyTest extends BaseDocumentMKTest {
         mk.commit("/", "+\"a/b\":{}\n" +
                         "*\"a\":\"c\"", null, null);
 
-        assertTrue(mk.nodeExists("/a/b", null));
-        assertTrue(mk.nodeExists("/c/b", null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/a/b"), null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/c/b"), null));
     }
 
     @Test
@@ -206,9 +207,9 @@ public class DocumentMKCommitCopyTest extends BaseDocumentMKTest {
         mk.commit("/", "-\"a/b/c/d\"\n"
                      + "*\"a\" : \"e\"", null, null);
 
-        assertFalse(mk.nodeExists("/a/b/c/d", null));
-        assertTrue(mk.nodeExists("/e/b/c", null));
-        assertFalse(mk.nodeExists("/e/b/c/d", null));
+        assertFalse(mk.nodeExists(new TenantPath(TEST_TENANT, "/a/b/c/d"), null));
+        assertTrue(mk.nodeExists(new TenantPath(TEST_TENANT, "/e/b/c"), null));
+        assertFalse(mk.nodeExists(new TenantPath(TEST_TENANT, "/e/b/c/d"), null));
     }
 
     @Test
@@ -218,8 +219,8 @@ public class DocumentMKCommitCopyTest extends BaseDocumentMKTest {
         mk.commit("/", "-\"a/b\"\n" +
                         "*\"a\":\"c\"", null, null);
 
-        assertFalse(mk.nodeExists("/a/b", null));
-        assertFalse(mk.nodeExists("/c/b", null));
+        assertFalse(mk.nodeExists(new TenantPath(TEST_TENANT, "/a/b"), null));
+        assertFalse(mk.nodeExists(new TenantPath(TEST_TENANT, "/c/b"), null));
     }
 
     @Test
@@ -229,7 +230,7 @@ public class DocumentMKCommitCopyTest extends BaseDocumentMKTest {
         mk.commit("/", "^\"a/key1\": \"value1\"\n" +
                         "*\"a\":\"c\"", null, null);
 
-        String nodes = mk.getNodes("/", null, 1 /*depth*/, 0 /*offset*/, -1 /*maxChildNodes*/, null /*filter*/);
+        String nodes = mk.getNodes(new TenantPath(TEST_TENANT, "/"), null, 1 /*depth*/, 0 /*offset*/, -1 /*maxChildNodes*/, null /*filter*/);
         JSONObject obj = parseJSONObject(nodes);
         assertPropertyValue(obj, "a/key1", "value1");
         assertPropertyValue(obj, "c/key1", "value1");
@@ -242,7 +243,7 @@ public class DocumentMKCommitCopyTest extends BaseDocumentMKTest {
         mk.commit("/", "^\"a/b/key1\": \"value1\"\n" +
                         "*\"a\":\"c\"", null, null);
 
-        String nodes = mk.getNodes("/", null, 2 /*depth*/, 0 /*offset*/, -1 /*maxChildNodes*/, null /*filter*/);
+        String nodes = mk.getNodes(new TenantPath(TEST_TENANT, "/"), null, 2 /*depth*/, 0 /*offset*/, -1 /*maxChildNodes*/, null /*filter*/);
         JSONObject obj = parseJSONObject(nodes);
         assertPropertyValue(obj, "a/b/key1", "value1");
         assertPropertyValue(obj, "c/b/key1", "value1");
@@ -256,7 +257,7 @@ public class DocumentMKCommitCopyTest extends BaseDocumentMKTest {
                      + "^\"a/key1\": \"value1\"\n"
                      + "*\"a\":\"c\"", null, null);
 
-        String nodes = mk.getNodes("/", null, 1 /*depth*/, 0 /*offset*/, -1 /*maxChildNodes*/, null /*filter*/);
+        String nodes = mk.getNodes(new TenantPath(TEST_TENANT, "/"), null, 1 /*depth*/, 0 /*offset*/, -1 /*maxChildNodes*/, null /*filter*/);
         JSONObject obj = parseJSONObject(nodes);
         assertPropertyValue(obj, "a/key1", "value1");
         assertPropertyValue(obj, "c/key1", "value1");
@@ -269,7 +270,7 @@ public class DocumentMKCommitCopyTest extends BaseDocumentMKTest {
         mk.commit("/", "^\"a/b/key1\": null\n" +
                         "*\"a\":\"c\"", null, null);
 
-        String nodes = mk.getNodes("/", null, 1 /*depth*/, 0 /*offset*/, -1 /*maxChildNodes*/, null /*filter*/);
+        String nodes = mk.getNodes(new TenantPath(TEST_TENANT, "/"), null, 1 /*depth*/, 0 /*offset*/, -1 /*maxChildNodes*/, null /*filter*/);
         JSONObject obj = parseJSONObject(nodes);
         assertPropertyNotExists(obj, "a/b/key1");
         assertPropertyNotExists(obj, "c/b/key1");
@@ -282,7 +283,7 @@ public class DocumentMKCommitCopyTest extends BaseDocumentMKTest {
         mk.commit("/", "^\"a/key1\" : null\n" +
                         "*\"a\":\"c\"", null, null);
 
-        String nodes = mk.getNodes("/", null, 1 /*depth*/, 0 /*offset*/, -1 /*maxChildNodes*/, null /*filter*/);
+        String nodes = mk.getNodes(new TenantPath(TEST_TENANT, "/"), null, 1 /*depth*/, 0 /*offset*/, -1 /*maxChildNodes*/, null /*filter*/);
         JSONObject obj = parseJSONObject(nodes);
         assertPropertyNotExists(obj, "a/key1");
         assertPropertyNotExists(obj, "c/key1");
@@ -296,7 +297,7 @@ public class DocumentMKCommitCopyTest extends BaseDocumentMKTest {
                      + "^\"a/key1\" : null\n"
                      + "*\"a\":\"c\"", null, null);
 
-        String nodes = mk.getNodes("/", null, 1 /*depth*/, 0 /*offset*/, -1 /*maxChildNodes*/, null /*filter*/);
+        String nodes = mk.getNodes(new TenantPath(TEST_TENANT, "/"), null, 1 /*depth*/, 0 /*offset*/, -1 /*maxChildNodes*/, null /*filter*/);
         JSONObject obj = parseJSONObject(nodes);
         assertPropertyNotExists(obj, "a/key1");
         assertPropertyNotExists(obj, "c/key1");
