@@ -18,6 +18,7 @@ package org.apache.jackrabbit.oak.plugins.nodetype;
 
 import java.util.List;
 import java.util.Set;
+
 import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
 
@@ -25,6 +26,7 @@ import org.apache.jackrabbit.oak.api.PropertyState;
 import org.apache.jackrabbit.oak.api.Type;
 import org.apache.jackrabbit.oak.spi.state.ChildNodeEntry;
 import org.apache.jackrabbit.oak.spi.state.NodeState;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.collect.Iterables.addAll;
@@ -53,8 +55,10 @@ import static org.apache.jackrabbit.oak.plugins.nodetype.NodeTypeConstants.REP_S
 class EffectiveType {
 
     private final List<NodeState> types;
+    private Tenant tenant;
 
-    EffectiveType(@Nonnull List<NodeState> types) {
+    EffectiveType(Tenant tenant, @Nonnull List<NodeState> types) {
+        this.tenant = tenant;
         this.types = checkNotNull(types);
     }
 
@@ -93,6 +97,9 @@ class EffectiveType {
         return getNameSet(REP_MANDATORY_CHILD_NODES);
     }
 
+    public Tenant getTenant() {
+        return tenant;
+    }
     /**
      * Finds a matching definition for a property with the given name and type.
      *

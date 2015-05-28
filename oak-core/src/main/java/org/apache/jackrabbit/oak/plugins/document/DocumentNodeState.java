@@ -58,7 +58,6 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Iterators;
 
 import static com.google.common.base.Preconditions.checkNotNull;
-import static org.apache.jackrabbit.oak.plugins.memory.EmptyNodeState.EMPTY_NODE;
 
 /**
  * A {@link NodeState} implementation for the {@link DocumentNodeStore}.
@@ -251,13 +250,13 @@ public class DocumentNodeState extends AbstractNodeState implements CacheValue {
     public NodeState getChildNode(@Nonnull String name) {
         if (!hasChildren) {
             checkValidName(name);
-            return EmptyNodeState.MISSING_NODE;
+            return EmptyNodeState.missingNode(getTenantPath().getTenant());
         }
         TenantPath p = getTenantPath().getChild(name);
         DocumentNodeState child = store.getNode(p, lastRevision);
         if (child == null) {
             checkValidName(name);
-            return EmptyNodeState.MISSING_NODE;
+            return EmptyNodeState.missingNode(getTenantPath().getTenant());
         } else {
             return child.withRootRevision(rootRevision, fromExternalChange);
         }
@@ -331,7 +330,7 @@ public class DocumentNodeState extends AbstractNodeState implements CacheValue {
     public boolean compareAgainstBaseState(NodeState base, NodeStateDiff diff) {
         if (this == base) {
             return true;
-        } else if (base == EMPTY_NODE || !base.exists()) {
+        } else if (!base.exists()) {
             // special case
             return EmptyNodeState.compareAgainstEmptyState(this, diff);
         } else if (base instanceof DocumentNodeState) {

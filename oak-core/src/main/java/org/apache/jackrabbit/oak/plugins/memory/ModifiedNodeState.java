@@ -109,7 +109,7 @@ public class ModifiedNodeState extends AbstractNodeState {
                 nodes.put(child.getName(), squeeze(child.getNodeState()));
             }
 
-            state = new MemoryNodeState(properties, nodes);
+            state = new MemoryNodeState(state.getTenantPath(), properties, nodes);
         }
         return state;
     }

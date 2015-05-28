@@ -21,7 +21,6 @@ package org.apache.jackrabbit.oak.plugins.memory;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.collect.Maps.newHashMap;
-import static org.apache.jackrabbit.oak.plugins.memory.EmptyNodeState.MISSING_NODE;
 
 import java.util.Map;
 import java.util.Map.Entry;
@@ -178,10 +177,10 @@ class MutableNodeState extends AbstractNodeState {
         MutableNodeState child = nodes.get(name);
         if (child != null) {
             boolean existed = child.exists();
-            child.reset(MISSING_NODE);
+            child.reset(EmptyNodeState.missingNode(base.getTenantPath().getTenant()));
             return existed;
         } else {
-            nodes.put(name, new MutableNodeState(MISSING_NODE));
+            nodes.put(name, new MutableNodeState(EmptyNodeState.missingNode(base.getTenantPath().getTenant())));
             return base.hasChildNode(name);
         }
     }

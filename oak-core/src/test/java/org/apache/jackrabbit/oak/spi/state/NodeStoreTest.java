@@ -84,7 +84,7 @@ public class NodeStoreTest extends OakBaseTest {
     }
 
     @Test
-    public void getRoot(TEST_TENANT) {
+    public void getRoot() {
         assertEquals(root, store.getRoot(TEST_TENANT));
         assertEquals(root.getChildNode("test"), store.getRoot(TEST_TENANT).getChildNode("test"));
         assertEquals(root.getChildNode("test").getChildNode("x"),

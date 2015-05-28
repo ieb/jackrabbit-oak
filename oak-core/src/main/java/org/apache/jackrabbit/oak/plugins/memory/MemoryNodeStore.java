@@ -20,7 +20,6 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.collect.Maps.newHashMap;
-import static org.apache.jackrabbit.oak.plugins.memory.EmptyNodeState.EMPTY_NODE;
 import static org.apache.jackrabbit.oak.plugins.memory.ModifiedNodeState.squeeze;
 
 import java.io.Closeable;
@@ -28,6 +27,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Collections;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -49,6 +49,7 @@ import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
 import org.apache.jackrabbit.oak.spi.state.NodeState;
 import org.apache.jackrabbit.oak.spi.state.NodeStore;
 import org.apache.jackrabbit.oak.spi.state.NodeStoreBranch;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
 
 /**
  * Basic in-memory node store implementation. Useful as a base class for
@@ -56,25 +57,27 @@ import org.apache.jackrabbit.oak.spi.state.NodeStoreBranch;
  */
 public class MemoryNodeStore implements NodeStore, Observable {
 
-    private final AtomicReference<NodeState> root;
+    private final Map<Tenant, NodeState> tenantRoots = Maps.newConcurrentMap();
 
     private final Map<String, Checkpoint> checkpoints = newHashMap();
 
     private final Map<Closeable, Observer> observers = newHashMap();
 
     public MemoryNodeStore(NodeState state) {
-        this.root = new AtomicReference<NodeState>(state);
+        setTenantRoot(state);
     }
 
+
     public MemoryNodeStore() {
-        this(EMPTY_NODE);
     }
+    
+    
 
     /**
      * Returns a string representation the head state of this node store.
      */
     public String toString() {
-        return getRoot().toString();
+        return tenantRoots.toString();
     }
 
     @Override
@@ -94,7 +97,7 @@ public class MemoryNodeStore implements NodeStore, Observable {
     }
 
     private synchronized void setRoot(NodeState root, CommitInfo info) {
-        this.root.getAndSet(root);
+        setTenantRoot(root);
 
         for (Observer observer : observers.values()) {
             observer.contentChanged(root, info);
@@ -102,11 +105,29 @@ public class MemoryNodeStore implements NodeStore, Observable {
     }
 
     @Override
-    public NodeState getRoot() {
-        return root.get();
+    public NodeState getRoot(Tenant tenant) {
+        return getOrCreateTenantRoot(tenant);
+    }
+    
+    private void setTenantRoot(NodeState state) {
+        synchronized (tenantRoots) {
+            tenantRoots.put(state.getTenantPath().getTenant(), state);            
+        }
     }
 
-    /**
+
+    private NodeState getOrCreateTenantRoot(Tenant tenant) {
+        synchronized (tenantRoots) {
+           if (tenantRoots.containsKey(tenant)) {
+               return tenantRoots.get(tenant);
+           }
+           NodeState tenantRoot = EmptyNodeState.emptyNode(tenant);
+           tenantRoots.put(tenant, tenantRoot);
+           return tenantRoot;
+        }
+    }
+
+ /**
      * This implementation is equal to first rebasing the builder and then applying it to a
      * new branch and immediately merging it back.
      * @param builder  the builder whose changes to apply
@@ -123,7 +144,7 @@ public class MemoryNodeStore implements NodeStore, Observable {
         checkArgument(builder instanceof MemoryNodeBuilder);
         checkNotNull(commitHook);
         rebase(builder);
-        NodeStoreBranch branch = new MemoryNodeStoreBranch(this, getRoot());
+        NodeStoreBranch branch = new MemoryNodeStoreBranch(this, getRoot(builder.getTenant()));
         branch.setRoot(builder.getNodeState());
         NodeState merged = branch.merge(commitHook, info);
         ((MemoryNodeBuilder) builder).reset(merged);
@@ -145,7 +166,7 @@ public class MemoryNodeStore implements NodeStore, Observable {
         checkArgument(builder instanceof MemoryNodeBuilder);
         NodeState head = checkNotNull(builder).getNodeState();
         NodeState base = builder.getBaseState();
-        NodeState newBase = getRoot();
+        NodeState newBase = getRoot(builder.getTenant());
         if (base != newBase) {
             ((MemoryNodeBuilder) builder).reset(newBase);
             head.compareAgainstBaseState(
@@ -166,7 +187,7 @@ public class MemoryNodeStore implements NodeStore, Observable {
     @Override
     public NodeState reset(@Nonnull NodeBuilder builder) {
         checkArgument(builder instanceof MemoryNodeBuilder);
-        NodeState head = getRoot();
+        NodeState head = getRoot(builder.getTenant());
         ((MemoryNodeBuilder) builder).reset(head);
         return head;
     }
@@ -191,24 +212,24 @@ public class MemoryNodeStore implements NodeStore, Observable {
 
     @Nonnull
     @Override
-    public String checkpoint(long lifetime, @Nonnull Map<String, String> properties) {
+    public String checkpoint(@Nonnull Tenant tenant, long lifetime, @Nonnull Map<String, String> properties) {
         checkArgument(lifetime > 0);
         checkNotNull(properties);
         String checkpoint = "checkpoint" + checkpoints.size();
-        checkpoints.put(checkpoint, new Checkpoint(getRoot(), properties));
+        checkpoints.put(checkpoint, new Checkpoint(getRoot(tenant), properties));
         return checkpoint;
     }
 
     @Override @Nonnull
-    public synchronized String checkpoint(long lifetime) {
-        return checkpoint(lifetime, Collections.<String, String>emptyMap());
+    public synchronized String checkpoint(@Nonnull Tenant tenant, long lifetime) {
+        return checkpoint(tenant, lifetime, Collections.<String, String>emptyMap());
     }
 
     @Nonnull
     @Override
-    public Map<String, String> checkpointInfo(@Nonnull String checkpoint) {
+    public Map<String, String> checkpointInfo(@Nonnull Tenant tenant, @Nonnull String checkpoint) {
         Checkpoint cp = checkpoints.get(checkNotNull(checkpoint));
-        if (cp == null) {
+        if (cp == null || !cp.getTenant().equals(tenant)) {
             return Collections.emptyMap();
         } else {
             return cp.getProperties();
@@ -216,9 +237,9 @@ public class MemoryNodeStore implements NodeStore, Observable {
     }
 
     @Override @CheckForNull
-    public synchronized NodeState retrieve(@Nonnull String checkpoint) {
+    public synchronized NodeState retrieve(@Nonnull Tenant tenant, @Nonnull String checkpoint) {
         Checkpoint cp = checkpoints.get(checkNotNull(checkpoint));
-        if (cp == null) {
+        if (cp == null || !cp.getTenant().equals(tenant)) {
             return null;
         } else {
             return cp.getRoot();
@@ -226,7 +247,7 @@ public class MemoryNodeStore implements NodeStore, Observable {
     }
 
     @Override
-    public synchronized boolean release(String checkpoint) {
+    public synchronized boolean release(@Nonnull Tenant tenant, String checkpoint) {
         checkpoints.remove(checkpoint);
         return true;
     }
@@ -313,6 +334,10 @@ public class MemoryNodeStore implements NodeStore, Observable {
         private Checkpoint(NodeState root, Map<String, String> properties) {
             this.root = root;
             this.properties = Maps.newHashMap(properties);
+        }
+
+        public Tenant getTenant() {
+            return root.getTenantPath().getTenant();
         }
 
         public NodeState getRoot() {

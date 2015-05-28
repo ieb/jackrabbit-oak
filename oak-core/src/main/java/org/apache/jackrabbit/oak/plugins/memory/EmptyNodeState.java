@@ -36,14 +36,26 @@ import org.apache.jackrabbit.oak.spi.tenant.TenantPath;
  */
 public final class EmptyNodeState implements NodeState {
 
-    public static final NodeState EMPTY_NODE = new EmptyNodeState(true);
-
-    public static final NodeState MISSING_NODE = new EmptyNodeState(false);
-
+    
     private final boolean exists;
+    private Tenant tenant;
+    private TenantPath tenantPath;
 
-    private EmptyNodeState(boolean exists) {
+    public static NodeState emptyNode( Tenant tenant) {
+        // may need to make these singletons per tenant
+        return new EmptyNodeState(tenant, true);
+    }
+
+    public static NodeState missingNode( Tenant tenant) {
+        // may need to make these singletons per tenant
+        return new EmptyNodeState(tenant, false);
+    }
+
+    private EmptyNodeState(Tenant tenant, boolean exists) {
+        this.tenant = tenant;
+        this.tenantPath = new TenantPath(tenant, "");
         this.exists = exists;
+        
     }
 
     @Override
@@ -115,7 +127,7 @@ public final class EmptyNodeState implements NodeState {
     @Override @Nonnull
     public NodeState getChildNode(@Nonnull String name) {
         checkValidName(name);
-        return MISSING_NODE;
+        return new EmptyNodeState(this.tenant, false);
     }
 
     @Override
@@ -135,7 +147,7 @@ public final class EmptyNodeState implements NodeState {
 
     @Override
     public boolean compareAgainstBaseState(NodeState base, NodeStateDiff diff) {
-        if (base != EMPTY_NODE && base.exists()) {
+        if (base.exists()) {
             for (PropertyState before : base.getProperties()) {
                 if (!diff.propertyDeleted(before)) {
                     return false;
@@ -153,7 +165,7 @@ public final class EmptyNodeState implements NodeState {
 
     public static boolean compareAgainstEmptyState(
             NodeState state, NodeStateDiff diff) {
-        if (state != EMPTY_NODE && state.exists()) {
+        if (state.exists()) {
             for (PropertyState after : state.getProperties()) {
                 if (!diff.propertyAdded(after)) {
                     return false;
@@ -169,7 +181,7 @@ public final class EmptyNodeState implements NodeState {
     }
 
     public static boolean isEmptyState(NodeState state) {
-        return state == EMPTY_NODE || state == MISSING_NODE;
+        return state instanceof EmptyNodeState;
     }
 
     //------------------------------------------------------------< Object >--
@@ -183,11 +195,13 @@ public final class EmptyNodeState implements NodeState {
     }
 
     public boolean equals(Object object) {
-        if (object == EMPTY_NODE || object == MISSING_NODE) {
-            return exists == (object == EMPTY_NODE);
+        if (object instanceof EmptyNodeState) {
+            EmptyNodeState that = (EmptyNodeState) object;
+            return that.exists == exists && that.tenant.equals(tenant);
         } else if (object instanceof NodeState) {
             NodeState that = (NodeState) object;
-            return that.getPropertyCount() == 0
+            
+            return that.getTenantPath().getTenant().equals(tenant) && that.getPropertyCount() == 0
                     && that.getChildNodeCount(1) == 0;
         } else {
             return false;
@@ -200,7 +214,7 @@ public final class EmptyNodeState implements NodeState {
 
     @Override
     public TenantPath getTenantPath() {
-        return TenantPath.EMPTY_PATH;
+        return tenantPath;
     }
 
 }

@@ -68,7 +68,7 @@ public class ImmutableTreeTest extends OakBaseTest {
         orderable.setProperty(JcrConstants.JCR_PRIMARYTYPE, JcrConstants.NT_UNSTRUCTURED);
         root.commit();
 
-        NodeBuilder nb = store.getRoot().builder();
+        NodeBuilder nb = store.getRoot(TEST_TENANT).builder();
         nb.child(":hidden");
         store.merge(nb, EmptyHook.INSTANCE, CommitInfo.EMPTY);
 

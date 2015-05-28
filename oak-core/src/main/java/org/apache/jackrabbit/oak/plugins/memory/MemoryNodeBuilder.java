@@ -29,7 +29,6 @@ package org.apache.jackrabbit.oak.plugins.memory;
 import static com.google.common.base.Objects.toStringHelper;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
-import static org.apache.jackrabbit.oak.plugins.memory.EmptyNodeState.EMPTY_NODE;
 import static org.apache.jackrabbit.oak.spi.state.AbstractNodeState.checkValidName;
 
 import java.io.IOException;
@@ -40,6 +39,7 @@ import javax.annotation.Nonnull;
 
 import com.google.common.base.Objects;
 import com.google.common.io.ByteStreams;
+
 import org.apache.jackrabbit.oak.api.Blob;
 import org.apache.jackrabbit.oak.api.PropertyState;
 import org.apache.jackrabbit.oak.api.Type;
@@ -48,6 +48,7 @@ import org.apache.jackrabbit.oak.spi.state.EqualsDiff;
 import org.apache.jackrabbit.oak.spi.state.MoveDetector;
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
 import org.apache.jackrabbit.oak.spi.state.NodeState;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
 
 /**
  * In-memory node state builder.
@@ -131,6 +132,8 @@ public class MemoryNodeBuilder implements NodeBuilder {
      */
     private Head head;
 
+    private Tenant tenant;
+
     /**
      * Creates a new in-memory child builder.
      * @param parent parent builder
@@ -140,10 +143,12 @@ public class MemoryNodeBuilder implements NodeBuilder {
         this.parent = parent;
         this.name = name;
         this.rootBuilder = parent.rootBuilder;
+        this.tenant = parent.getTenant();
         this.base = parent.base().getChildNode(name);
         this.baseRevision = parent.baseRevision;
         this.rootHead = parent.rootHead;
         this.head = new UnconnectedHead(this, base);
+        
     }
 
     /**
@@ -155,10 +160,9 @@ public class MemoryNodeBuilder implements NodeBuilder {
         this.parent = null;
         this.name = null;
         this.rootBuilder = this;
-
         this.baseRevision = 0;
         this.base = checkNotNull(base);
-
+        this.tenant = base.getTenantPath().getTenant();
         this.rootHead = new RootHead(this);
         this.head = rootHead;
     }
@@ -334,7 +338,7 @@ public class MemoryNodeBuilder implements NodeBuilder {
     @Nonnull
     @Override
     public NodeBuilder setChildNode(@Nonnull String name) {
-        return setChildNode(name, EMPTY_NODE);
+        return setChildNode(name, EmptyNodeState.emptyNode(tenant));
     }
 
     @Nonnull
@@ -790,6 +794,11 @@ public class MemoryNodeBuilder implements NodeBuilder {
             return revision++;   // return the intermediate value
         }
 
+    }
+
+    @Override
+    public Tenant getTenant() {
+        return tenant;
     }
 
 }

@@ -129,7 +129,7 @@ public interface NodeStore {
      * @return string reference of this checkpoint
      */
     @Nonnull
-    String checkpoint(long lifetime, @Nonnull Map<String, String> properties);
+    String checkpoint(@Nonnull Tenant tenant, long lifetime, @Nonnull Map<String, String> properties);
 
     /**
      * Creates a new checkpoint of the latest root of the tree. The checkpoint
@@ -145,7 +145,7 @@ public interface NodeStore {
      * @return string reference of this checkpoint
      */
     @Nonnull
-    String checkpoint(long lifetime);
+    String checkpoint(@Nonnull Tenant tenant, long lifetime);
 
     /**
      * Retrieve the properties associated with a checkpoint.
@@ -156,7 +156,7 @@ public interface NodeStore {
      *         checkpoint.
      */
     @Nonnull
-    Map<String, String> checkpointInfo(@Nonnull String checkpoint);
+    Map<String, String> checkpointInfo(@Nonnull Tenant tenant, @Nonnull String checkpoint);
 
     /**
      * Retrieves the root node from a previously created repository checkpoint.
@@ -174,6 +174,6 @@ public interface NodeStore {
      * @param checkpoint string reference of a checkpoint
      * @return {@code true} if the checkpoint was successfully removed, or if it doesn't exist
      */
-    boolean release(@Nonnull String checkpoint);
+    boolean release(@Nonnull Tenant tenant, @Nonnull String checkpoint);
 
 }

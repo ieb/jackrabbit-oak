@@ -253,7 +253,7 @@ public final class DocumentNodeStore
     /**
      * The last known head revision. This is the last-known revision.
      */
-    private volatile Revision headRevision;
+    private volatile Revision headRevisionX;
 
     private Thread backgroundReadThread;
 
@@ -436,6 +436,8 @@ public final class DocumentNodeStore
             branches.init(store, this, TenantPath.SYSTEM_ROOT);
             // initial reading of the revisions of other cluster nodes
             backgroundRead(false);
+            // If we are going to track head revisions from all tenants, then we need to get the head revisions from 
+            // all other nodes within the same repository. 
             if (headRevision == null) {
                 // no revision read from other cluster nodes
                 setHeadRevision(newRevision(Tenant.SYSTEM_TENANT));
@@ -1502,21 +1504,25 @@ public final class DocumentNodeStore
 
     @Nonnull
     @Override
-    public String checkpoint(long lifetime, @Nonnull Map<String, String> properties) {
-        return checkpoints.create(lifetime, properties).toString();
+    public String checkpoint(@Nonnull Tenant tenant, long lifetime, @Nonnull Map<String, String> properties) {
+        return checkpoints.create(checkNotNull(tenant), lifetime, properties).toString();
     }
 
     @Nonnull
     @Override
-    public String checkpoint(long lifetime) {
+    public String checkpoint(@Nonnull Tenant tenant, long lifetime) {
         Map<String, String> empty = Collections.emptyMap();
-        return checkpoint(lifetime, empty);
+        return checkpoint(checkNotNull(tenant), lifetime, empty);
     }
 
     @Nonnull
     @Override
-    public Map<String, String> checkpointInfo(@Nonnull String checkpoint) {
+    public Map<String, String> checkpointInfo(@Nonnull Tenant tenant, @Nonnull String checkpoint) {
         Revision r = Revision.fromString(checkpoint);
+        if (!tenant.equals(new Tenant(r.getTenantId()))) {
+            // checkpoint does not exist in this tenant
+            return Collections.emptyMap();           
+        }
         Checkpoints.Info info = checkpoints.getCheckpoints().get(r);
         if (info == null) {
             // checkpoint does not exist
@@ -1540,7 +1546,7 @@ public final class DocumentNodeStore
     }
 
     @Override
-    public boolean release(@Nonnull String checkpoint) {
+    public boolean release(@Nonnull Tenant tenant, @Nonnull String checkpoint) {
         checkpoints.release(checkpoint);
         return true;
     }
@@ -1568,11 +1574,16 @@ public final class DocumentNodeStore
     }
 
     @Nonnull
-    public Revision getHeadRevision() {
-        return headRevision;
+    public Revision getHeadRevision(Tenant tenant) {
+        return getOrCreateHeadRevision(tenant);
     }
 
     //----------------------< background operations >---------------------------
+    
+    private Revision getOrCreateHeadRevision(Tenant tenant) {
+        // TODO Auto-generated method stub
+        return null;
+    }
 
     /** Used for testing only */
     public void runBackgroundOperations() {

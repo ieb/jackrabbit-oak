@@ -31,8 +31,6 @@ import static org.apache.jackrabbit.oak.api.Type.NAME;
 import static org.apache.jackrabbit.oak.api.Type.STRING;
 import static org.apache.jackrabbit.oak.api.Type.STRINGS;
 import static org.apache.jackrabbit.oak.plugins.identifier.IdentifierManager.isValidUUID;
-import static org.apache.jackrabbit.oak.plugins.memory.EmptyNodeState.EMPTY_NODE;
-import static org.apache.jackrabbit.oak.plugins.memory.EmptyNodeState.MISSING_NODE;
 import static org.apache.jackrabbit.oak.plugins.nodetype.NodeTypeConstants.JCR_IS_ABSTRACT;
 import static org.apache.jackrabbit.oak.plugins.nodetype.constraint.Constraints.valueConstraint;
 
@@ -46,15 +44,18 @@ import javax.jcr.Value;
 
 import com.google.common.base.Predicate;
 import com.google.common.collect.Lists;
+
 import org.apache.jackrabbit.oak.api.CommitFailedException;
 import org.apache.jackrabbit.oak.api.PropertyState;
 import org.apache.jackrabbit.oak.api.Type;
 import org.apache.jackrabbit.oak.namepath.NamePathMapper;
+import org.apache.jackrabbit.oak.plugins.memory.EmptyNodeState;
 import org.apache.jackrabbit.oak.plugins.value.ValueFactoryImpl;
 import org.apache.jackrabbit.oak.spi.commit.DefaultEditor;
 import org.apache.jackrabbit.oak.spi.commit.Editor;
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
 import org.apache.jackrabbit.oak.spi.state.NodeState;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -87,6 +88,8 @@ class TypeEditor extends DefaultEditor {
 
     private final NodeBuilder builder;
 
+    private Tenant tenant;
+
     TypeEditor(
             boolean strict, Set<String> typesToCheck, NodeState types,
             String primary, Iterable<String> mixins, NodeBuilder builder)
@@ -102,6 +105,7 @@ class TypeEditor extends DefaultEditor {
         this.types = checkNotNull(types);
         this.effective = createEffectiveType(null, null, primary, mixins);
         this.builder = checkNotNull(builder);
+        this.tenant = builder.getTenant();
     }
 
     private TypeEditor(
@@ -119,6 +123,7 @@ class TypeEditor extends DefaultEditor {
         this.types = parent.types;
         this.effective = createEffectiveType(parent.effective, name, primary, mixins);
         this.builder = checkNotNull(builder);
+        this.tenant = builder.getTenant();
     }
 
     /**
@@ -130,9 +135,10 @@ class TypeEditor extends DefaultEditor {
         this.checkThisNode = true;
         this.parent = null;
         this.nodeName = null;
-        this.types = EMPTY_NODE;
         this.effective = checkNotNull(effective);
-        this.builder = EMPTY_NODE.builder();
+        this.tenant = effective.getTenant();
+        this.types = EmptyNodeState.emptyNode(tenant);
+        this.builder = types.builder();
     }
 
     /**
@@ -203,7 +209,7 @@ class TypeEditor extends DefaultEditor {
     @Override
     public Editor childNodeAdded(String name, NodeState after)
             throws CommitFailedException {
-        TypeEditor editor = childNodeChanged(name, MISSING_NODE, after);
+        TypeEditor editor = childNodeChanged(name, EmptyNodeState.missingNode(tenant), after);
 
         if (editor != null && editor.checkThisNode) {
             // TODO: add any auto-created items that are still missing
@@ -307,7 +313,7 @@ class TypeEditor extends DefaultEditor {
             }
         }
 
-        return new EffectiveType(list);
+        return new EffectiveType(tenant, list);
     }
 
     @Nonnull

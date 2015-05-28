@@ -16,9 +16,6 @@
  */
 package org.apache.jackrabbit.oak.plugins.memory;
 
-import static org.apache.jackrabbit.oak.plugins.memory.EmptyNodeState.EMPTY_NODE;
-import static org.apache.jackrabbit.oak.plugins.memory.EmptyNodeState.MISSING_NODE;
-
 import java.util.HashMap;
 import java.util.Map;
 
@@ -96,7 +93,7 @@ class MemoryNodeState extends AbstractNodeState {
         NodeState state = nodes.get(name);
         if (state == null) {
             checkValidName(name);
-            state = MISSING_NODE;
+            state = EmptyNodeState.missingNode(getTenantPath().getTenant());
         }
         return state;
     }
@@ -125,7 +122,7 @@ class MemoryNodeState extends AbstractNodeState {
      */
     @Override
     public boolean compareAgainstBaseState(NodeState base, NodeStateDiff diff) {
-        if (base == EMPTY_NODE || !base.exists()) {
+        if (!base.exists()) {
             return EmptyNodeState.compareAgainstEmptyState(this, diff);
         }
 

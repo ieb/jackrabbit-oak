@@ -19,7 +19,6 @@ package org.apache.jackrabbit.oak.plugins.nodetype;
 import static org.apache.jackrabbit.JcrConstants.JCR_MIXINTYPES;
 import static org.apache.jackrabbit.JcrConstants.JCR_PRIMARYTYPE;
 import static org.apache.jackrabbit.JcrConstants.JCR_SYSTEM;
-import static org.apache.jackrabbit.oak.plugins.memory.EmptyNodeState.MISSING_NODE;
 import static org.apache.jackrabbit.oak.plugins.nodetype.NodeTypeConstants.JCR_NODE_TYPES;
 
 import java.util.Set;
@@ -32,6 +31,7 @@ import org.apache.felix.scr.annotations.Component;
 import org.apache.felix.scr.annotations.Service;
 import org.apache.jackrabbit.oak.api.CommitFailedException;
 import org.apache.jackrabbit.oak.namepath.NamePathMapper;
+import org.apache.jackrabbit.oak.plugins.memory.EmptyNodeState;
 import org.apache.jackrabbit.oak.plugins.tree.RootFactory;
 import org.apache.jackrabbit.oak.spi.commit.CommitInfo;
 import org.apache.jackrabbit.oak.spi.commit.Editor;
@@ -99,7 +99,7 @@ public class TypeEditorProvider implements EditorProvider {
                             strict, modifiedTypes, afterTypes,
                             primary, mixins, builder));
                     CommitFailedException exception =
-                            EditorDiff.process(editor, MISSING_NODE, after);
+                            EditorDiff.process(editor, EmptyNodeState.missingNode(builder.getTenant()), after);
                     LOG.info("Node type changes: " + modifiedTypes + "; repository scan took " + (System.currentTimeMillis() - start)
                             + "ms" + (exception == null ? "" : "; failed with " + exception.getMessage()));
                     if (exception != null) {
