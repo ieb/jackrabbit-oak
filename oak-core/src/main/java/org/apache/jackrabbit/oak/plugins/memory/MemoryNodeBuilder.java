@@ -131,17 +131,12 @@ public class MemoryNodeBuilder implements NodeBuilder {
      */
     private Head head;
 
-    private int builderNo;
-
-    private static int nbuilders = 0;
-
     /**
      * Creates a new in-memory child builder.
      * @param parent parent builder
      * @param name name of this node
      */
     protected MemoryNodeBuilder(MemoryNodeBuilder parent, String name) {
-        this.builderNo = nbuilders++;
         this.parent = parent;
         this.name = name;
         this.rootBuilder = parent.rootBuilder;
@@ -157,8 +152,6 @@ public class MemoryNodeBuilder implements NodeBuilder {
      * @param base base state of the new builder
      */
     public MemoryNodeBuilder(@Nonnull NodeState base) {
-        this.builderNo = nbuilders ++;
-        System.err.println("Root Builder "+builderNo+" base "+base);
         this.parent = null;
         this.name = null;
         this.rootBuilder = this;
@@ -562,7 +555,7 @@ public class MemoryNodeBuilder implements NodeBuilder {
 
     @Override
     public String toString() {
-        return toStringHelper(this).add("path", getPath()).add("builderno", builderNo).add("base", rootBuilder.builderNo).toString();
+        return toStringHelper(this).add("path", getPath()).toString();
     }
 
     //------------------------------------------------------------< Head >---

@@ -20,12 +20,16 @@ package org.apache.jackrabbit.oak.plugins.tree.impl;
 
 import java.util.List;
 
+import javax.jcr.NoSuchWorkspaceException;
+import javax.security.auth.login.LoginException;
+
 import com.google.common.collect.Lists;
 
 import org.apache.jackrabbit.JcrConstants;
 import org.apache.jackrabbit.oak.NodeStoreFixture;
 import org.apache.jackrabbit.oak.OakBaseTest;
 import org.apache.jackrabbit.oak.api.CommitFailedException;
+import org.apache.jackrabbit.oak.api.ContentRepository;
 import org.apache.jackrabbit.oak.api.ContentSession;
 import org.apache.jackrabbit.oak.api.PropertyState;
 import org.apache.jackrabbit.oak.api.Root;
@@ -57,8 +61,16 @@ public class ImmutableTreeTest extends OakBaseTest {
     }
 
     @Before
-    public void setUp() throws CommitFailedException {
-        ContentSession session = createContentSession();
+    public void setUp() throws CommitFailedException, LoginException, NoSuchWorkspaceException {
+        
+        ContentRepository repository = createContentRepository();
+        // add the hidden node first into the system tenant.
+        NodeBuilder nb = store.getRoot().builder();
+        nb.child(":hidden");
+        store.merge(nb, EmptyHook.INSTANCE, CommitInfo.EMPTY);
+        
+        // login to the default tenant, which should fork the system tenant with its content.
+        ContentSession session = repository.login(null, null);
 
         // Add test content
         root = session.getLatestRoot();
@@ -70,41 +82,13 @@ public class ImmutableTreeTest extends OakBaseTest {
         orderable.setOrderableChildren(true);
         orderable.setProperty(JcrConstants.JCR_PRIMARYTYPE, JcrConstants.NT_UNSTRUCTURED);
         root.commit();
-
-        NodeBuilder nb = store.getRoot().builder();
-        nb.child(":hidden");
-        store.merge(nb, EmptyHook.INSTANCE, CommitInfo.EMPTY);
-        NodeState testNode = store.getRoot().getChildNode(":hidden");
+        
 
         // Acquire a fresh new root to avoid problems from lingering state
         root = session.getLatestRoot();
         Tree mutableTree = root.getTree("/");
-        NodeState testNode2 = store.getRoot().getChildNode(":hidden");
-        boolean testNode2Exists = testNode2.exists();
-        Tree hiddenTree = mutableTree.getChild(":hidden");
-        boolean hexists = hiddenTree.exists();
-        Tree xTree = mutableTree.getChild("x");
-        boolean xexists = xTree.exists();
-        Tree yTree = xTree.getChild("y");
-        boolean yexists = yTree.exists();
-        Tree zTree = yTree.getChild("z");
-        boolean zexists = zTree.exists();
-        
-        NodeState state = ((AbstractTree) mutableTree).getNodeState();
-        NodeState hiddenState = state.getChildNode(":hidden");
-        boolean hnse = hiddenState.exists();
+
         immutable = new ImmutableTree(((AbstractTree) mutableTree).getNodeState());
-        boolean hasChild = immutable.hasChild(":hidden");
-        ImmutableTree hiddenChild = immutable.getChild(":hidden");
-        boolean childExists = hiddenChild.exists();
-        ImmutableTree xITree = immutable.getChild("x");
-        boolean xIexists = xITree.exists();
-        ImmutableTree yITree = xITree.getChild("y");
-        boolean yIexists = yITree.exists();
-        ImmutableTree zITree = yITree.getChild("z");
-        boolean zIexists = zITree.exists();
-        
-        System.err.println("Child Exists "+childExists);
     }
 
     @After
