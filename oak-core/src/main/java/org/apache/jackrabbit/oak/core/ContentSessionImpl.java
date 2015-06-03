@@ -34,8 +34,11 @@ import org.apache.jackrabbit.oak.spi.query.QueryIndexProvider;
 import org.apache.jackrabbit.oak.spi.security.SecurityProvider;
 import org.apache.jackrabbit.oak.spi.security.authentication.LoginContext;
 import org.apache.jackrabbit.oak.spi.state.NodeStore;
+import org.apache.jackrabbit.oak.spi.state.TenantNodeStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.google.common.base.Preconditions;
 
 /**
  * {@code NodeStore}-based implementation of the {@link ContentSession} interface.
@@ -64,17 +67,20 @@ class ContentSessionImpl implements ContentSession {
      */
     private boolean live = true;
 
+    private TenantNodeStore tenantNodeStore;
+
     public ContentSessionImpl(@Nonnull LoginContext loginContext,
                               @Nonnull SecurityProvider securityProvider,
                               @Nonnull String workspaceName,
-                              @Nonnull NodeStore store,
+                              @Nonnull TenantNodeStore tenantNodeStore,
                               @Nonnull CommitHook hook,
                               QueryEngineSettings queryEngineSettings,
                               @Nonnull QueryIndexProvider indexProvider) {
         this.loginContext = loginContext;
         this.securityProvider = securityProvider;
         this.workspaceName = workspaceName;
-        this.store = store;
+        this.tenantNodeStore = Preconditions.checkNotNull(tenantNodeStore);
+        this.store = tenantNodeStore.getNodeStore();
         this.hook = hook;
         this.queryEngineSettings = queryEngineSettings;
         this.indexProvider = indexProvider;
@@ -120,6 +126,7 @@ class ContentSessionImpl implements ContentSession {
         } catch (LoginException e) {
             log.error("Error during logout.", e);
         }
+        tenantNodeStore.close();
     }
 
     @Override

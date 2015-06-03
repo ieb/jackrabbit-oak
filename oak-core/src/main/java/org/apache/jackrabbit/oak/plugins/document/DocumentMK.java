@@ -17,6 +17,9 @@
 package org.apache.jackrabbit.oak.plugins.document;
 
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
@@ -28,6 +31,7 @@ import javax.sql.DataSource;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.Weigher;
+import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.google.common.util.concurrent.MoreExecutors;
 import com.mongodb.DB;
@@ -40,6 +44,7 @@ import org.apache.jackrabbit.oak.commons.PathUtils;
 import org.apache.jackrabbit.oak.commons.json.JsopReader;
 import org.apache.jackrabbit.oak.commons.json.JsopStream;
 import org.apache.jackrabbit.oak.commons.json.JsopTokenizer;
+import org.apache.jackrabbit.oak.core.Tenant;
 import org.apache.jackrabbit.oak.plugins.document.DocumentNodeState.Children;
 import org.apache.jackrabbit.oak.plugins.document.memory.MemoryDocumentStore;
 import org.apache.jackrabbit.oak.plugins.document.mongo.MongoBlobStore;
@@ -55,6 +60,9 @@ import org.apache.jackrabbit.oak.plugins.document.util.StringValue;
 import org.apache.jackrabbit.oak.spi.blob.BlobStore;
 import org.apache.jackrabbit.oak.spi.blob.GarbageCollectableBlobStore;
 import org.apache.jackrabbit.oak.spi.blob.MemoryBlobStore;
+import org.apache.jackrabbit.oak.spi.state.NodeStore;
+import org.apache.jackrabbit.oak.spi.state.TenantNodeStore;
+import org.apache.jackrabbit.oak.spi.whiteboard.Registration;
 import org.apache.jackrabbit.oak.stats.Clock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -67,6 +75,7 @@ import static com.google.common.base.Preconditions.checkArgument;
  */
 public class DocumentMK {
     
+
     static final Logger LOG = LoggerFactory.getLogger(DocumentMK.class);
     
     /**
@@ -114,7 +123,7 @@ public class DocumentMK {
     protected final DocumentStore store;
 
     DocumentMK(Builder builder) {
-        this.nodeStore = builder.getNodeStore();
+        this.nodeStore = builder.getNodeStore(Tenant.SYSTEM_TENANT);
         this.store = nodeStore.getDocumentStore();
     }
 
@@ -469,6 +478,7 @@ public class DocumentMK {
         private DocumentStore documentStore;
         private DiffCache diffCache;
         private BlobStore blobStore;
+        private Map<Tenant, TenantNodeStore> nodeStores = Maps.newConcurrentMap();
         private int clusterId  = Integer.getInteger("oak.documentMK.clusterId", 0);
         private int asyncDelay = 1000;
         private boolean timing;
@@ -619,12 +629,21 @@ public class DocumentMK {
             }
             return documentStore;
         }
-
+        
+        
+        /** calls to this get the system tenant **/
         public DocumentNodeStore getNodeStore() {
-            if (nodeStore == null) {
-                nodeStore = new DocumentNodeStore(this);
+            return getNodeStore(Tenant.SYSTEM_TENANT);
+        }
+
+
+        public DocumentNodeStore getNodeStore(Tenant tenant) {
+            if (!nodeStores.containsKey(tenant)) {
+                nodeStores.put(tenant, new DocumentTenantNodeStore(tenant, new DocumentNodeStore(this)));
             }
-            return nodeStore;
+            System.err.println("getting node store for tenant "+tenant+" "+nodeStores.get(tenant).getNodeStore());
+            
+            return (DocumentNodeStore) nodeStores.get(tenant).getNodeStore();
         }
 
         public DiffCache getDiffCache() {
@@ -920,4 +939,39 @@ public class DocumentMK {
 
     }
     
+    public static class DocumentTenantNodeStore implements TenantNodeStore {
+
+        private NodeStore nodeStore;
+        private Tenant tenant;
+        private List<Registration> regs = new ArrayList<Registration>();
+
+        public DocumentTenantNodeStore(Tenant tenant, NodeStore nodeStore) {
+            System.err.println("Creating document node store for tenant "+tenant+" "+nodeStore);
+            this.tenant = tenant;
+            this.nodeStore = nodeStore;
+        }
+
+        @Override
+        public NodeStore getNodeStore() {
+            return this.nodeStore;
+        }
+
+        @Override
+        public Tenant getTenant() {
+            return this.tenant;
+        }
+
+        @Override
+        public void close() {
+            // TODO Auto-generated method stub
+            
+        }
+
+        @Override
+        public void deregisterOnClose(List<Registration> regs) {
+            this.regs.addAll(regs);
+        }
+
+    }
+
 }

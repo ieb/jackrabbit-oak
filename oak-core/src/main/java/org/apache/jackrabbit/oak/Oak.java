@@ -49,6 +49,7 @@ import javax.management.ObjectName;
 import javax.security.auth.login.LoginException;
 
 import com.google.common.base.Function;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.io.Closer;
@@ -59,6 +60,7 @@ import org.apache.jackrabbit.oak.api.Root;
 import org.apache.jackrabbit.oak.api.jmx.QueryEngineSettingsMBean;
 import org.apache.jackrabbit.oak.api.jmx.RepositoryManagementMBean;
 import org.apache.jackrabbit.oak.core.ContentRepositoryImpl;
+import org.apache.jackrabbit.oak.core.Tenant;
 import org.apache.jackrabbit.oak.management.RepositoryManager;
 import org.apache.jackrabbit.oak.plugins.commit.ConflictHook;
 import org.apache.jackrabbit.oak.plugins.index.AsyncIndexUpdate;
@@ -71,7 +73,7 @@ import org.apache.jackrabbit.oak.plugins.index.counter.jmx.NodeCounter;
 import org.apache.jackrabbit.oak.plugins.index.counter.jmx.NodeCounterMBean;
 import org.apache.jackrabbit.oak.plugins.index.property.jmx.PropertyIndexAsyncReindex;
 import org.apache.jackrabbit.oak.plugins.index.property.jmx.PropertyIndexAsyncReindexMBean;
-import org.apache.jackrabbit.oak.plugins.memory.MemoryNodeStore;
+import org.apache.jackrabbit.oak.plugins.memory.MemoryNodeStoreProvider;
 import org.apache.jackrabbit.oak.query.QueryEngineSettings;
 import org.apache.jackrabbit.oak.spi.commit.CommitHook;
 import org.apache.jackrabbit.oak.spi.commit.CommitInfo;
@@ -94,6 +96,9 @@ import org.apache.jackrabbit.oak.spi.security.SecurityProvider;
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
 import org.apache.jackrabbit.oak.spi.state.NodeState;
 import org.apache.jackrabbit.oak.spi.state.NodeStore;
+import org.apache.jackrabbit.oak.spi.state.NodeStoreInitialiser;
+import org.apache.jackrabbit.oak.spi.state.NodeStoreProvider;
+import org.apache.jackrabbit.oak.spi.state.TenantNodeStore;
 import org.apache.jackrabbit.oak.spi.whiteboard.CompositeRegistration;
 import org.apache.jackrabbit.oak.spi.whiteboard.DefaultWhiteboard;
 import org.apache.jackrabbit.oak.spi.whiteboard.Registration;
@@ -111,7 +116,7 @@ import org.slf4j.LoggerFactory;
  *
  * @since Oak 0.6
  */
-public class Oak {
+public class Oak implements NodeStoreInitialiser {
     private static final Logger LOG = LoggerFactory.getLogger(Oak.class);
 
     /**
@@ -119,7 +124,7 @@ public class Oak {
      */
     public static final String DEFAULT_WORKSPACE_NAME = "default";
 
-    private final NodeStore store;
+    private final NodeStoreProvider nodeStoreProvider;
     
     private final List<RepositoryInitializer> initializers = newArrayList();
 
@@ -127,9 +132,9 @@ public class Oak {
 
     private final List<QueryIndexProvider> queryIndexProviders = newArrayList();
 
-    private final List<IndexEditorProvider> indexEditorProviders = newArrayList();
+    private List<IndexEditorProvider> indexEditorProviders = newArrayList();
 
-    private final List<CommitHook> commitHooks = newArrayList();
+    private List<CommitHook> commitHooks = newArrayList();
 
     private final List<Observer> observers = Lists.newArrayList();
 
@@ -261,8 +266,12 @@ public class Oak {
                                 runnable, period, period, TimeUnit.SECONDS);
                     }
                 }
-            } else if (type == Observer.class && store instanceof Observable) {
-                observerSubscription.register(((Observable) store).addObserver((Observer) service));
+            } else if (type == Observer.class) {
+                // observers must be implemented so that they respect tenat IDs
+                NodeStore systemNodeStore = nodeStoreProvider.getSystemNodeStore().getNodeStore();
+                if ( systemNodeStore instanceof Observable) {
+                    observerSubscription.register(((Observable) systemNodeStore).addObserver((Observer) service));
+                }
             }
 
             ObjectName objectName = null;
@@ -314,12 +323,21 @@ public class Oak {
      */
     private Map<String, Long> asyncTasks;
 
-    public Oak(NodeStore store) {
-        this.store = checkNotNull(store);
+    private IndexEditorProvider indexEditors;
+    
+    // the store is the system node store.
+    public Oak(@Nonnull NodeStore store) {
+        this(new MemoryNodeStoreProvider(store));
+    }
+
+    public Oak(@Nonnull NodeStoreProvider nodeStoreProvider) {
+        this.nodeStoreProvider = checkNotNull(nodeStoreProvider);
+        this.nodeStoreProvider.bindNodeStoreInitialiser(this); 
     }
 
     public Oak() {
-        this(new MemoryNodeStore());
+        this(new MemoryNodeStoreProvider());
+        System.err.println("Oak Commit Hooks 1 "+commitHooks);
         // this(new DocumentMK.Builder().open());
         // this(new LogWrapper(new DocumentMK.Builder().open()));
     }
@@ -341,6 +359,7 @@ public class Oak {
     @Nonnull
     public Oak with(@Nonnull RepositoryInitializer initializer) {
         initializers.add(checkNotNull(initializer));
+        System.err.println("Oak Commit Hooks 4 "+commitHooks);
         return this;
     }
 
@@ -373,6 +392,8 @@ public class Oak {
     @Nonnull
     public Oak with(@Nonnull IndexEditorProvider provider) {
         indexEditorProviders.add(checkNotNull(provider));
+        System.err.println("Oak Commit Hooks 2 "+commitHooks);
+
         return this;
     }
 
@@ -449,6 +470,7 @@ public class Oak {
                 initializers.add(ri);
             }
         }
+        System.err.println("Oak Commit Hooks 3 "+commitHooks);
         return this;
     }
 
@@ -548,13 +570,60 @@ public class Oak {
         //TODO FIXME OAK-2736
         //checkState(!initialized, "Oak instance should be used only once to create the ContentRepository instance");
         initialized = true;
-        final List<Registration> regs = Lists.newArrayList();
-        regs.add(whiteboard.register(Executor.class, getExecutor(), Collections.emptyMap()));
+        System.err.println("Oak Commit Hooks 6 "+commitHooks);
 
-        IndexEditorProvider indexEditors = CompositeIndexEditorProvider.compose(indexEditorProviders);
+        // initialse final state of commit hooks and editors prior to getting the first node store.
+        
+        buildCommitHookList();
+        final TenantNodeStore systemTenantNodeStore = nodeStoreProvider.getSystemNodeStore();
+        System.err.println("Oak Commit Hooks 7 "+commitHooks);
+
+        final List<Registration> regs = new ArrayList<Registration>();
+       
+        QueryIndexProvider indexProvider = CompositeQueryIndexProvider.compose(queryIndexProviders);
+
+        RepositoryManager repositoryManager = new RepositoryManager(whiteboard);
+        regs.add(registerMBean(whiteboard, RepositoryManagementMBean.class, repositoryManager,
+                RepositoryManagementMBean.TYPE, repositoryManager.getName()));
+        
+        System.err.println("+++++++++++++++++++++++++ Creating repository with commitHooks "+commitHooks);
+        return new ContentRepositoryImpl(
+                nodeStoreProvider,
+                CompositeHook.compose(commitHooks),
+                defaultWorkspaceName,
+                queryEngineSettings,
+                indexProvider,
+                securityProvider) {
+            @Override
+            public void close() throws IOException {
+                super.close();
+                systemTenantNodeStore.close();
+                new CompositeRegistration(regs).unregister();
+                closer.close();
+            }
+        };
+    }
+    
+    public void buildCommitHookList() {
+        indexEditors = CompositeIndexEditorProvider.compose(indexEditorProviders);
+        with(new IndexUpdateProvider(indexEditors));
+        withEditorHook();
+        // save the lists and make them immutable to ensure all copies of a node store are configured in the same way.
+        commitHooks = ImmutableList.copyOf(commitHooks);
+        editorProviders = ImmutableList.of();
+        indexEditorProviders = ImmutableList.copyOf(indexEditorProviders);
+    }
+
+    public void initNodeStore(TenantNodeStore tenantNodeStore) {
+        
+        NodeStore store = tenantNodeStore.getNodeStore();
+        Tenant tenant = tenantNodeStore.getTenant();
+        final List<Registration> regs = new ArrayList<Registration>();
+        regs.add(whiteboard.register(Executor.class, getExecutor(), Collections.emptyMap()));
+        
+        
         OakInitializer.initialize(store, new CompositeInitializer(initializers), indexEditors);
 
-        QueryIndexProvider indexProvider = CompositeQueryIndexProvider.compose(queryIndexProviders);
 
         List<CommitHook> initHooks = new ArrayList<CommitHook>(commitHooks);
         initHooks.add(new EditorHook(CompositeEditorProvider
@@ -598,33 +667,12 @@ public class Oak {
         OakInitializer.initialize(
                 workspaceInitializers, store, defaultWorkspaceName, indexEditors);
 
-        // add index hooks later to prevent the OakInitializer to do excessive indexing
-        with(new IndexUpdateProvider(indexEditors));
-        withEditorHook();
-
         // Register observer last to prevent sending events while initialising
         for (Observer observer : observers) {
             regs.add(registerObserver(whiteboard, observer));
         }
 
-        RepositoryManager repositoryManager = new RepositoryManager(whiteboard);
-        regs.add(registerMBean(whiteboard, RepositoryManagementMBean.class, repositoryManager,
-                RepositoryManagementMBean.TYPE, repositoryManager.getName()));
-
-        return new ContentRepositoryImpl(
-                store,
-                CompositeHook.compose(commitHooks),
-                defaultWorkspaceName,
-                queryEngineSettings,
-                indexProvider,
-                securityProvider) {
-            @Override
-            public void close() throws IOException {
-                super.close();
-                new CompositeRegistration(regs).unregister();
-                closer.close();
-            }
-        };
+        tenantNodeStore.deregisterOnClose(regs);
     }
 
     /**

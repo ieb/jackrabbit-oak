@@ -16,6 +16,9 @@
  */
 package org.apache.jackrabbit.oak.core;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import javax.annotation.Nonnull;
 import javax.security.auth.Subject;
 
@@ -27,12 +30,16 @@ import org.apache.jackrabbit.oak.spi.security.SecurityProvider;
 import org.apache.jackrabbit.oak.spi.security.authentication.LoginContext;
 import org.apache.jackrabbit.oak.spi.security.authentication.SystemSubject;
 import org.apache.jackrabbit.oak.spi.state.NodeStore;
+import org.apache.jackrabbit.oak.spi.state.TenantNodeStore;
+import org.apache.jackrabbit.oak.spi.whiteboard.CompositeRegistration;
+import org.apache.jackrabbit.oak.spi.whiteboard.Registration;
 
 /**
  *  Internal extension of the {@link MutableRoot} to be used
  *  when an usage of the system internal subject is needed.
  */
 public class SystemRoot extends MutableRoot {
+
 
     private static final LoginContext LOGIN_CONTEXT = new LoginContext() {
         @Override
@@ -63,7 +70,7 @@ public class SystemRoot extends MutableRoot {
         this(store, hook, workspaceName, securityProvider, queryEngineSettings, indexProvider,
                 new ContentSessionImpl(
                         LOGIN_CONTEXT, securityProvider, workspaceName,
-                        store, hook, queryEngineSettings, indexProvider) {
+                        new SystemTenantNodeStore(store), hook, queryEngineSettings, indexProvider) {
                     @Nonnull
                     @Override
                     public Root getLatestRoot() {
@@ -74,4 +81,38 @@ public class SystemRoot extends MutableRoot {
                     }
                 });
     }
+    
+    public static class SystemTenantNodeStore implements TenantNodeStore {
+
+        private NodeStore store;
+        private List<Registration> regs = new ArrayList<Registration>();
+
+        public SystemTenantNodeStore(NodeStore store) {
+            this.store = store;
+            System.err.println("Basing system node store on "+store);
+        }
+
+        @Override
+        public NodeStore getNodeStore() {
+            return store;
+        }
+
+        @Override
+        public Tenant getTenant() {
+            return Tenant.SYSTEM_TENANT;
+        }
+
+        @Override
+        public void close() {
+            new CompositeRegistration(regs).unregister();
+        }
+
+        @Override
+        public void deregisterOnClose(List<Registration> regs) {
+            System.err.println("System store registrations "+regs);
+            this.regs.addAll(regs);
+        }
+
+    }
+
 }

@@ -86,6 +86,7 @@ import javax.security.auth.login.LoginException;
 
 import org.apache.jackrabbit.api.JackrabbitRepository;
 import org.apache.jackrabbit.commons.SimpleValueFactory;
+import org.apache.jackrabbit.oak.Oak;
 import org.apache.jackrabbit.oak.api.ContentRepository;
 import org.apache.jackrabbit.oak.api.ContentSession;
 import org.apache.jackrabbit.oak.api.Descriptors;
@@ -102,6 +103,9 @@ import org.apache.jackrabbit.oak.spi.security.principal.PrincipalConfiguration;
 import org.apache.jackrabbit.oak.spi.security.privilege.PrivilegeConfiguration;
 import org.apache.jackrabbit.oak.spi.security.user.UserConfiguration;
 import org.apache.jackrabbit.oak.spi.state.NodeStore;
+import org.apache.jackrabbit.oak.spi.state.NodeStoreInitialiser;
+import org.apache.jackrabbit.oak.spi.state.NodeStoreProvider;
+import org.apache.jackrabbit.oak.spi.state.TenantNodeStore;
 import org.apache.jackrabbit.oak.util.GenericDescriptors;
 
 /**
@@ -110,7 +114,6 @@ import org.apache.jackrabbit.oak.util.GenericDescriptors;
  */
 public class ContentRepositoryImpl implements ContentRepository, Closeable {
 
-    private final NodeStore nodeStore;
     private final CommitHook commitHook;
     private final String defaultWorkspaceName;
     private final SecurityProvider securityProvider;
@@ -118,6 +121,7 @@ public class ContentRepositoryImpl implements ContentRepository, Closeable {
     private final QueryEngineSettings queryEngineSettings;
 
     private GenericDescriptors descriptors;
+    private NodeStoreProvider nodeStoreProvider;
     
     /**
      * Creates an content repository instance based on the given, already
@@ -129,13 +133,13 @@ public class ContentRepositoryImpl implements ContentRepository, Closeable {
      * @param indexProvider        index provider
      * @param securityProvider     The configured security provider.
      */
-    public ContentRepositoryImpl(@Nonnull NodeStore nodeStore,
+    public ContentRepositoryImpl(@Nonnull NodeStoreProvider nodeStoreProvider,
                                  @Nonnull CommitHook commitHook,
                                  @Nonnull String defaultWorkspaceName,
                                  QueryEngineSettings queryEngineSettings,
                                  @Nullable QueryIndexProvider indexProvider,
                                  @Nonnull SecurityProvider securityProvider) {
-        this.nodeStore = checkNotNull(nodeStore);
+        this.nodeStoreProvider = checkNotNull(nodeStoreProvider);
         this.commitHook = checkNotNull(commitHook);
         this.defaultWorkspaceName = checkNotNull(defaultWorkspaceName);
         this.securityProvider = checkNotNull(securityProvider);
@@ -160,7 +164,9 @@ public class ContentRepositoryImpl implements ContentRepository, Closeable {
         LoginContext loginContext = lcProvider.getLoginContext(credentials, workspaceName);
         loginContext.login();
 
-        return new ContentSessionImpl(loginContext, securityProvider, workspaceName, nodeStore,
+        Tenant tenant = new Tenant(loginContext.getSubject());
+        TenantNodeStore tenantNodeStore = nodeStoreProvider.getTenantNodeStore(tenant);
+        return new ContentSessionImpl(loginContext, securityProvider, workspaceName, tenantNodeStore,
                 commitHook, queryEngineSettings, indexProvider);
     }
 

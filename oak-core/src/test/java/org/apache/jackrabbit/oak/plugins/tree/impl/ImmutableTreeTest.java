@@ -21,6 +21,7 @@ package org.apache.jackrabbit.oak.plugins.tree.impl;
 import java.util.List;
 
 import com.google.common.collect.Lists;
+
 import org.apache.jackrabbit.JcrConstants;
 import org.apache.jackrabbit.oak.NodeStoreFixture;
 import org.apache.jackrabbit.oak.OakBaseTest;
@@ -29,9 +30,11 @@ import org.apache.jackrabbit.oak.api.ContentSession;
 import org.apache.jackrabbit.oak.api.PropertyState;
 import org.apache.jackrabbit.oak.api.Root;
 import org.apache.jackrabbit.oak.api.Tree;
+import org.apache.jackrabbit.oak.api.Tree.Status;
 import org.apache.jackrabbit.oak.spi.commit.CommitInfo;
 import org.apache.jackrabbit.oak.spi.commit.EmptyHook;
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
+import org.apache.jackrabbit.oak.spi.state.NodeState;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -71,12 +74,37 @@ public class ImmutableTreeTest extends OakBaseTest {
         NodeBuilder nb = store.getRoot().builder();
         nb.child(":hidden");
         store.merge(nb, EmptyHook.INSTANCE, CommitInfo.EMPTY);
+        NodeState testNode = store.getRoot().getChildNode(":hidden");
 
         // Acquire a fresh new root to avoid problems from lingering state
         root = session.getLatestRoot();
         Tree mutableTree = root.getTree("/");
-
+        NodeState testNode2 = store.getRoot().getChildNode(":hidden");
+        boolean testNode2Exists = testNode2.exists();
+        Tree hiddenTree = mutableTree.getChild(":hidden");
+        boolean hexists = hiddenTree.exists();
+        Tree xTree = mutableTree.getChild("x");
+        boolean xexists = xTree.exists();
+        Tree yTree = xTree.getChild("y");
+        boolean yexists = yTree.exists();
+        Tree zTree = yTree.getChild("z");
+        boolean zexists = zTree.exists();
+        
+        NodeState state = ((AbstractTree) mutableTree).getNodeState();
+        NodeState hiddenState = state.getChildNode(":hidden");
+        boolean hnse = hiddenState.exists();
         immutable = new ImmutableTree(((AbstractTree) mutableTree).getNodeState());
+        boolean hasChild = immutable.hasChild(":hidden");
+        ImmutableTree hiddenChild = immutable.getChild(":hidden");
+        boolean childExists = hiddenChild.exists();
+        ImmutableTree xITree = immutable.getChild("x");
+        boolean xIexists = xITree.exists();
+        ImmutableTree yITree = xITree.getChild("y");
+        boolean yIexists = yITree.exists();
+        ImmutableTree zITree = yITree.getChild("z");
+        boolean zIexists = zITree.exists();
+        
+        System.err.println("Child Exists "+childExists);
     }
 
     @After
