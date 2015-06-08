@@ -47,6 +47,7 @@ import org.apache.jackrabbit.oak.api.CommitFailedException;
 import org.apache.jackrabbit.oak.api.ContentRepository;
 import org.apache.jackrabbit.oak.api.Result;
 import org.apache.jackrabbit.oak.api.Tree;
+import org.apache.jackrabbit.oak.core.TenantUtil;
 import org.apache.jackrabbit.oak.plugins.index.IndexUpdateCallback;
 import org.apache.jackrabbit.oak.plugins.index.IndexUtils;
 import org.apache.jackrabbit.oak.plugins.index.property.OrderedIndex.OrderDirection;
@@ -79,7 +80,6 @@ import com.google.common.collect.Lists;
 
 public class Oak2077QueriesTest extends BasicOrderedPropertyIndexQueryTest {
     private static final LoggingTracker<ILoggingEvent> LOGGING_TRACKER;
-    private NodeStore nodestore;
     private ContentRepository repository;
 
     static {
@@ -224,7 +224,7 @@ public class Oak2077QueriesTest extends BasicOrderedPropertyIndexQueryTest {
     // ---------------------------------------------------------------------------------- < tests >
     @Override
     protected ContentRepository createRepository() {
-        nodestore = new MemoryNodeStore();
+        MemoryNodeStore nodestore = new MemoryNodeStore();
         repository = new Oak(nodestore).with(new InitialContent())
             .with(new OpenSecurityProvider())
             .with(new SeededOrderedPropertyIndexEditorProvider())
@@ -326,7 +326,7 @@ public class Oak2077QueriesTest extends BasicOrderedPropertyIndexQueryTest {
         checkArgument(lane >= 0 && lane < OrderedIndex.LANES);
         
         String previousValue;
-        NodeBuilder rootBuilder = nodestore.getRoot().builder();
+        NodeBuilder rootBuilder = TenantUtil.getTenantNodeStore(session).getRoot().builder();
         NodeBuilder builder = rootBuilder.getChildNode(INDEX_DEFINITIONS_NAME);
         builder = builder.getChildNode(TEST_INDEX_NAME);
         builder = builder.getChildNode(INDEX_CONTENT_NODE_NAME);
@@ -342,7 +342,7 @@ public class Oak2077QueriesTest extends BasicOrderedPropertyIndexQueryTest {
         previousValue = getPropertyNext(truncated, lane);
         setPropertyNext(truncated, inexistent, lane);
         
-        nodestore.merge(rootBuilder, EmptyHook.INSTANCE, CommitInfo.EMPTY);
+        TenantUtil.getTenantNodeStore(session).merge(rootBuilder, EmptyHook.INSTANCE, CommitInfo.EMPTY);
         resetEnvVariables();
         
         return previousValue;

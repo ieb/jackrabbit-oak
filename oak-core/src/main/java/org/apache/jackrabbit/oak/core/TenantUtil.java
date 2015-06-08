@@ -22,6 +22,8 @@ import javax.annotation.Nullable;
 import javax.jcr.SimpleCredentials;
 
 import org.apache.jackrabbit.oak.api.AuthInfo;
+import org.apache.jackrabbit.oak.api.ContentSession;
+import org.apache.jackrabbit.oak.spi.state.NodeStore;
 
 public class TenantUtil {
     
@@ -35,6 +37,15 @@ public class TenantUtil {
     @Nullable
     public static String getTenantId(@Nonnull SimpleCredentials credentials) {
         return (String) credentials.getAttribute(TENANT_ID);
+    }
+    
+    
+    @Nullable
+    public static NodeStore getTenantNodeStore(ContentSession session) {
+        if (session instanceof ContentSessionImpl) {
+            return ((ContentSessionImpl) session).getStore();
+        }
+        return null;
     }
 
 }

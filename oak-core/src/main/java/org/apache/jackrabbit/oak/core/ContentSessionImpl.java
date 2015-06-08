@@ -116,6 +116,10 @@ class ContentSessionImpl implements ContentSession {
         return new MutableRoot(store, hook, workspaceName, loginContext.getSubject(),
                 securityProvider, queryEngineSettings, indexProvider, this);
     }
+    
+    public NodeStore getStore() {
+        return store;
+    }
 
     //-----------------------------------------------------------< Closable >---
     @Override
