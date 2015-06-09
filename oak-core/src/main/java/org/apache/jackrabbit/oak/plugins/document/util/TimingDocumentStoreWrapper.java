@@ -29,6 +29,7 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 import org.apache.jackrabbit.oak.cache.CacheStats;
+import org.apache.jackrabbit.oak.core.Tenant;
 import org.apache.jackrabbit.oak.plugins.document.Collection;
 import org.apache.jackrabbit.oak.plugins.document.Document;
 import org.apache.jackrabbit.oak.plugins.document.DocumentStore;
@@ -81,6 +82,12 @@ public class TimingDocumentStoreWrapper implements DocumentStore {
         this.base = base;
         lastLogTime = now();
     }
+    
+    @Override
+    public DocumentStore cloneForTenant(Tenant tenant) {
+        return new TimingDocumentStoreWrapper(base.cloneForTenant(tenant));
+    }
+
 
     private boolean logCommonCall() {
         return callCount % 10 == 0;

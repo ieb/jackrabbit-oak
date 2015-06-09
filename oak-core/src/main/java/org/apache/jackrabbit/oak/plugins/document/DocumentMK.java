@@ -45,6 +45,7 @@ import org.apache.jackrabbit.oak.commons.json.JsopReader;
 import org.apache.jackrabbit.oak.commons.json.JsopStream;
 import org.apache.jackrabbit.oak.commons.json.JsopTokenizer;
 import org.apache.jackrabbit.oak.core.Tenant;
+import org.apache.jackrabbit.oak.plugins.document.DocumentMK.ImmutableBuilder;
 import org.apache.jackrabbit.oak.plugins.document.DocumentNodeState.Children;
 import org.apache.jackrabbit.oak.plugins.document.memory.MemoryDocumentStore;
 import org.apache.jackrabbit.oak.plugins.document.mongo.MongoBlobStore;
@@ -61,7 +62,6 @@ import org.apache.jackrabbit.oak.spi.blob.BlobStore;
 import org.apache.jackrabbit.oak.spi.blob.GarbageCollectableBlobStore;
 import org.apache.jackrabbit.oak.spi.blob.MemoryBlobStore;
 import org.apache.jackrabbit.oak.spi.state.NodeStore;
-import org.apache.jackrabbit.oak.spi.state.TenantNodeStore;
 import org.apache.jackrabbit.oak.spi.whiteboard.Registration;
 import org.apache.jackrabbit.oak.stats.Clock;
 import org.slf4j.Logger;
@@ -123,7 +123,7 @@ public class DocumentMK {
     protected final DocumentStore store;
 
     DocumentMK(Builder builder) {
-        this.nodeStore = builder.getNodeStore(Tenant.SYSTEM_TENANT);
+        this.nodeStore = builder.getNodeStore();
         this.store = nodeStore.getDocumentStore();
     }
 
@@ -464,11 +464,119 @@ public class DocumentMK {
     }
 
     //----------------------------< Builder >-----------------------------------
+    
+    public static class ImmutableBuilder {
+        
+        private ImmutableBuilder parent;
+
+        public ImmutableBuilder(ImmutableBuilder parent) {
+            this.parent = parent;
+        }
+
+        public ImmutableBuilder getTenantBuilder(Tenant tenant) {
+            throw new IllegalStateException("Only the root builder can create tenant builders.");
+        }
+
+        public BlobStore getBlobStore() {
+            return parent.getBlobStore();
+        }
+
+        public boolean isUseSimpleRevision() {
+            return parent.isUseSimpleRevision();
+        }
+
+        public DocumentStore getDocumentStore() {
+            return parent.getDocumentStore();
+        }
+
+        public boolean getTiming() {
+            return parent.getTiming();
+        }
+
+        public boolean getLogging() {
+            return parent.getLogging();
+        }
+
+        public Executor getExecutor() {
+            return parent.getExecutor();
+        }
+
+        public Clock getClock() {
+            return parent.getClock();
+        }
+
+        public int getClusterId() {
+            return parent.getClusterId();
+        }
+
+        public int getAsyncDelay() {
+            return parent.getAsyncDelay();
+        }
+
+        VersionGCSupport createVersionGCSupport() {
+            return parent.createVersionGCSupport();
+        }
+
+        public boolean isDisableBranches() {
+            return parent.isDisableBranches();
+        }
+
+        public Cache<PathRev, DocumentNodeState> buildNodeCache(DocumentNodeStore documentNodeStore) {
+            return parent.buildNodeCache(documentNodeStore);
+        }
+
+        public Weigher<CacheValue, CacheValue> getWeigher() {
+            return parent.getWeigher();
+        }
+
+        public long getNodeCacheSize() {
+            return parent.getNodeCacheSize();
+        }
+
+        public Cache<PathRev, Children> buildChildrenCache() {
+            return parent.buildChildrenCache();
+        }
+
+        public long getChildrenCacheSize() {
+            return parent.getChildrenCacheSize();
+        }
+
+        public Cache<StringValue, NodeDocument.Children> buildDocChildrenCache() {
+            return parent.buildDocChildrenCache();
+        }
+
+        public long getDocChildrenCacheSize() {
+            return parent.getDocChildrenCacheSize();
+        }
+
+        public DiffCache getDiffCache() {
+            return parent.getDiffCache();
+        }
+        
+    }
+    
+    public static class TenantImmutableBuilder extends ImmutableBuilder {
+
+        private DocumentStore tenantDocumentStore;
+        private BlobStore tenantBlobStore;
+
+        public TenantImmutableBuilder(ImmutableBuilder parent, Tenant tenant) {
+            super(parent);
+            this.tenantDocumentStore = parent.getDocumentStore().cloneForTenant(tenant);
+        }
+        
+        @Override
+        public DocumentStore getDocumentStore() {
+            return tenantDocumentStore;
+        }
+            
+        
+    }
 
     /**
      * A builder for a DocumentMK instance.
      */
-    public static class Builder {
+    public static class Builder extends ImmutableBuilder {
         private static final long DEFAULT_MEMORY_CACHE_SIZE = 256 * 1024 * 1024;
         public static final int DEFAULT_NODE_CACHE_PERCENTAGE = 25;
         public static final int DEFAULT_CHILDREN_CACHE_PERCENTAGE = 10;
@@ -478,7 +586,6 @@ public class DocumentMK {
         private DocumentStore documentStore;
         private DiffCache diffCache;
         private BlobStore blobStore;
-        private Map<Tenant, TenantNodeStore> nodeStores = Maps.newConcurrentMap();
         private int clusterId  = Integer.getInteger("oak.documentMK.clusterId", 0);
         private int asyncDelay = 1000;
         private boolean timing;
@@ -500,7 +607,9 @@ public class DocumentMK {
         private PersistentCache persistentCache;
 
         public Builder() {
+            super(null);
         }
+
 
         /**
          * Use the given MongoDB as backend storage for the DocumentNodeStore.
@@ -631,19 +740,17 @@ public class DocumentMK {
         }
         
         
-        /** calls to this get the system tenant **/
         public DocumentNodeStore getNodeStore() {
-            return getNodeStore(Tenant.SYSTEM_TENANT);
+            if (nodeStore == null) {
+                nodeStore = new DocumentNodeStore(this);
+            }
+            return nodeStore;
         }
 
 
-        public DocumentNodeStore getNodeStore(Tenant tenant) {
-            if (!nodeStores.containsKey(tenant)) {
-                nodeStores.put(tenant, new DocumentTenantNodeStore(tenant, new DocumentNodeStore(this)));
-            }
-            System.err.println("getting node store for tenant "+tenant+" "+nodeStores.get(tenant).getNodeStore());
-            
-            return (DocumentNodeStore) nodeStores.get(tenant).getNodeStore();
+
+        public ImmutableBuilder getTenantBuilder(final Tenant tenant) {
+            return new TenantImmutableBuilder(this, tenant);
         }
 
         public DiffCache getDiffCache() {
@@ -935,41 +1042,6 @@ public class DocumentMK {
                     maximumWeight(maxWeight).
                     recordStats().
                     build();
-        }
-
-    }
-    
-    public static class DocumentTenantNodeStore implements TenantNodeStore {
-
-        private NodeStore nodeStore;
-        private Tenant tenant;
-        private List<Registration> regs = new ArrayList<Registration>();
-
-        public DocumentTenantNodeStore(Tenant tenant, NodeStore nodeStore) {
-            System.err.println("Creating document node store for tenant "+tenant+" "+nodeStore);
-            this.tenant = tenant;
-            this.nodeStore = nodeStore;
-        }
-
-        @Override
-        public NodeStore getNodeStore() {
-            return this.nodeStore;
-        }
-
-        @Override
-        public Tenant getTenant() {
-            return this.tenant;
-        }
-
-        @Override
-        public void close() {
-            // TODO Auto-generated method stub
-            
-        }
-
-        @Override
-        public void deregisterOnClose(List<Registration> regs) {
-            this.regs.addAll(regs);
         }
 
     }

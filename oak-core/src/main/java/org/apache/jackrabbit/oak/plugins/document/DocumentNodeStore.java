@@ -77,6 +77,7 @@ import org.apache.jackrabbit.oak.commons.json.JsopTokenizer;
 import org.apache.jackrabbit.oak.plugins.blob.BlobStoreBlob;
 import org.apache.jackrabbit.oak.plugins.blob.MarkSweepGarbageCollector;
 import org.apache.jackrabbit.oak.plugins.document.Checkpoints.Info;
+import org.apache.jackrabbit.oak.plugins.document.DocumentMK.ImmutableBuilder;
 import org.apache.jackrabbit.oak.plugins.document.cache.CacheInvalidationStats;
 import org.apache.jackrabbit.oak.plugins.document.mongo.MongoBlobReferenceIterator;
 import org.apache.jackrabbit.oak.plugins.document.mongo.MongoDocumentStore;
@@ -88,6 +89,7 @@ import org.apache.jackrabbit.oak.api.Blob;
 import org.apache.jackrabbit.oak.api.CommitFailedException;
 import org.apache.jackrabbit.oak.cache.CacheStats;
 import org.apache.jackrabbit.oak.commons.PathUtils;
+import org.apache.jackrabbit.oak.core.Tenant;
 import org.apache.jackrabbit.oak.json.BlobSerializer;
 import org.apache.jackrabbit.oak.plugins.document.Branch.BranchCommit;
 import org.apache.jackrabbit.oak.plugins.document.util.LoggingDocumentStoreWrapper;
@@ -369,7 +371,10 @@ public final class DocumentNodeStore
 
     private final DocumentNodeStoreMBean mbean;
 
-    public DocumentNodeStore(DocumentMK.Builder builder) {
+    private ImmutableBuilder builder;
+
+    public DocumentNodeStore(DocumentMK.ImmutableBuilder builder) {
+        this.builder = builder;
         this.blobStore = builder.getBlobStore();
         if (builder.isUseSimpleRevision()) {
             this.simpleRevisionCounter = new AtomicInteger(0);
@@ -480,6 +485,11 @@ public final class DocumentNodeStore
 
         this.mbean = createMBean();
         LOG.info("Initialized DocumentNodeStore with clusterNodeId: {}", clusterId);
+    }
+    
+    @Override
+    public NodeStore cloneForTenant(Tenant tenant) {
+        return new DocumentNodeStore(builder.getTenantBuilder(tenant));
     }
 
     /**

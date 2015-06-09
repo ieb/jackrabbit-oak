@@ -53,9 +53,11 @@ import javax.sql.DataSource;
 
 import org.apache.jackrabbit.oak.cache.CacheStats;
 import org.apache.jackrabbit.oak.cache.CacheValue;
+import org.apache.jackrabbit.oak.core.Tenant;
 import org.apache.jackrabbit.oak.plugins.document.Collection;
 import org.apache.jackrabbit.oak.plugins.document.Document;
 import org.apache.jackrabbit.oak.plugins.document.DocumentMK;
+import org.apache.jackrabbit.oak.plugins.document.DocumentMK.Builder;
 import org.apache.jackrabbit.oak.plugins.document.DocumentStore;
 import org.apache.jackrabbit.oak.plugins.document.DocumentStoreException;
 import org.apache.jackrabbit.oak.plugins.document.NodeDocument;
@@ -187,16 +189,29 @@ import com.google.common.util.concurrent.Striped;
  */
 public class RDBDocumentStore implements DocumentStore {
 
+    private DataSource ds;
+    private Builder builder;
+    private RDBOptions options;
+    private Tenant tenant;
+
     /**
      * Creates a {@linkplain RDBDocumentStore} instance using the provided
      * {@link DataSource}, {@link DocumentMK.Builder}, and {@link RDBOptions}.
      */
-    public RDBDocumentStore(DataSource ds, DocumentMK.Builder builder, RDBOptions options) {
+    public RDBDocumentStore(DataSource ds, DocumentMK.Builder builder, RDBOptions options, Tenant tenant) {
         try {
-            initialize(ds, builder, options);
+            this.ds = ds;
+            this.builder = builder;
+            this.options = options;
+            this.tenant = tenant;
+            initialize();
         } catch (Exception ex) {
             throw new DocumentStoreException("initializing RDB document store", ex);
         }
+    }
+
+    public RDBDocumentStore(DataSource ds, DocumentMK.Builder builder, RDBOptions options) {
+        this(ds, builder, options, Tenant.SYSTEM_TENANT);
     }
 
     /**
@@ -205,7 +220,16 @@ public class RDBDocumentStore implements DocumentStore {
      * {@link RDBOptions}.
      */
     public RDBDocumentStore(DataSource ds, DocumentMK.Builder builder) {
-        this(ds, builder, new RDBOptions());
+        this(ds, builder, new RDBOptions(), Tenant.SYSTEM_TENANT);
+    }
+    
+    public RDBDocumentStore(DataSource ds, DocumentMK.Builder builder, Tenant tenant) {
+        this(ds, builder, new RDBOptions(), tenant);
+    }
+    
+    @Override
+    public DocumentStore cloneForTenant(Tenant tenant) {
+        return new RDBDocumentStore(ds, builder, options.forTenant(tenant), tenant);
     }
 
     @Override
@@ -664,7 +688,7 @@ public class RDBDocumentStore implements DocumentStore {
 
     private final RDBDocumentSerializer SR = new RDBDocumentSerializer(this, COLUMNPROPERTIES);
 
-    private void initialize(DataSource ds, DocumentMK.Builder builder, RDBOptions options) throws Exception {
+    private void initialize() throws Exception {
 
         this.tnNodes = RDBJDBCTools.createTableName(options.getTablePrefix(), "NODES");
         this.tnClusterNodes = RDBJDBCTools.createTableName(options.getTablePrefix(), "CLUSTERNODES");

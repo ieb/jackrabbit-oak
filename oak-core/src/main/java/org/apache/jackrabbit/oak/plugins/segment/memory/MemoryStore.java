@@ -24,6 +24,7 @@ import java.util.concurrent.ConcurrentMap;
 import javax.annotation.Nonnull;
 
 import org.apache.jackrabbit.oak.api.Blob;
+import org.apache.jackrabbit.oak.core.Tenant;
 import org.apache.jackrabbit.oak.plugins.segment.Segment;
 import org.apache.jackrabbit.oak.plugins.segment.SegmentId;
 import org.apache.jackrabbit.oak.plugins.segment.SegmentNotFoundException;
@@ -56,6 +57,11 @@ public class MemoryStore implements SegmentStore {
         SegmentWriter writer = tracker.getWriter();
         this.head = writer.writeNode(builder.getNodeState());
         writer.flush();
+    }
+    
+    @Override
+    public SegmentStore cloneForTenant(Tenant tenant) {
+        return new MemoryStore();
     }
 
     public MemoryStore() {

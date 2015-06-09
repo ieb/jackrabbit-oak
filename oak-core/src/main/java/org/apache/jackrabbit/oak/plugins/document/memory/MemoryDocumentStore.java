@@ -30,7 +30,10 @@ import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
 
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Maps;
+
 import org.apache.jackrabbit.oak.cache.CacheStats;
+import org.apache.jackrabbit.oak.core.Tenant;
 import org.apache.jackrabbit.oak.plugins.document.Collection;
 import org.apache.jackrabbit.oak.plugins.document.Document;
 import org.apache.jackrabbit.oak.plugins.document.DocumentStore;
@@ -58,20 +61,17 @@ public class MemoryDocumentStore implements DocumentStore {
     /**
      * The 'nodes' collection.
      */
-    private ConcurrentSkipListMap<String, NodeDocument> nodes =
-            new ConcurrentSkipListMap<String, NodeDocument>();
+    private Map<Tenant, ConcurrentSkipListMap<String, NodeDocument>> tenantNodes;
 
     /**
      * The 'clusterNodes' collection.
      */
-    private ConcurrentSkipListMap<String, Document> clusterNodes =
-            new ConcurrentSkipListMap<String, Document>();
+    private Map<Tenant, ConcurrentSkipListMap<String, Document>> tenantClusterNodes;
 
     /**
      * The 'settings' collection.
      */
-    private ConcurrentSkipListMap<String, Document> settings =
-            new ConcurrentSkipListMap<String, Document>();
+    private Map<Tenant, ConcurrentSkipListMap<String, Document>> tenantSettings;
 
     private final ReadWriteLock rwLock = new ReentrantReadWriteLock();
 
@@ -89,11 +89,34 @@ public class MemoryDocumentStore implements DocumentStore {
 
     private final Map<String, String> metadata;
 
+    private Tenant tenant;
+
     public MemoryDocumentStore() {
         metadata = ImmutableMap.<String,String>builder()
                         .put("type", "memory")
                         .build();
+        tenant = Tenant.SYSTEM_TENANT;
+        tenantNodes = Maps.newConcurrentMap();
+        tenantClusterNodes = Maps.newConcurrentMap();
+        tenantSettings = Maps.newConcurrentMap();
     }
+    
+    public MemoryDocumentStore(MemoryDocumentStore parent, Tenant tenant) {
+        metadata = ImmutableMap.<String,String>builder()
+                .put("type", "memory")
+                .put("tenant", tenant.toString())
+                .build();
+        this.tenant = tenant;
+        tenantNodes = parent.tenantNodes;
+        tenantClusterNodes = parent.tenantClusterNodes;
+        tenantSettings = parent.tenantSettings;
+    }
+    
+    @Override
+    public DocumentStore cloneForTenant(Tenant tenant) {
+        return new MemoryDocumentStore(this, tenant);
+    }
+    
 
     @Override
     public <T extends Document> T find(Collection<T> collection, String key, int maxCacheAge) {
@@ -223,15 +246,39 @@ public class MemoryDocumentStore implements DocumentStore {
     @SuppressWarnings("unchecked")
     protected <T extends Document> ConcurrentSkipListMap<String, T> getMap(Collection<T> collection) {
         if (collection == Collection.NODES) {
-            return (ConcurrentSkipListMap<String, T>) nodes;
+            return (ConcurrentSkipListMap<String, T>) getTenantNodes();
         } else if (collection == Collection.CLUSTER_NODES) {
-            return (ConcurrentSkipListMap<String, T>) clusterNodes;
+            return (ConcurrentSkipListMap<String, T>) getClusterNodes();
         }else if (collection == Collection.SETTINGS) {
-            return (ConcurrentSkipListMap<String, T>) settings;
+            return (ConcurrentSkipListMap<String, T>) getSettings();
         } else {
             throw new IllegalArgumentException(
                     "Unknown collection: " + collection.toString());
         }
+    }
+    
+    
+
+
+    private ConcurrentSkipListMap<String, Document> getSettings() {
+        if ( !tenantSettings.containsKey(tenant) ) {
+            tenantSettings.put(tenant, new ConcurrentSkipListMap<String, Document>());
+        }
+        return tenantSettings.get(tenant);
+    }
+
+    private ConcurrentSkipListMap<String, Document> getClusterNodes() {
+        if ( !tenantClusterNodes.containsKey(tenant) ) {
+            tenantClusterNodes.put(tenant, new ConcurrentSkipListMap<String, Document>());
+        }
+        return tenantClusterNodes.get(tenant);
+    }
+
+    private ConcurrentSkipListMap<String, NodeDocument> getTenantNodes() {
+        if ( !tenantNodes.containsKey(tenant) ) {
+            tenantNodes.put(tenant, new ConcurrentSkipListMap<String, NodeDocument>());
+        }
+        return tenantNodes.get(tenant);
     }
 
     @CheckForNull

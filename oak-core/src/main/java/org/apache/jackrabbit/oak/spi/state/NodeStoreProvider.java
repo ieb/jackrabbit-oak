@@ -20,6 +20,7 @@ package org.apache.jackrabbit.oak.spi.state;
 import javax.annotation.Nonnull;
 
 import org.apache.jackrabbit.oak.core.Tenant;
+import org.apache.jackrabbit.oak.core.TenantNodeStore;
 
 /**
  *

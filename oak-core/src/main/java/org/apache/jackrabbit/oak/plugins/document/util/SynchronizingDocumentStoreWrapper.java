@@ -22,6 +22,7 @@ import java.util.Map;
 import javax.annotation.Nonnull;
 
 import org.apache.jackrabbit.oak.cache.CacheStats;
+import org.apache.jackrabbit.oak.core.Tenant;
 import org.apache.jackrabbit.oak.plugins.document.Collection;
 import org.apache.jackrabbit.oak.plugins.document.Document;
 import org.apache.jackrabbit.oak.plugins.document.DocumentStore;
@@ -38,6 +39,11 @@ public class SynchronizingDocumentStoreWrapper implements DocumentStore {
 
     public SynchronizingDocumentStoreWrapper(DocumentStore store) {
         this.store = store;
+    }
+    
+    @Override
+    public DocumentStore cloneForTenant(Tenant tenant) {
+        return new SynchronizingDocumentStoreWrapper(store.cloneForTenant(tenant));
     }
 
     @Override

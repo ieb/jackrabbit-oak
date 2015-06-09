@@ -18,6 +18,8 @@ package org.apache.jackrabbit.oak.plugins.document.rdb;
 
 import javax.annotation.Nonnull;
 
+import org.apache.jackrabbit.oak.core.Tenant;
+
 /**
  * Options applicable to RDB persistence
  */
@@ -25,6 +27,7 @@ public class RDBOptions {
 
     private boolean dropTablesOnClose = false;
     private String tablePrefix = "";
+    private Tenant tenant;
 
     public RDBOptions() {
     }
@@ -46,10 +49,21 @@ public class RDBOptions {
     }
 
     public @Nonnull String getTablePrefix() {
+        if (tenant != null) {
+            return tenant+"_"+this.tablePrefix;
+        }
         return this.tablePrefix;
     }
 
     public boolean isDropTablesOnClose() {
         return this.dropTablesOnClose;
+    }
+
+    public RDBOptions forTenant(Tenant tenant) {
+        RDBOptions options = new RDBOptions();
+        options.dropTablesOnClose = dropTablesOnClose;
+        options.tablePrefix = tablePrefix;
+        options.tenant = tenant;
+        return options;
     }
 }

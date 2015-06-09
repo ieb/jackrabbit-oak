@@ -40,6 +40,7 @@ import com.google.common.io.ByteStreams;
 
 import org.apache.jackrabbit.oak.api.Blob;
 import org.apache.jackrabbit.oak.api.CommitFailedException;
+import org.apache.jackrabbit.oak.core.Tenant;
 import org.apache.jackrabbit.oak.spi.commit.CommitHook;
 import org.apache.jackrabbit.oak.spi.commit.CommitInfo;
 import org.apache.jackrabbit.oak.spi.commit.Observable;
@@ -68,6 +69,12 @@ public class MemoryNodeStore implements NodeStore, Observable {
 
     public MemoryNodeStore() {
         this(EMPTY_NODE);
+    }
+    
+    
+    @Override
+    public NodeStore cloneForTenant(Tenant tenant) {
+        return new MemoryNodeStore();
     }
 
     /**

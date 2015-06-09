@@ -23,6 +23,7 @@ import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
 
 import org.apache.jackrabbit.oak.cache.CacheStats;
+import org.apache.jackrabbit.oak.core.Tenant;
 import org.apache.jackrabbit.oak.plugins.document.cache.CacheInvalidationStats;
 
 /**
@@ -274,4 +275,6 @@ public interface DocumentStore {
      * @return description of the underlying storage.
      */
     Map<String, String> getMetadata();
+
+    DocumentStore cloneForTenant(Tenant tenant);
 }

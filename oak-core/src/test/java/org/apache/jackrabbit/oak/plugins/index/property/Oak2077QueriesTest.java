@@ -61,7 +61,6 @@ import org.apache.jackrabbit.oak.spi.commit.EmptyHook;
 import org.apache.jackrabbit.oak.spi.security.OpenSecurityProvider;
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
 import org.apache.jackrabbit.oak.spi.state.NodeState;
-import org.apache.jackrabbit.oak.spi.state.NodeStore;
 import org.apache.jackrabbit.oak.util.NodeUtil;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -326,6 +325,9 @@ public class Oak2077QueriesTest extends BasicOrderedPropertyIndexQueryTest {
         checkArgument(lane >= 0 && lane < OrderedIndex.LANES);
         
         String previousValue;
+        // the node store must come from the session so that the correct node store us used to perform the test in a 
+        // multi tenant environment. If the node store that was used to initialize Oak is used, it will be the 
+        // system node store, and not the default tenant node store.
         NodeBuilder rootBuilder = TenantUtil.getTenantNodeStore(session).getRoot().builder();
         NodeBuilder builder = rootBuilder.getChildNode(INDEX_DEFINITIONS_NAME);
         builder = builder.getChildNode(TEST_INDEX_NAME);

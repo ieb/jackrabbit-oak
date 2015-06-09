@@ -42,10 +42,12 @@ import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
 
 import com.google.common.collect.Maps;
+
 import org.apache.jackrabbit.oak.api.Blob;
 import org.apache.jackrabbit.oak.api.CommitFailedException;
 import org.apache.jackrabbit.oak.api.PropertyState;
 import org.apache.jackrabbit.oak.api.Type;
+import org.apache.jackrabbit.oak.core.Tenant;
 import org.apache.jackrabbit.oak.plugins.segment.memory.MemoryStore;
 import org.apache.jackrabbit.oak.spi.blob.BlobStore;
 import org.apache.jackrabbit.oak.spi.commit.ChangeDispatcher;
@@ -101,6 +103,11 @@ public class SegmentNodeStore implements NodeStore, Observable {
 
     public SegmentNodeStore() {
         this(new MemoryStore());
+    }
+    
+    @Override
+    public NodeStore cloneForTenant(Tenant tenant) {
+        return new SegmentNodeStore(store.cloneForTenant(tenant));
     }
 
     void setMaximumBackoff(long max) {

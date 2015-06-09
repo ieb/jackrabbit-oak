@@ -39,6 +39,7 @@ import org.apache.jackrabbit.oak.api.ContentRepository;
 import org.apache.jackrabbit.oak.api.ContentSession;
 import org.apache.jackrabbit.oak.api.Root;
 import org.apache.jackrabbit.oak.api.Tree;
+import org.apache.jackrabbit.oak.core.TenantUtil;
 import org.apache.jackrabbit.oak.namepath.NamePathMapper;
 import org.apache.jackrabbit.oak.plugins.document.DocumentMK;
 import org.apache.jackrabbit.oak.plugins.document.DocumentNodeStore;
@@ -84,14 +85,15 @@ public class ClusterPermissionsTest {
     public void before() throws Exception {
         MemoryDocumentStore ds = new MemoryDocumentStore();
         MemoryBlobStore bs = new MemoryBlobStore();
-        DocumentMK.Builder builder;
+        
 
-        builder = new DocumentMK.Builder();
-        builder.setDocumentStore(ds).setBlobStore(bs).setAsyncDelay(0);
-        ns1 = builder.setClusterId(1).getNodeStore();
-        builder = new DocumentMK.Builder();
-        builder.setDocumentStore(ds).setBlobStore(bs).setAsyncDelay(0);
-        ns2 = builder.setClusterId(2).getNodeStore();
+        DocumentMK.Builder builder1 = new DocumentMK.Builder();
+        builder1.setDocumentStore(ds).setBlobStore(bs).setAsyncDelay(0);
+        ns1 = builder1.setClusterId(1).getNodeStore();
+        
+        DocumentMK.Builder builder2 = new DocumentMK.Builder();
+        builder2.setDocumentStore(ds).setBlobStore(bs).setAsyncDelay(0);
+        ns2 = builder2.setClusterId(2).getNodeStore();
 
         Oak oak = new Oak(ns1)
                 .with(new InitialContent())
@@ -107,7 +109,7 @@ public class ClusterPermissionsTest {
         userManager1 = securityProvider1.getConfiguration(UserConfiguration.class).getUserManager(root1, namePathMapper);
         aclMgr1 = securityProvider1.getConfiguration(AuthorizationConfiguration.class).getAccessControlManager(root1, namePathMapper);
 
-        // make sure initial content is visible to ns2
+        // make sure initial content is visible to ns2, need to sync everything that ns1 and ns2 created.
         syncClusterNodes();
 
         oak = new Oak(ns2)
@@ -232,6 +234,12 @@ public class ClusterPermissionsTest {
     private void syncClusterNodes() {
         ns1.runBackgroundOperations();
         ns2.runBackgroundOperations();
+        if (adminSession1 != null) {
+            ((DocumentNodeStore)TenantUtil.getTenantNodeStore(adminSession1)).runBackgroundOperations();
+        }
+        if (adminSession2 != null) {
+            ((DocumentNodeStore)TenantUtil.getTenantNodeStore(adminSession2)).runBackgroundOperations();
+        }
     }
 
 }

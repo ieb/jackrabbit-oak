@@ -48,10 +48,12 @@ import com.mongodb.ReadPreference;
 
 import org.apache.jackrabbit.oak.cache.CacheStats;
 import org.apache.jackrabbit.oak.cache.CacheValue;
+import org.apache.jackrabbit.oak.core.Tenant;
 import org.apache.jackrabbit.oak.plugins.document.CachedNodeDocument;
 import org.apache.jackrabbit.oak.plugins.document.Collection;
 import org.apache.jackrabbit.oak.plugins.document.Document;
 import org.apache.jackrabbit.oak.plugins.document.DocumentMK;
+import org.apache.jackrabbit.oak.plugins.document.DocumentMK.Builder;
 import org.apache.jackrabbit.oak.plugins.document.DocumentStore;
 import org.apache.jackrabbit.oak.plugins.document.DocumentStoreException;
 import org.apache.jackrabbit.oak.plugins.document.NodeDocument;
@@ -176,20 +178,31 @@ public class MongoDocumentStore implements DocumentStore {
     private String lastReadWriteMode;
 
     private final Map<String, String> metadata;
-
+    private Tenant tenant;
+    private DB db;
+    private Builder builder;
+    
     public MongoDocumentStore(DB db, DocumentMK.Builder builder) {
+        this(db, builder, Tenant.SYSTEM_TENANT);
+    }    
+
+    public MongoDocumentStore(DB db, DocumentMK.Builder builder, Tenant tenant) {
+        this.tenant = tenant;
+        this.db = db;
+        this.builder = builder;
         String version = checkVersion(db);
         metadata = ImmutableMap.<String,String>builder()
                 .put("type", "mongo")
                 .put("version", version)
                 .build();
 
-        nodes = db.getCollection(
-                Collection.NODES.toString());
-        clusterNodes = db.getCollection(
-                Collection.CLUSTER_NODES.toString());
-        settings = db.getCollection(
-                Collection.SETTINGS.toString());
+        // collection based tenants.
+        nodes = db.getCollection(tenantCollection(
+                Collection.NODES.toString()));
+        clusterNodes = db.getCollection(tenantCollection(
+                Collection.CLUSTER_NODES.toString()));
+        settings = db.getCollection(tenantCollection(
+                Collection.SETTINGS.toString()));
 
         maxReplicationLagMillis = builder.getMaxReplicationLagMillis();
 
@@ -238,6 +251,18 @@ public class MongoDocumentStore implements DocumentStore {
                 "maxDeltaForModTimeIdxSecs {}, disableIndexHint {}",
                 maxReplicationLagMillis, maxDeltaForModTimeIdxSecs, disableIndexHint);
     }
+    
+    private String tenantCollection(String collection) {
+        // each tenant data is stored in its own set of tables.
+        // an alternative route would be to store based on keys.
+        return tenant.toString()+"_"+collection;
+    }
+
+    @Override
+    public DocumentStore cloneForTenant(Tenant tenant) {
+        return new MongoDocumentStore(db, builder, tenant);
+    }
+    
 
     private static String checkVersion(DB db) {
         String version = db.command("buildInfo").getString("version");

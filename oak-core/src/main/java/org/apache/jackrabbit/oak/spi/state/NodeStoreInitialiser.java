@@ -17,9 +17,11 @@
  */
 package org.apache.jackrabbit.oak.spi.state;
 
+import org.apache.jackrabbit.oak.core.TenantNodeStore;
+
 
 public interface NodeStoreInitialiser {
 
-    void initNodeStore(TenantNodeStore store);
+    TenantNodeStore initNodeStore(TenantNodeStore store);
 
 }

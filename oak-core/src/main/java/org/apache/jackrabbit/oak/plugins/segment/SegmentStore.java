@@ -20,6 +20,7 @@ import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
 
 import org.apache.jackrabbit.oak.api.Blob;
+import org.apache.jackrabbit.oak.core.Tenant;
 import org.apache.jackrabbit.oak.spi.blob.BlobStore;
 
 /**
@@ -86,5 +87,7 @@ public interface SegmentStore {
      * Triggers removal of segments that are no longer referenceable.
      */
     void gc();
+
+    SegmentStore cloneForTenant(Tenant tenant);
 
 }

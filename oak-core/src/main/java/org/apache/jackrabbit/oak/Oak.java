@@ -60,7 +60,9 @@ import org.apache.jackrabbit.oak.api.Root;
 import org.apache.jackrabbit.oak.api.jmx.QueryEngineSettingsMBean;
 import org.apache.jackrabbit.oak.api.jmx.RepositoryManagementMBean;
 import org.apache.jackrabbit.oak.core.ContentRepositoryImpl;
+import org.apache.jackrabbit.oak.core.DefaultNodeStoreProvider;
 import org.apache.jackrabbit.oak.core.Tenant;
+import org.apache.jackrabbit.oak.core.TenantNodeStore;
 import org.apache.jackrabbit.oak.management.RepositoryManager;
 import org.apache.jackrabbit.oak.plugins.commit.ConflictHook;
 import org.apache.jackrabbit.oak.plugins.index.AsyncIndexUpdate;
@@ -73,7 +75,6 @@ import org.apache.jackrabbit.oak.plugins.index.counter.jmx.NodeCounter;
 import org.apache.jackrabbit.oak.plugins.index.counter.jmx.NodeCounterMBean;
 import org.apache.jackrabbit.oak.plugins.index.property.jmx.PropertyIndexAsyncReindex;
 import org.apache.jackrabbit.oak.plugins.index.property.jmx.PropertyIndexAsyncReindexMBean;
-import org.apache.jackrabbit.oak.plugins.memory.MemoryNodeStoreProvider;
 import org.apache.jackrabbit.oak.query.QueryEngineSettings;
 import org.apache.jackrabbit.oak.spi.commit.CommitHook;
 import org.apache.jackrabbit.oak.spi.commit.CommitInfo;
@@ -98,7 +99,6 @@ import org.apache.jackrabbit.oak.spi.state.NodeState;
 import org.apache.jackrabbit.oak.spi.state.NodeStore;
 import org.apache.jackrabbit.oak.spi.state.NodeStoreInitialiser;
 import org.apache.jackrabbit.oak.spi.state.NodeStoreProvider;
-import org.apache.jackrabbit.oak.spi.state.TenantNodeStore;
 import org.apache.jackrabbit.oak.spi.whiteboard.CompositeRegistration;
 import org.apache.jackrabbit.oak.spi.whiteboard.DefaultWhiteboard;
 import org.apache.jackrabbit.oak.spi.whiteboard.Registration;
@@ -148,7 +148,6 @@ public class Oak implements NodeStoreInitialiser {
 
     private final Closer closer = Closer.create();
 
-    private boolean initialized;
 
 
     /**
@@ -268,6 +267,7 @@ public class Oak implements NodeStoreInitialiser {
                 }
             } else if (type == Observer.class) {
                 // observers must be implemented so that they respect tenat IDs
+                // FIXME:
                 NodeStore systemNodeStore = nodeStoreProvider.getSystemNodeStore().getNodeStore();
                 if ( systemNodeStore instanceof Observable) {
                     observerSubscription.register(((Observable) systemNodeStore).addObserver((Observer) service));
@@ -327,7 +327,7 @@ public class Oak implements NodeStoreInitialiser {
     
     // the store is the system node store.
     public Oak(@Nonnull NodeStore store) {
-        this(new MemoryNodeStoreProvider(store));
+        this(new DefaultNodeStoreProvider(store));
     }
 
     public Oak(@Nonnull NodeStoreProvider nodeStoreProvider) {
@@ -336,8 +336,7 @@ public class Oak implements NodeStoreInitialiser {
     }
 
     public Oak() {
-        this(new MemoryNodeStoreProvider());
-        System.err.println("Oak Commit Hooks 1 "+commitHooks);
+        this(new DefaultNodeStoreProvider());
         // this(new DocumentMK.Builder().open());
         // this(new LogWrapper(new DocumentMK.Builder().open()));
     }
@@ -359,7 +358,6 @@ public class Oak implements NodeStoreInitialiser {
     @Nonnull
     public Oak with(@Nonnull RepositoryInitializer initializer) {
         initializers.add(checkNotNull(initializer));
-        System.err.println("Oak Commit Hooks 4 "+commitHooks);
         return this;
     }
 
@@ -392,8 +390,6 @@ public class Oak implements NodeStoreInitialiser {
     @Nonnull
     public Oak with(@Nonnull IndexEditorProvider provider) {
         indexEditorProviders.add(checkNotNull(provider));
-        System.err.println("Oak Commit Hooks 2 "+commitHooks);
-
         return this;
     }
 
@@ -470,7 +466,6 @@ public class Oak implements NodeStoreInitialiser {
                 initializers.add(ri);
             }
         }
-        System.err.println("Oak Commit Hooks 3 "+commitHooks);
         return this;
     }
 
@@ -569,14 +564,11 @@ public class Oak implements NodeStoreInitialiser {
     public ContentRepository createContentRepository() {
         //TODO FIXME OAK-2736
         //checkState(!initialized, "Oak instance should be used only once to create the ContentRepository instance");
-        initialized = true;
-        System.err.println("Oak Commit Hooks 6 "+commitHooks);
 
         // initialse final state of commit hooks and editors prior to getting the first node store.
         
         buildCommitHookList();
         final TenantNodeStore systemTenantNodeStore = nodeStoreProvider.getSystemNodeStore();
-        System.err.println("Oak Commit Hooks 7 "+commitHooks);
 
         final List<Registration> regs = new ArrayList<Registration>();
        
@@ -586,7 +578,6 @@ public class Oak implements NodeStoreInitialiser {
         regs.add(registerMBean(whiteboard, RepositoryManagementMBean.class, repositoryManager,
                 RepositoryManagementMBean.TYPE, repositoryManager.getName()));
         
-        System.err.println("+++++++++++++++++++++++++ Creating repository with commitHooks "+commitHooks);
         return new ContentRepositoryImpl(
                 nodeStoreProvider,
                 CompositeHook.compose(commitHooks),
@@ -614,65 +605,67 @@ public class Oak implements NodeStoreInitialiser {
         indexEditorProviders = ImmutableList.copyOf(indexEditorProviders);
     }
 
-    public void initNodeStore(TenantNodeStore tenantNodeStore) {
-        
-        NodeStore store = tenantNodeStore.getNodeStore();
-        Tenant tenant = tenantNodeStore.getTenant();
-        final List<Registration> regs = new ArrayList<Registration>();
-        regs.add(whiteboard.register(Executor.class, getExecutor(), Collections.emptyMap()));
-        
-        
-        OakInitializer.initialize(store, new CompositeInitializer(initializers), indexEditors);
-
-
-        List<CommitHook> initHooks = new ArrayList<CommitHook>(commitHooks);
-        initHooks.add(new EditorHook(CompositeEditorProvider
-                .compose(editorProviders)));
-
-        if (asyncTasks != null) {
-            IndexMBeanRegistration indexRegistration = new IndexMBeanRegistration(
-                    whiteboard);
-            regs.add(indexRegistration);
-            for (Entry<String, Long> t : asyncTasks.entrySet()) {
-                AsyncIndexUpdate task = new AsyncIndexUpdate(t.getKey(), store,
-                        indexEditors);
-                indexRegistration.registerAsyncIndexer(task, t.getValue());
+    public TenantNodeStore initNodeStore(TenantNodeStore tenantNodeStore) {
+        if (!tenantNodeStore.isInitialised()) {        
+            NodeStore store = tenantNodeStore.getNodeStore();
+            final List<Registration> regs = new ArrayList<Registration>();
+            regs.add(whiteboard.register(Executor.class, getExecutor(), Collections.emptyMap()));
+            
+            
+            OakInitializer.initialize(store, new CompositeInitializer(initializers), indexEditors);
+    
+    
+            List<CommitHook> initHooks = new ArrayList<CommitHook>(commitHooks);
+            initHooks.add(new EditorHook(CompositeEditorProvider
+                    .compose(editorProviders)));
+    
+            if (asyncTasks != null) {
+                IndexMBeanRegistration indexRegistration = new IndexMBeanRegistration(
+                        whiteboard);
+                regs.add(indexRegistration);
+                for (Entry<String, Long> t : asyncTasks.entrySet()) {
+                    AsyncIndexUpdate task = new AsyncIndexUpdate(t.getKey(), store,
+                            indexEditors);
+                    indexRegistration.registerAsyncIndexer(task, t.getValue());
+                }
+    
+                // TODO verify how this fits in with OAK-2749
+                PropertyIndexAsyncReindex asyncPI = new PropertyIndexAsyncReindex(
+                        new AsyncIndexUpdate(IndexConstants.ASYNC_REINDEX_VALUE,
+                                store, indexEditors, true), getExecutor());
+                regs.add(registerMBean(whiteboard,
+                        PropertyIndexAsyncReindexMBean.class, asyncPI,
+                        PropertyIndexAsyncReindexMBean.TYPE, "async"));
             }
-
-            // TODO verify how this fits in with OAK-2749
-            PropertyIndexAsyncReindex asyncPI = new PropertyIndexAsyncReindex(
-                    new AsyncIndexUpdate(IndexConstants.ASYNC_REINDEX_VALUE,
-                            store, indexEditors, true), getExecutor());
-            regs.add(registerMBean(whiteboard,
-                    PropertyIndexAsyncReindexMBean.class, asyncPI,
-                    PropertyIndexAsyncReindexMBean.TYPE, "async"));
-        }
-
-        regs.add(registerMBean(whiteboard, NodeCounterMBean.class,
-                new NodeCounter(store), NodeCounterMBean.TYPE, "nodeCounter"));
-
-        regs.add(registerMBean(whiteboard, QueryEngineSettingsMBean.class,
-                queryEngineSettings, QueryEngineSettingsMBean.TYPE, "settings"));
-
-        // FIXME: OAK-810 move to proper workspace initialization
-        // initialize default workspace
-        Iterable<WorkspaceInitializer> workspaceInitializers =
-                Iterables.transform(securityProvider.getConfigurations(),
-                        new Function<SecurityConfiguration, WorkspaceInitializer>() {
-                            @Override
-                            public WorkspaceInitializer apply(SecurityConfiguration sc) {
-                                return sc.getWorkspaceInitializer();
-                            }
-                        });
-        OakInitializer.initialize(
-                workspaceInitializers, store, defaultWorkspaceName, indexEditors);
-
-        // Register observer last to prevent sending events while initialising
-        for (Observer observer : observers) {
-            regs.add(registerObserver(whiteboard, observer));
-        }
-
-        tenantNodeStore.deregisterOnClose(regs);
+    
+            regs.add(registerMBean(whiteboard, NodeCounterMBean.class,
+                    new NodeCounter(store), NodeCounterMBean.TYPE, "nodeCounter"));
+    
+            regs.add(registerMBean(whiteboard, QueryEngineSettingsMBean.class,
+                    queryEngineSettings, QueryEngineSettingsMBean.TYPE, "settings"));
+    
+            // FIXME: OAK-810 move to proper workspace initialization
+            // initialize default workspace
+            Iterable<WorkspaceInitializer> workspaceInitializers =
+                    Iterables.transform(securityProvider.getConfigurations(),
+                            new Function<SecurityConfiguration, WorkspaceInitializer>() {
+                                @Override
+                                public WorkspaceInitializer apply(SecurityConfiguration sc) {
+                                    return sc.getWorkspaceInitializer();
+                                }
+                            });
+            OakInitializer.initialize(
+                    workspaceInitializers, store, defaultWorkspaceName, indexEditors);
+    
+            // Register observer last to prevent sending events while initialising
+            for (Observer observer : observers) {
+                regs.add(registerObserver(whiteboard, observer));
+            }
+    
+            tenantNodeStore.deregisterOnClose(regs);
+            tenantNodeStore.markInitialised();
+        } 
+        return tenantNodeStore;
     }
 
     /**

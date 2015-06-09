@@ -31,6 +31,7 @@ import java.nio.ByteBuffer;
 import javax.annotation.CheckForNull;
 
 import org.apache.jackrabbit.oak.api.Blob;
+import org.apache.jackrabbit.oak.core.Tenant;
 import org.apache.jackrabbit.oak.plugins.segment.RecordId;
 import org.apache.jackrabbit.oak.plugins.segment.Segment;
 import org.apache.jackrabbit.oak.plugins.segment.SegmentId;
@@ -56,6 +57,15 @@ public class HttpStore implements SegmentStore {
      */
     public HttpStore(URL base) {
         this.base = base;
+    }
+    
+    @Override
+    public SegmentStore cloneForTenant(Tenant tenant) {
+        try {
+            return new HttpStore(new URL(base.toString()+"tenants/"+tenant.toString()+"/"));
+        } catch (MalformedURLException e) {
+            throw new IllegalArgumentException("Cant create store for tenant ", e);
+        }
     }
 
     @Override

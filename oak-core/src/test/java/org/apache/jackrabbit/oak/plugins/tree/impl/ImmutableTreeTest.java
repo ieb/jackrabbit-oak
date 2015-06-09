@@ -20,25 +20,21 @@ package org.apache.jackrabbit.oak.plugins.tree.impl;
 
 import java.util.List;
 
-import javax.jcr.NoSuchWorkspaceException;
-import javax.security.auth.login.LoginException;
-
 import com.google.common.collect.Lists;
 
 import org.apache.jackrabbit.JcrConstants;
 import org.apache.jackrabbit.oak.NodeStoreFixture;
 import org.apache.jackrabbit.oak.OakBaseTest;
 import org.apache.jackrabbit.oak.api.CommitFailedException;
-import org.apache.jackrabbit.oak.api.ContentRepository;
 import org.apache.jackrabbit.oak.api.ContentSession;
 import org.apache.jackrabbit.oak.api.PropertyState;
 import org.apache.jackrabbit.oak.api.Root;
 import org.apache.jackrabbit.oak.api.Tree;
-import org.apache.jackrabbit.oak.api.Tree.Status;
+import org.apache.jackrabbit.oak.core.TenantUtil;
 import org.apache.jackrabbit.oak.spi.commit.CommitInfo;
 import org.apache.jackrabbit.oak.spi.commit.EmptyHook;
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
-import org.apache.jackrabbit.oak.spi.state.NodeState;
+import org.apache.jackrabbit.oak.spi.state.NodeStore;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -61,16 +57,8 @@ public class ImmutableTreeTest extends OakBaseTest {
     }
 
     @Before
-    public void setUp() throws CommitFailedException, LoginException, NoSuchWorkspaceException {
-        
-        ContentRepository repository = createContentRepository();
-        // add the hidden node first into the system tenant.
-        NodeBuilder nb = store.getRoot().builder();
-        nb.child(":hidden");
-        store.merge(nb, EmptyHook.INSTANCE, CommitInfo.EMPTY);
-        
-        // login to the default tenant, which should fork the system tenant with its content.
-        ContentSession session = repository.login(null, null);
+    public void setUp() throws CommitFailedException {
+        ContentSession session = createContentSession();
 
         // Add test content
         root = session.getLatestRoot();
@@ -83,6 +71,11 @@ public class ImmutableTreeTest extends OakBaseTest {
         orderable.setProperty(JcrConstants.JCR_PRIMARYTYPE, JcrConstants.NT_UNSTRUCTURED);
         root.commit();
         
+        
+        NodeStore tenantStore = TenantUtil.getTenantNodeStore(session);
+        NodeBuilder nb = tenantStore.getRoot().builder();
+        nb.child(":hidden");
+        tenantStore.merge(nb, EmptyHook.INSTANCE, CommitInfo.EMPTY);
 
         // Acquire a fresh new root to avoid problems from lingering state
         root = session.getLatestRoot();

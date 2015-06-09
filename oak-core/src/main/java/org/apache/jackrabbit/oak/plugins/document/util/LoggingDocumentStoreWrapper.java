@@ -24,6 +24,7 @@ import javax.annotation.Nonnull;
 
 import org.apache.jackrabbit.oak.cache.CacheStats;
 import org.apache.jackrabbit.oak.commons.json.JsopBuilder;
+import org.apache.jackrabbit.oak.core.Tenant;
 import org.apache.jackrabbit.oak.plugins.document.Collection;
 import org.apache.jackrabbit.oak.plugins.document.Document;
 import org.apache.jackrabbit.oak.plugins.document.DocumentStore;
@@ -47,6 +48,11 @@ public class LoggingDocumentStoreWrapper implements DocumentStore {
 
     public LoggingDocumentStoreWrapper(DocumentStore store) {
         this.store = store;
+    }
+    
+    @Override
+    public DocumentStore cloneForTenant(Tenant tenant) {
+        return new LoggingDocumentStoreWrapper(store.cloneForTenant(tenant));
     }
 
     public LoggingDocumentStoreWrapper withThreadNameLogging() {

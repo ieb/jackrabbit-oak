@@ -17,17 +17,25 @@
  */
 package org.apache.jackrabbit.oak.core;
 
+import java.util.Map;
+
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.jcr.SimpleCredentials;
 
 import org.apache.jackrabbit.oak.api.AuthInfo;
 import org.apache.jackrabbit.oak.api.ContentSession;
+import org.apache.jackrabbit.oak.plugins.memory.MemoryNodeStore;
+import org.apache.jackrabbit.oak.plugins.memory.ModifiedNodeState;
+import org.apache.jackrabbit.oak.spi.state.NodeState;
 import org.apache.jackrabbit.oak.spi.state.NodeStore;
+
+import com.google.common.collect.Maps;
 
 public class TenantUtil {
     
     public static final String TENANT_ID = "tenant.id";
+    private static Map<Tenant, TenantNodeStore> nodeStores = Maps.newConcurrentMap();
     
     @Nullable
     public static String getTenantId(@Nonnull AuthInfo authInfo) {

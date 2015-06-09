@@ -54,7 +54,9 @@ import javax.annotation.Nonnull;
 
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.Maps;
+
 import org.apache.jackrabbit.oak.api.Blob;
+import org.apache.jackrabbit.oak.core.Tenant;
 import org.apache.jackrabbit.oak.plugins.blob.BlobStoreBlob;
 import org.apache.jackrabbit.oak.plugins.segment.CompactionMap;
 import org.apache.jackrabbit.oak.plugins.segment.Compactor;
@@ -73,6 +75,7 @@ import org.apache.jackrabbit.oak.spi.blob.BlobStore;
 import org.apache.jackrabbit.oak.spi.gc.GCMonitor;
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
 import org.apache.jackrabbit.oak.spi.state.NodeState;
+import org.bson.NewBSONDecoder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -169,6 +172,8 @@ public class FileStore implements SegmentStore {
      */
     private final GCMonitor gcMonitor;
 
+    private Builder builder;
+
     /**
      * Create a new instance of a {@link Builder} for a file store.
      * @param directory  directory where the tar files are stored
@@ -193,6 +198,15 @@ public class FileStore implements SegmentStore {
 
         private Builder(File directory) {
             this.directory = directory;
+        }
+
+        public Builder(Builder builder, Tenant tenant) {
+            this.directory = new File(new File(builder.directory, "tenants"), tenant.toString());
+            this.blobStore = builder.blobStore;
+            this.root = builder.root;
+            this.maxFileSize = builder.maxFileSize;
+            this.cacheSize = builder.cacheSize;
+            this.memoryMapping = builder.memoryMapping;
         }
 
         /**
@@ -289,74 +303,89 @@ public class FileStore implements SegmentStore {
          */
         @Nonnull
         public FileStore create() throws IOException {
-            return new FileStore(
-                    blobStore, directory, root, maxFileSize, cacheSize, memoryMapping, gcMonitor);
+            return new FileStore(this);
         }
+
+        public Builder cloneForTenant(Tenant tenant) {
+            return new Builder(this, tenant);
+        }
+
     }
 
     @Deprecated
     public FileStore(BlobStore blobStore, File directory, int maxFileSizeMB, boolean memoryMapping)
             throws IOException {
-        this(blobStore, directory, EMPTY_NODE, maxFileSizeMB, 0, memoryMapping, GCMonitor.EMPTY);
+        this(new Builder(directory).withBlobStore(blobStore).withMaxFileSize(
+            maxFileSizeMB).withMemoryMapping(memoryMapping));
     }
+
 
     @Deprecated
     public FileStore(File directory, int maxFileSizeMB, boolean memoryMapping)
             throws IOException {
-        this(null, directory, maxFileSizeMB, memoryMapping);
+        this(new Builder(directory).withMaxFileSize(maxFileSizeMB).withMemoryMapping(memoryMapping));
     }
 
     @Deprecated
     public FileStore(File directory, int maxFileSizeMB)
             throws IOException {
-        this(null, directory, maxFileSizeMB, MEMORY_MAPPING_DEFAULT);
+        this(new Builder(directory).withMaxFileSize(maxFileSizeMB));
     }
 
     @Deprecated
     public FileStore(File directory, int maxFileSizeMB, int cacheSizeMB,
             boolean memoryMapping) throws IOException {
-        this(null, directory, EMPTY_NODE, maxFileSizeMB, cacheSizeMB, memoryMapping, GCMonitor.EMPTY);
+        this(new Builder(directory).withMaxFileSize(maxFileSizeMB).withCacheSize(cacheSizeMB).withMemoryMapping(memoryMapping));
     }
 
     @Deprecated
     FileStore(File directory, NodeState initial, int maxFileSize) throws IOException {
-        this(null, directory, initial, maxFileSize, -1, MEMORY_MAPPING_DEFAULT, GCMonitor.EMPTY);
+        this(new Builder(directory).withRoot(initial).withMaxFileSize(maxFileSize));
     }
 
     @Deprecated
     public FileStore(
             BlobStore blobStore, final File directory, NodeState initial, int maxFileSizeMB,
             int cacheSizeMB, boolean memoryMapping) throws IOException {
-        this(blobStore, directory, initial, maxFileSizeMB, cacheSizeMB, memoryMapping, GCMonitor.EMPTY);
+        this(new Builder(directory).withBlobStore(blobStore).withRoot(initial).withMaxFileSize(maxFileSizeMB).withCacheSize(cacheSizeMB).withMemoryMapping(memoryMapping));
+    }
+    
+    
+    @Override
+    public SegmentStore cloneForTenant(Tenant tenant) {
+        try {
+            return new FileStore(builder.cloneForTenant(tenant));
+        } catch (IOException e) {
+            throw new IllegalStateException("Unable to clone node store for tenant ",e);
+        }
     }
 
-    private FileStore(
-            BlobStore blobStore, final File directory, NodeState initial, int maxFileSizeMB,
-            int cacheSizeMB, boolean memoryMapping, GCMonitor gcMonitor)
-            throws IOException {
-        checkNotNull(directory).mkdirs();
-        if (cacheSizeMB < 0) {
+    private FileStore(Builder builder) 
+        throws IOException {
+        this.builder = builder;
+        checkNotNull(builder.directory).mkdirs();
+        if (builder.cacheSize < 0) {
             this.tracker = new SegmentTracker(this, 0, getVersion());
-        } else if (cacheSizeMB > 0) {
-            this.tracker = new SegmentTracker(this, cacheSizeMB, getVersion());
+        } else if (builder.cacheSize > 0) {
+            this.tracker = new SegmentTracker(this, builder.cacheSize, getVersion());
         } else {
             this.tracker = new SegmentTracker(this, getVersion());
         }
-        this.blobStore = blobStore;
-        this.directory = directory;
-        this.maxFileSize = maxFileSizeMB * MB;
-        this.memoryMapping = memoryMapping;
-        this.gcMonitor = gcMonitor;
+        this.blobStore = builder.blobStore;
+        this.directory = builder.directory;
+        this.maxFileSize = builder.maxFileSize * MB;
+        this.memoryMapping = builder.memoryMapping;
+        this.gcMonitor = builder.gcMonitor;
 
-        journalFile = new RandomAccessFile(new File(directory, JOURNAL_FILE_NAME), "rw");
-        lockFile = new RandomAccessFile(new File(directory, LOCK_FILE_NAME), "rw");
+        journalFile = new RandomAccessFile(new File(builder.directory, JOURNAL_FILE_NAME), "rw");
+        lockFile = new RandomAccessFile(new File(builder.directory, LOCK_FILE_NAME), "rw");
 
-        Map<Integer, Map<Character, File>> map = collectFiles(directory);
+        Map<Integer, Map<Character, File>> map = collectFiles(builder.directory);
         this.readers = newArrayListWithCapacity(map.size());
         Integer[] indices = map.keySet().toArray(new Integer[map.size()]);
         Arrays.sort(indices);
         for (int i = indices.length - 1; i >= 0; i--) {
-            readers.add(TarReader.open(map.get(indices[i]), memoryMapping));
+            readers.add(TarReader.open(map.get(indices[i]), builder.memoryMapping));
         }
 
         if (indices.length > 0) {
@@ -365,7 +394,7 @@ public class FileStore implements SegmentStore {
             this.writeNumber = 0;
         }
         this.writeFile = new File(
-                directory,
+            builder.directory,
                 String.format(FILE_NAME_FORMAT, writeNumber, "a"));
         this.writer = new TarWriter(writeFile);
 
@@ -395,10 +424,10 @@ public class FileStore implements SegmentStore {
             head = new AtomicReference<RecordId>(id);
             persistedHead = new AtomicReference<RecordId>(id);
         } else {
-            NodeBuilder builder = EMPTY_NODE.builder();
-            builder.setChildNode("root", initial);
+            NodeBuilder nodeBuilder = EMPTY_NODE.builder();
+            nodeBuilder.setChildNode("root", builder.root);
             head = new AtomicReference<RecordId>(tracker.getWriter().writeNode(
-                    builder.getNodeState()).getRecordId());
+                nodeBuilder.getNodeState()).getRecordId());
             persistedHead = new AtomicReference<RecordId>(null);
         }
 

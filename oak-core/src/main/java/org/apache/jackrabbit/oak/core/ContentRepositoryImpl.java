@@ -86,7 +86,6 @@ import javax.security.auth.login.LoginException;
 
 import org.apache.jackrabbit.api.JackrabbitRepository;
 import org.apache.jackrabbit.commons.SimpleValueFactory;
-import org.apache.jackrabbit.oak.Oak;
 import org.apache.jackrabbit.oak.api.ContentRepository;
 import org.apache.jackrabbit.oak.api.ContentSession;
 import org.apache.jackrabbit.oak.api.Descriptors;
@@ -102,10 +101,7 @@ import org.apache.jackrabbit.oak.spi.security.authentication.LoginContextProvide
 import org.apache.jackrabbit.oak.spi.security.principal.PrincipalConfiguration;
 import org.apache.jackrabbit.oak.spi.security.privilege.PrivilegeConfiguration;
 import org.apache.jackrabbit.oak.spi.security.user.UserConfiguration;
-import org.apache.jackrabbit.oak.spi.state.NodeStore;
-import org.apache.jackrabbit.oak.spi.state.NodeStoreInitialiser;
 import org.apache.jackrabbit.oak.spi.state.NodeStoreProvider;
-import org.apache.jackrabbit.oak.spi.state.TenantNodeStore;
 import org.apache.jackrabbit.oak.util.GenericDescriptors;
 
 /**
