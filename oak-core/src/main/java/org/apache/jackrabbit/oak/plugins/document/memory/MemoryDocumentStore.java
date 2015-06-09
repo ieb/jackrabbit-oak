@@ -48,7 +48,9 @@ import org.apache.jackrabbit.oak.plugins.document.UpdateUtils;
 import com.google.common.base.Splitter;
 import com.mongodb.ReadPreference;
 import com.mongodb.WriteConcern;
+
 import org.apache.jackrabbit.oak.plugins.document.cache.CacheInvalidationStats;
+import org.apache.jackrabbit.oak.spi.state.NodeStore;
 
 import static org.apache.jackrabbit.oak.plugins.document.UpdateUtils.checkConditions;
 
@@ -359,6 +361,7 @@ public class MemoryDocumentStore implements DocumentStore {
     public String toString() {
         StringBuilder buff = new StringBuilder();
         buff.append("Nodes:\n");
+        Map<String, NodeDocument> nodes = getTenantNodes();
         for (String p : nodes.keySet()) {
             buff.append("Path: ").append(p).append('\n');
             NodeDocument doc = nodes.get(p);
