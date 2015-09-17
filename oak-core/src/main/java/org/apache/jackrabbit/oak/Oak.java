@@ -101,7 +101,6 @@ import org.apache.jackrabbit.oak.spi.whiteboard.Registration;
 import org.apache.jackrabbit.oak.spi.whiteboard.Whiteboard;
 import org.apache.jackrabbit.oak.spi.whiteboard.WhiteboardAware;
 import org.apache.jackrabbit.oak.spi.whiteboard.WhiteboardUtils;
-import org.apache.jackrabbit.oak.tenant.PoCTenantProvider;
 import org.apache.jackrabbit.oak.tenant.TenantProviderImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

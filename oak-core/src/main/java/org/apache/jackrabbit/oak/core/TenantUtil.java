@@ -22,21 +22,14 @@ import javax.annotation.Nullable;
 import javax.jcr.Credentials;
 import javax.jcr.SimpleCredentials;
 
-import com.google.common.collect.ImmutableSet;
 import org.apache.jackrabbit.oak.Oak;
 import org.apache.jackrabbit.oak.api.AuthInfo;
-import org.apache.jackrabbit.oak.spi.security.authentication.AuthInfoImpl;
-import org.apache.jackrabbit.oak.spi.tenant.Tenant;
 import org.apache.jackrabbit.oak.spi.tenant.TenantProvider;
-import org.apache.jackrabbit.oak.tenant.PoCTenantProvider;
-import org.apache.jackrabbit.oak.tenant.TenantImpl;
-import org.apache.jackrabbit.oak.tenant.TenantProviderImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Method;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.Map;
 
 /**
