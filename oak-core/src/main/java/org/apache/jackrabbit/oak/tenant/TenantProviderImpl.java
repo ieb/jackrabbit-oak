@@ -15,14 +15,23 @@
  * KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations under the License.
  */
-package org.apache.jackrabbit.oak.spi.tenant;
+package org.apache.jackrabbit.oak.tenant;
 
 import org.apache.jackrabbit.oak.api.ContentSession;
+import org.apache.jackrabbit.oak.core.TenantUtil;
+import org.apache.jackrabbit.oak.spi.tenant.Tenant;
+import org.apache.jackrabbit.oak.spi.tenant.TenantProvider;
 
-public interface TenantProvider {
+public class TenantProviderImpl implements TenantProvider {
 
-    Tenant createTenant(ContentSession contentSessionImpl);
+    @Override
+    public Tenant createTenant(ContentSession contentSession) {
+        return new TenantImpl(TenantUtil.getTenantId(contentSession.getAuthInfo()));
+    }
 
-    String getTenantId(String path);
+    @Override
+    public String getTenantId(String path) {
+        return TenantImpl.getTenantId(path);
+    }
 
 }

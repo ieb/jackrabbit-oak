@@ -22,11 +22,16 @@ import org.apache.jackrabbit.oak.core.TenantUtil;
 import org.apache.jackrabbit.oak.spi.tenant.Tenant;
 import org.apache.jackrabbit.oak.spi.tenant.TenantProvider;
 
-public class PoCTenantProvider implements TenantProvider {
+public class TestTenantProvider implements TenantProvider {
 
     @Override
     public Tenant createTenant(ContentSession contentSession) {
-        return new PocTenant(TenantUtil.getTenantId(contentSession.getAuthInfo()));
+        return new TestTenant(TenantUtil.getTenantId(contentSession.getAuthInfo()));
+    }
+
+    @Override
+    public String getTenantId(String path) {
+        return TestTenant.getTenantId(path);
     }
 
 }

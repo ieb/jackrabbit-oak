@@ -24,6 +24,11 @@ import org.apache.jackrabbit.oak.spi.tenant.Tenant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * The SystemTenantImpl should only be used for truly Super Admin sessions that have access everywhere. It must never be used for
+ * any other users. Never used for a service user session or loginAdministrative session. It will have full access to all tenants in the
+ * repository.
+ */
 public class SystemTenantImpl implements Tenant {
 
     private static Logger log = LoggerFactory.getLogger(SystemTenantImpl.class);
@@ -36,8 +41,8 @@ public class SystemTenantImpl implements Tenant {
     }
 
     public SystemTenantImpl() {
-        log.warn("Creating an internal System Tenant will no restrictions, see debug to identify where");
-        log.debug("Traceback ",new Exception());
+        log.warn("Creating an internal System Tenant will no restrictions, see debug to identify where this Session was created and used. This Session will have full access to all tenants in the repository.");
+        log.debug("Traceback ", new Exception());
         tenantId = "__internal__";
     }
 
@@ -51,4 +56,7 @@ public class SystemTenantImpl implements Tenant {
         return true;
     }
 
+    public static String getTenantId(String path) {
+        return null;
+    }
 }

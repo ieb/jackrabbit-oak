@@ -31,7 +31,7 @@ import static org.junit.Assert.assertTrue;
 import org.apache.jackrabbit.oak.plugins.tree.impl.ImmutableTree;
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
 import org.apache.jackrabbit.oak.spi.state.NodeState;
-import org.apache.jackrabbit.oak.tenant.PocTenant;
+import org.apache.jackrabbit.oak.tenant.TestTenant;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -46,7 +46,7 @@ public class GlobbingPathFilterTest {
         createPath(root, "q");
         createPath(root, "x/y/x/y/z");
         createPath(root, "r/s/t/u/v/r/s/t/u/v/r/s/t/u/v/w");
-        tree = new ImmutableTree(root.getNodeState(), new PocTenant("GlobbingPathFilterTest"));
+        tree = new ImmutableTree(root.getNodeState(), new TestTenant("GlobbingPathFilterTest"));
     }
 
     private static void createPath(NodeBuilder root, String path) {

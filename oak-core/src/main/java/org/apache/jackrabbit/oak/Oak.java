@@ -102,6 +102,7 @@ import org.apache.jackrabbit.oak.spi.whiteboard.Whiteboard;
 import org.apache.jackrabbit.oak.spi.whiteboard.WhiteboardAware;
 import org.apache.jackrabbit.oak.spi.whiteboard.WhiteboardUtils;
 import org.apache.jackrabbit.oak.tenant.PoCTenantProvider;
+import org.apache.jackrabbit.oak.tenant.TenantProviderImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -120,6 +121,10 @@ public class Oak {
      * Constant for the default workspace name
      */
     public static final String DEFAULT_WORKSPACE_NAME = "default";
+
+    // Use the path based TenantProvider by default.
+    private static TenantProvider tenantProvider = new TenantProviderImpl();
+
 
     private final NodeStore store;
     
@@ -201,6 +206,11 @@ public class Oak {
         executor.allowCoreThreadTimeOut(true);
         return executor;
     }
+
+    public static TenantProvider defaultTenantProvider() {
+        return tenantProvider;
+    }
+
 
     private synchronized ScheduledExecutorService getScheduledExecutor() {
         if (scheduledExecutor == null) {
@@ -315,9 +325,6 @@ public class Oak {
      * means no background tasks will run.
      */
     private Map<String, Long> asyncTasks;
-
-    // Use the path based TenantProvider by default.
-    private TenantProvider tenantProvider = new PoCTenantProvider();
 
     public Oak(NodeStore store) {
         this.store = checkNotNull(store);
@@ -508,11 +515,6 @@ public class Oak {
         return this;
     }
     
-    @Nonnull
-    public Oak with(@Nonnull TenantProvider tenantProvider) {
-        this.tenantProvider = checkNotNull(tenantProvider);
-        return this;
-    }
 
     /**
      * <p>
@@ -629,7 +631,7 @@ public class Oak {
                 queryEngineSettings,
                 indexProvider,
                 securityProvider,
-                tenantProvider) {
+                Oak.defaultTenantProvider()) {
             @Override
             public void close() throws IOException {
                 super.close();
@@ -686,6 +688,7 @@ public class Oak {
     public Root createRoot() {
         return createContentSession().getLatestRoot();
     }
+
 
     private static class ExecutorCloser implements Closeable {
         final ExecutorService executorService;

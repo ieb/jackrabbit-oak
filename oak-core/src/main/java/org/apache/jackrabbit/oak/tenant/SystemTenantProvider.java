@@ -28,4 +28,9 @@ public class SystemTenantProvider implements TenantProvider {
         return new SystemTenantImpl(session);
     }
 
+    @Override
+    public String getTenantId(String path) {
+        return SystemTenantImpl.getTenantId(path);
+    }
+
 }
