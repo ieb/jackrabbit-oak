@@ -1,0 +1,4 @@
+/etc/tenants
+/content/mac
+/home/users/mac
+/home/groups/mac

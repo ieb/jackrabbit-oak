@@ -42,8 +42,9 @@ public class TenantImpl implements Tenant {
 
     public static Set<String> loadTenantParentPaths() {
         loadedParentPaths = false;
-        // FIXME: replace with a command line option.
-        File f = new File("tenant-parent-paths.txt");
+        String tenantPathFileName = System.getProperty("oak.tenant.paths","src/test/resources/test-tenant-parent-paths.txt");
+        File f = new File(tenantPathFileName);
+        System.err.println("Loading Tenant paths from " + f.getAbsolutePath());
         ImmutableSet.Builder b = ImmutableSet.builder();
         BufferedReader br = null;
         try {
@@ -54,7 +55,9 @@ public class TenantImpl implements Tenant {
                 line = br.readLine();
             }
             loadedParentPaths = true;
-            return b.build();
+            Set<String> s = b.build();
+            System.err.println("Tenant Paths are "+s);
+            return s;
         } catch (Exception e) {
             log.error("Unable to load tenant parent paths. All non Super User access to the " +
                     "repository will be denied until the file "+f.getAbsolutePath()+" is present and correct");
@@ -72,12 +75,17 @@ public class TenantImpl implements Tenant {
     }
 
     public TenantImpl(String tenantId) {
+        if(tenantId == null) {
+            log.error("Tenant ID is null");
+
+        }
         this.tenantId = tenantId;
     }
 
     @Override
     public boolean contains(String path) {
         if (!loadedParentPaths) {
+            log.error("Tenant Paths has not been loaded, no access to repository for non system sessions.");
             // if no parent paths have been loaded, deny all access to everything in the repository.
             // this should help prevent misconfiguration.
             return false;
@@ -87,6 +95,10 @@ public class TenantImpl implements Tenant {
             // subtree match on a parent, therefore some other tenant.
             for (String tp : tenantPathParents) {
                 if (path.indexOf(tp) == 0) {
+                    // if the path is a tenant path, and the tenant Id is null always say the path is not contained within the tenant space.
+                    if (tenantId == null) {
+                        return false;
+                    }
                     // match a parent, to be inside the tenant must also match with the tenantId, otherwise
                     // its outside the parent.
                     return path.indexOf(tp + tenantId) == 0;
@@ -105,6 +117,7 @@ public class TenantImpl implements Tenant {
 
     public static String getTenantId(String path) {
         if ( !loadedParentPaths) {
+            log.error("Tenant Paths has not been loaded, no access to repository for non system sessions.");
             throw new IllegalStateException("No Tenant Parent paths have been loaded. Repository is disabled to all non Super User sessions");
         }
         if ( path != null) {
