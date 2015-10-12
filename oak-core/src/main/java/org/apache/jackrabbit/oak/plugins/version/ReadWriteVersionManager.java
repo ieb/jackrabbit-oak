@@ -84,6 +84,7 @@ class ReadWriteVersionManager extends ReadOnlyVersionManager {
                             NodeBuilder workspaceRoot) {
         this.versionStorageNode = checkNotNull(versionStorageNode);
         this.workspaceRoot = checkNotNull(workspaceRoot);
+
     }
 
     @Nonnull
@@ -123,7 +124,10 @@ class ReadWriteVersionManager extends ReadOnlyVersionManager {
             throws CommitFailedException {
         checkNotNull(versionable);
         String vUUID = uuidFromNode(versionable);
-        String relPath = getVersionHistoryPath(vUUID);
+        // how do we convert a NodeBuilder into a path ?
+
+
+        String relPath = getVersionHistoryPath(versionable.getPath(), vUUID);
         NodeBuilder node = versionStorageNode;
         for (Iterator<String> it = PathUtils.elements(relPath).iterator(); it.hasNext(); ) {
             String name = it.next();
@@ -164,6 +168,24 @@ class ReadWriteVersionManager extends ReadOnlyVersionManager {
                     uuidFromNode(node), versionable);
         }
         return node;
+    }
+
+    /**
+     * Returns the path of the version history for the given {@code uuid}.
+     * The returned path is relative to the version storage tree as returned
+     * by {@link #getVersionStorage()}.
+     *
+     * @param uuid the uuid of the versionable node
+     * @return the relative path of the version history for the given uuid.
+     */
+    @Nonnull
+    public String getVersionHistoryPath(@Nonnull String uuid, @Nonnull String path) {
+        String relPath = "";
+        for (int i = 0; i < 3; i++) {
+            String name = uuid.substring(i * 2, i * 2 + 2);
+            relPath = PathUtils.concat(relPath, name);
+        }
+        return workspaceRoot.toMapPath(PathUtils.concat(relPath, uuid), path);
     }
 
     void removeVersion(String versionRelPath) throws CommitFailedException {

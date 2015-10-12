@@ -58,9 +58,9 @@ public final class PermissionUtil implements PermissionConstants {
     }
 
     @Nonnull
-    public static String getEntryName(@Nullable String accessControlledPath) {
+    public static String getEntryName(@Nullable String accessControlledPath, NodeBuilder permissionRoot) {
         String path = Strings.nullToEmpty(accessControlledPath);
-        return String.valueOf(path.hashCode());
+        return permissionRoot.toMapPath(String.valueOf(path.hashCode()), accessControlledPath);
     }
 
     public static boolean checkACLPath(@Nonnull NodeBuilder node, @Nonnull String path) {

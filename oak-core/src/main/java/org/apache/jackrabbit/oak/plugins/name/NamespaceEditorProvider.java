@@ -42,6 +42,7 @@ public class NamespaceEditorProvider implements EditorProvider {
     public Editor getRootEditor(
             NodeState before, NodeState after, NodeBuilder builder,
             CommitInfo info) throws CommitFailedException {
+        // FIXME: Node types may be shared between the mounted and shared DocumentNodeStores.
         return new SubtreeEditor(new NamespaceEditor(before, builder), JCR_SYSTEM, REP_NAMESPACES);
     }
 

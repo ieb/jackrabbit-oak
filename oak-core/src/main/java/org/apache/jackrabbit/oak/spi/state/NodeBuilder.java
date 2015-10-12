@@ -421,4 +421,25 @@ public interface NodeBuilder {
 
     Blob createBlob(InputStream stream) throws IOException;
 
+    /**
+     * Get the path of this node builder.
+     * @return the path.
+     */
+    @Nonnull
+    String getPath();
+
+    /**
+     * Converts a path to a path mapped to a mount. If absolutePath is not recognised as a mounted path the
+     * path should be returned as is, however if absolutePath is regognised as a path that is mounted, then the
+     * path returned should be modified do that it also is recognised as being from the same mount when it is
+     * presented to the underlying persistence. This method works around the lack of an object that can contain the
+     * mount id. A path represented by a String is final. When using this method, the caller must ensure that any absolute
+     * path constructed from the return is one that is recognised as a mounted path by the NodeStore implementation.
+     * For instance /jcr:system/rep:permissionstore/workspacename/34-3221311 might be recognised as belonging to mount 34.
+     * (yup its a hack!)
+     * @param relativePath the relative path to map into the a mount based on the absolute path.
+     * @param absolutePath the absolute path defining which mount the relative path should be mapped into.
+     * @return the path with mount encoded should that be required.
+     */
+    String toMapPath(String relativePath, String absolutePath);
 }

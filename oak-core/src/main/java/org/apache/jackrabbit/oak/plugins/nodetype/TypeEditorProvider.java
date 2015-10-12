@@ -63,8 +63,10 @@ public class TypeEditorProvider implements EditorProvider {
     public Editor getRootEditor(
             NodeState before, NodeState after, NodeBuilder builder,
             CommitInfo info) throws CommitFailedException {
+        // FIXME: Node types may be shared between the mounted and shared DocumentNodeStores.
         NodeState beforeTypes =
                 before.getChildNode(JCR_SYSTEM).getChildNode(JCR_NODE_TYPES);
+        // FIXME: Node types may be shared between the mounted and shared DocumentNodeStores.
         NodeState afterTypes =
                 after.getChildNode(JCR_SYSTEM).getChildNode(JCR_NODE_TYPES);
 

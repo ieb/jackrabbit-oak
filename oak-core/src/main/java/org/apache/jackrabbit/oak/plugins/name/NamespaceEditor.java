@@ -52,6 +52,7 @@ class NamespaceEditor extends DefaultEditor {
     private final NodeState namespaces;
 
     public NamespaceEditor(NodeState root, NodeBuilder builder) {
+        // FIXME: Node types may be shared between the mounted and shared DocumentNodeStores.
         this.namespaces = root.getChildNode(JCR_SYSTEM).getChildNode(
                 REP_NAMESPACES);
         this.builder = builder;
@@ -129,6 +130,7 @@ class NamespaceEditor extends DefaultEditor {
         if (!modified) {
             return;
         }
+        // FIXME: Namespaces may be shared between the mounted and shared DocumentNodeStores.
         Namespaces.buildIndexNode(builder.child(JCR_SYSTEM).child(
                 REP_NAMESPACES));
     }

@@ -134,6 +134,7 @@ class TypeRegistration extends DefaultNodeStateDiff {
     }
 
     NodeState apply(NodeBuilder builder) throws CommitFailedException {
+        // FIXME: Node types may be shared between the mounted and shared DocumentNodeStores.
         NodeBuilder types = builder.child(JCR_SYSTEM).child(JCR_NODE_TYPES);
 
         for (String name : types.getChildNodeNames()) {

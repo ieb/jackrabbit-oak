@@ -70,7 +70,7 @@ final class PermissionStoreEditor implements AccessControlConstants, PermissionC
         } else {
             accessControlledPath = aclPath.length() == 0 ? "/" : aclPath;
         }
-        nodeName = PermissionUtil.getEntryName(accessControlledPath);
+        nodeName = PermissionUtil.getEntryName(accessControlledPath, permissionRoot);
 
         Set<String> orderedChildNames = newLinkedHashSet(node.getNames(OAK_CHILD_ORDER));
         long n = orderedChildNames.size();

@@ -54,6 +54,7 @@ public class TypePredicate implements Predicate<NodeState> {
     @Nonnull
     public static TypePredicate isOrderable(@Nonnull NodeState root) {
         Set<String> orderable = newHashSet();
+        // FIXME: Node types may be shared between the mounted and shared DocumentNodeStores.
         NodeState types = checkNotNull(root)
                 .getChildNode(JCR_SYSTEM)
                 .getChildNode(JCR_NODE_TYPES);
@@ -147,6 +148,7 @@ public class TypePredicate implements Predicate<NodeState> {
     private void init() {
         if (!initialized) {
             // lazy initialization of the sets of matching type names
+            // FIXME: Node types may be shared between the mounted and shared DocumentNodeStores.
             NodeState types = checkNotNull(root)
                     .getChildNode(JCR_SYSTEM)
                     .getChildNode(JCR_NODE_TYPES);

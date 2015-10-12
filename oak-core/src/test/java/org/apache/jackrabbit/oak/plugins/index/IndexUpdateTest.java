@@ -432,6 +432,7 @@ public class IndexUpdateTest {
     private Set<String> find(PropertyIndexLookup lookup, String name,
             String value) {
         NodeState system = root.getChildNode(JCR_SYSTEM);
+        // FIXME: Node types may be shared between the mounted and shared DocumentNodeStores.
         NodeState types = system.getChildNode(JCR_NODE_TYPES);
         NodeState type = types.getChildNode(NT_BASE);
         SelectorImpl selector = new SelectorImpl(type, NT_BASE);

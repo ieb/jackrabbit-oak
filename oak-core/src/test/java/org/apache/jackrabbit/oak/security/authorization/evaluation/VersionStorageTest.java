@@ -84,7 +84,7 @@ public class VersionStorageTest extends AbstractOakCoreTest {
                 throw new UnsupportedOperationException();
             }
         };
-        return VersionConstants.VERSION_STORE_PATH + '/' + vMgr.getVersionHistoryPath(vUUID);
+        return VersionConstants.VERSION_STORE_PATH + '/' + vMgr.getVersionHistoryPath("/a", vUUID);
     }
 
     @Override

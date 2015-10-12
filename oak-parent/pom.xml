@@ -140,7 +140,7 @@
                 <!--<comparisonVersion>1.2.0</comparisonVersion>-->
                 <logResults>false</logResults>
                 <failOnWarning>false</failOnWarning>
-                <failOnError>true</failOnError>
+                <failOnError>false</failOnError>
                 <skip>${skipTests}</skip>
               </configuration>
             </execution>

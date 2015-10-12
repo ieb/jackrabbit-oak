@@ -19,11 +19,8 @@ package org.apache.jackrabbit.oak.plugins.document;
 import static com.google.common.base.Preconditions.checkArgument;
 
 import java.io.InputStream;
-<<<<<<< HEAD
-import java.util.List;
-=======
 import java.util.Iterator;
->>>>>>> trunk
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;

@@ -61,6 +61,7 @@ public class VersionablePathHook implements CommitHook {
             NodeState before, NodeState after, CommitInfo info)
             throws CommitFailedException {
         NodeBuilder rootBuilder = after.builder();
+        // FIXME: Check all the stores, they may be shared between mounted and shared.
         NodeBuilder vsRoot = rootBuilder.child(NodeTypeConstants.JCR_SYSTEM).child(NodeTypeConstants.JCR_VERSIONSTORAGE);
         ReadWriteVersionManager vMgr = new ReadWriteVersionManager(vsRoot, rootBuilder);
         List<CommitFailedException> exceptions = new ArrayList<CommitFailedException>();

@@ -108,8 +108,10 @@ public abstract class ReadOnlyVersionManager {
             RepositoryException {
         checkVersionable(versionable);
         String uuid = versionable.getProperty(VersionConstants.JCR_UUID).getValue(Type.STRING);
-        return TreeUtil.getTree(getVersionStorage(), getVersionHistoryPath(uuid));
+        return TreeUtil.getTree(getVersionStorage(), getVersionHistoryPath(versionable.getPath(), uuid));
     }
+
+    protected abstract String getVersionHistoryPath(String path, String uuid);
 
     /**
      * Returns the version tree with the given uuid.
@@ -122,23 +124,6 @@ public abstract class ReadOnlyVersionManager {
         return getIdentifierManager().getTree(uuid);
     }
 
-    /**
-     * Returns the path of the version history for the given {@code uuid}.
-     * The returned path is relative to the version storage tree as returned
-     * by {@link #getVersionStorage()}.
-     *
-     * @param uuid the uuid of the versionable node
-     * @return the relative path of the version history for the given uuid.
-     */
-    @Nonnull
-    public String getVersionHistoryPath(@Nonnull String uuid) {
-        String relPath = "";
-        for (int i = 0; i < 3; i++) {
-            String name = uuid.substring(i * 2, i * 2 + 2);
-            relPath = PathUtils.concat(relPath, name);
-        }
-        return PathUtils.concat(relPath, uuid);
-    }
 
     /**
      * Returns the tree representing the base version of the given versionable
