@@ -155,6 +155,33 @@ public class IndexUpdate implements Editor {
         return result;
     }
 
+    /**
+     * Should the index be rebuilt asynchronously.
+     * @param definition
+     * @param before
+     * @param name
+     * @return
+     */
+    private boolean reindexAsync(NodeBuilder definition, NodeState before,
+                                       String name) {
+        return definition.getBoolean(REINDEX_ASYNC_PROPERTY_NAME)
+                && definition.getString(ASYNC_PROPERTY_NAME) == null;
+    }
+
+    /**
+     * Should the index be rebuilt synchronously.
+     * @param definition
+     * @param before
+     * @param name
+     * @return true if the index should be rebuild synchronously
+     */
+    private boolean reindexSync(NodeBuilder definition, NodeState before,
+                                       String name) {
+        return !reindexAsync(definition, before, name);
+
+    }
+
+
     private void collectIndexEditors(NodeBuilder definitions,
             NodeState before) throws CommitFailedException {
         for (String name : definitions.getChildNodeNames()) {
@@ -171,24 +198,21 @@ public class IndexUpdate implements Editor {
                         rootState.newCallback(getIndexPath(getPath(), name), shouldReindex));
                 if (editor == null) {
                     missingProvider.onMissingIndex(type, definition);
-                } else if (shouldReindex) {
-                    if (definition.getBoolean(REINDEX_ASYNC_PROPERTY_NAME)
-                            && definition.getString(ASYNC_PROPERTY_NAME) == null) {
-                        // switch index to an async update mode
-                        definition.setProperty(ASYNC_PROPERTY_NAME,
-                                ASYNC_REINDEX_VALUE);
-                    } else {
-                        definition.setProperty(REINDEX_PROPERTY_NAME, false);
-                        incrementReIndexCount(definition);
-                        // as we don't know the index content node name
-                        // beforehand, we'll remove all child nodes
-                        for (String rm : definition.getChildNodeNames()) {
-                            if (NodeStateUtils.isHidden(rm)) {
-                                definition.getChildNode(rm).remove();
-                            }
+                } else if (shouldReindex && reindexAsync(definition, before, name)) {
+                    // switch index to an async update mode
+                    definition.setProperty(ASYNC_PROPERTY_NAME,
+                            ASYNC_REINDEX_VALUE);
+                } else if (shouldReindex && reindexSync(definition, before, name)) {
+                    definition.setProperty(REINDEX_PROPERTY_NAME, false);
+                    incrementReIndexCount(definition);
+                    // as we don't know the index content node name
+                    // beforehand, we'll remove all child nodes
+                    for (String rm : definition.getChildNodeNames()) {
+                        if (NodeStateUtils.isHidden(rm)) {
+                            definition.getChildNode(rm).remove();
                         }
-                        reindex.put(concat(getPath(), INDEX_DEFINITIONS_NAME, name), editor);
                     }
+                    reindex.put(concat(getPath(), INDEX_DEFINITIONS_NAME, name), editor);
                 } else {
                     editors.add(editor);
                 }
