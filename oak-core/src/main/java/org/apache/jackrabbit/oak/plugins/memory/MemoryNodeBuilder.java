@@ -558,6 +558,12 @@ public class MemoryNodeBuilder implements NodeBuilder {
         return toStringHelper(this).add("path", getPath()).toString();
     }
 
+    @Override
+    public String toMapPath(String relativePath, String absolutePath) {
+        return relativePath;
+    }
+
+
     //------------------------------------------------------------< Head >---
 
     /**

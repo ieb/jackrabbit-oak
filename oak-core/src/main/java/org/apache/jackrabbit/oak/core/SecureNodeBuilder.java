@@ -379,4 +379,22 @@ class SecureNodeBuilder implements NodeBuilder {
         }
     }
 
+
+    /**
+     * @return path of this builder.
+     */
+    public final String getPath() {
+        return parent == null ? "/" : getPath(new StringBuilder()).toString();
+    }
+
+    private StringBuilder getPath(StringBuilder parentPath) {
+        return parent == null ? parentPath : parent.getPath(parentPath).append('/').append(name);
+    }
+
+    @Override
+    public String toMapPath(String relativePath, String absolutePath) {
+        return relativePath;
+    }
+
+
 }

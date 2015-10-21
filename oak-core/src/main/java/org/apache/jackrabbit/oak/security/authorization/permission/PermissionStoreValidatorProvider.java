@@ -39,6 +39,7 @@ public class PermissionStoreValidatorProvider extends ValidatorProvider implemen
             NodeState before, NodeState after, CommitInfo info) {
         FailingValidator validator = new FailingValidator(
                 "Constraint", 41, "Attempt to modify permission store.");
+        // FIXME: Node types may be shared between the mounted and shared DocumentNodeStores.
         return new SubtreeValidator(validator, JCR_SYSTEM, REP_PERMISSION_STORE);
     }
 }

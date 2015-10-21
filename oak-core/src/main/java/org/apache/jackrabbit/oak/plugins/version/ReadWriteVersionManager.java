@@ -127,7 +127,7 @@ class ReadWriteVersionManager extends ReadOnlyVersionManager {
         // how do we convert a NodeBuilder into a path ?
 
 
-        String relPath = getVersionHistoryPath(versionable.getPath(), vUUID);
+        String relPath = getVersionHistoryPath(vUUID, versionable.getPath());
         NodeBuilder node = versionStorageNode;
         for (Iterator<String> it = PathUtils.elements(relPath).iterator(); it.hasNext(); ) {
             String name = it.next();

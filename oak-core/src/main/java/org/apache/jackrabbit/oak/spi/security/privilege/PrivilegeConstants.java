@@ -58,6 +58,7 @@ public interface PrivilegeConstants {
     /**
      * Internal (oak) path for the privilege store.
      */
+    // FIXME: check where this is used.
     String PRIVILEGES_PATH = '/' + JcrConstants.JCR_SYSTEM + '/' + REP_PRIVILEGES;
 
     /**

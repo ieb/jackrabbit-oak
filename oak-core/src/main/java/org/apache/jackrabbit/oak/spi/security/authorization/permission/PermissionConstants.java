@@ -34,6 +34,7 @@ public interface PermissionConstants {
     String NT_REP_PERMISSIONS = "rep:Permissions";
     String NT_REP_PERMISSION_STORE = "rep:PermissionStore";
     String REP_PERMISSION_STORE = "rep:permissionStore";
+    // FIXME: Check where this is used.
     String PERMISSIONS_STORE_PATH = '/' + JcrConstants.JCR_SYSTEM + '/' + REP_PERMISSION_STORE;
 
     String REP_ACCESS_CONTROLLED_PATH = "rep:accessControlledPath";

@@ -112,6 +112,7 @@ public abstract class QueryEngineImpl implements QueryEngine {
         NamePathMapper mapper = new NamePathMapperImpl(
                 new LocalNameMapper(context.getRoot(), mappings));
 
+        // FIXME: Node types may be shared between the mounted and shared DocumentNodeStores.
         NodeState types = context.getBaseState()
                 .getChildNode(JCR_SYSTEM)
                 .getChildNode(JCR_NODE_TYPES);

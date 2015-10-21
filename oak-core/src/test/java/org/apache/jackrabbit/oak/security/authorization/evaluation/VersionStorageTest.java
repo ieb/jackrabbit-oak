@@ -26,6 +26,7 @@ import org.apache.jackrabbit.commons.jackrabbit.authorization.AccessControlUtils
 import org.apache.jackrabbit.oak.Oak;
 import org.apache.jackrabbit.oak.api.Root;
 import org.apache.jackrabbit.oak.api.Tree;
+import org.apache.jackrabbit.oak.commons.PathUtils;
 import org.apache.jackrabbit.oak.plugins.nodetype.ReadOnlyNodeTypeManager;
 import org.apache.jackrabbit.oak.plugins.version.ReadOnlyVersionManager;
 import org.apache.jackrabbit.oak.plugins.version.VersionConstants;
@@ -64,27 +65,17 @@ public class VersionStorageTest extends AbstractOakCoreTest {
         vhPath = getVersionHistoryPath(versionableUuid, vs);
     }
 
+    private String getVersionHistoryPath(String vs, String uuid) {
+        String relPath = "";
+        for (int i = 0; i < 3; i++) {
+            String name = uuid.substring(i * 2, i * 2 + 2);
+            relPath = PathUtils.concat(relPath, name);
+        }
+        return PathUtils.concat(relPath, uuid);
+    }
+
     private String getVersionHistoryPath(String vUUID, final Tree vs) {
-        ReadOnlyVersionManager vMgr = new ReadOnlyVersionManager() {
-            @Nonnull
-            @Override
-            protected Tree getVersionStorage() {
-                return vs;
-            }
-
-            @Nonnull
-            @Override
-            protected Root getWorkspaceRoot() {
-                return root;
-            }
-
-            @Nonnull
-            @Override
-            protected ReadOnlyNodeTypeManager getNodeTypeManager() {
-                throw new UnsupportedOperationException();
-            }
-        };
-        return VersionConstants.VERSION_STORE_PATH + '/' + vMgr.getVersionHistoryPath("/a", vUUID);
+        return VersionConstants.VERSION_STORE_PATH + '/' + getVersionHistoryPath("/a", vUUID);
     }
 
     @Override

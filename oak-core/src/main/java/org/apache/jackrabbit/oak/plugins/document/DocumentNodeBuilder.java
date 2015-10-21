@@ -129,4 +129,10 @@ class DocumentNodeBuilder extends AbstractDocumentNodeBuilder {
         }
         return builder.removeInternal();
     }
+
+
+    @Override
+    public String toMapPath(String relativePath, String absolutePath) {
+        return root.toMapPath(relativePath, absolutePath);
+    }
 }

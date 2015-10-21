@@ -206,4 +206,16 @@ public class ReadOnlyBuilder implements NodeBuilder {
         throw unsupported();
     }
 
+    /**
+     * @return path of this builder.
+     */
+    public final String getPath() {
+        throw unsupported();
+    }
+
+
+    @Override
+    public String toMapPath(String relativePath, String absolutePath) {
+        throw unsupported();
+    }
 }

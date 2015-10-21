@@ -1964,6 +1964,11 @@ public final class DocumentNodeStore
         return stats;
     }
 
+    public String toMapPath(String relativePath, String absolutePath) {
+        // FIXME: Provide implmentation.
+        return relativePath;
+    }
+
     private static class BackgroundReadStats {
         CacheInvalidationStats cacheStats;
         long readHead;

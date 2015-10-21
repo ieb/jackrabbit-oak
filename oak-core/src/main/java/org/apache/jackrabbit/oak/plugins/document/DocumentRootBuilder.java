@@ -175,4 +175,10 @@ class DocumentRootBuilder extends AbstractDocumentNodeBuilder {
         updates = 0;
     }
 
+    @Override
+    public String toMapPath(String relativePath, String absolutePath) {
+        return store.toMapPath(relativePath, absolutePath);
+    }
+
+
 }

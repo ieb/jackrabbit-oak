@@ -28,6 +28,7 @@ import org.apache.jackrabbit.oak.api.PropertyState;
 import org.apache.jackrabbit.oak.api.Root;
 import org.apache.jackrabbit.oak.api.Tree;
 import org.apache.jackrabbit.oak.api.Type;
+import org.apache.jackrabbit.oak.plugins.tree.impl.AbstractTree;
 import org.apache.jackrabbit.oak.plugins.tree.impl.ImmutableTree;
 import org.apache.jackrabbit.oak.spi.security.ConfigurationParameters;
 import org.apache.jackrabbit.oak.spi.security.authorization.permission.PermissionConstants;
@@ -57,10 +58,27 @@ public final class PermissionUtil implements PermissionConstants {
         }
     }
 
+    /**
+     * Get the name of the entry using the a tree object based on the absolute path the tree represents.
+     * The tree is used to get a nodeBuilder which will use the store to determine the entry name. Where the
+     * store is a multiplexed store, it will use entry names that identify the store in which the entry should be stored.
+     * @param absolutePath absolute path the entry is for.
+     * @param tree current tree object.
+     * @return the path
+     */
     @Nonnull
-    public static String getEntryName(@Nullable String accessControlledPath, NodeBuilder permissionRoot) {
-        String path = Strings.nullToEmpty(accessControlledPath);
-        return permissionRoot.toMapPath(String.valueOf(path.hashCode()), accessControlledPath);
+    public static String getEntryName(@Nullable String absolutePath, @Nonnull Tree tree) {
+        String path = Strings.nullToEmpty(absolutePath);
+        if (tree instanceof AbstractTree) {
+            return getEntryName (absolutePath, ((AbstractTree) tree).getNodeState().builder());
+        }
+        return String.valueOf(path.hashCode());
+    }
+
+    @Nonnull
+    public static String getEntryName(@Nullable String absolutePath, @Nonnull NodeBuilder nodeBuilder) {
+        String path = Strings.nullToEmpty(absolutePath);
+        return nodeBuilder.toMapPath(String.valueOf(path.hashCode()), absolutePath);
     }
 
     public static boolean checkACLPath(@Nonnull NodeBuilder node, @Nonnull String path) {

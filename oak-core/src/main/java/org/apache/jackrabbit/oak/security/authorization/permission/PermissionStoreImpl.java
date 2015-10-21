@@ -34,6 +34,7 @@ import org.apache.jackrabbit.oak.spi.security.authorization.restriction.Restrict
 import org.apache.jackrabbit.oak.spi.security.privilege.PrivilegeBits;
 import org.apache.jackrabbit.oak.spi.security.privilege.PrivilegeBitsProvider;
 import org.apache.jackrabbit.oak.spi.security.privilege.PrivilegeConstants;
+import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
 import org.apache.jackrabbit.oak.util.TreeUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -92,7 +93,7 @@ public class PermissionStoreImpl implements PermissionStore, PermissionConstants
     public Collection<PermissionEntry> load(@Nullable Collection<PermissionEntry> entries, @Nonnull String principalName, @Nonnull String path) {
         Tree principalRoot = getPrincipalRoot(principalName);
         if (principalRoot != null) {
-            String name = PermissionUtil.getEntryName(path, permissionRoot);
+            String name = PermissionUtil.getEntryName(path, principalRoot);
             if (principalRoot.hasChild(name)) {
                 Tree child = principalRoot.getChild(name);
                 if (PermissionUtil.checkACLPath(child, path)) {

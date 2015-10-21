@@ -115,7 +115,7 @@ public class PermissionHookTest extends AbstractAccessControlTest implements Acc
     protected Tree getEntry(String principalName, String accessControlledPath, long index) throws Exception {
         Tree principalRoot = getPrincipalRoot(principalName);
 
-        Tree parent = principalRoot.getChild(PermissionUtil.getEntryName(accessControlledPath, root));
+        Tree parent = principalRoot.getChild(PermissionUtil.getEntryName(accessControlledPath, principalRoot));
         Tree entry = parent.getChild(String.valueOf(index));
         if (!entry.exists()) {
             throw new RepositoryException("no such entry");
@@ -403,7 +403,7 @@ public class PermissionHookTest extends AbstractAccessControlTest implements Acc
 
         // verify that the corresponding permission entry has been removed.
         Tree everyoneRoot = getPrincipalRoot(EveryonePrincipal.NAME);
-        Tree parent = everyoneRoot.getChild(PermissionUtil.getEntryName(childPath,  ));
+        Tree parent = everyoneRoot.getChild(PermissionUtil.getEntryName(childPath, everyoneRoot));
         if (parent.exists()) {
             assertFalse(parent.getChild("0").exists());
         }

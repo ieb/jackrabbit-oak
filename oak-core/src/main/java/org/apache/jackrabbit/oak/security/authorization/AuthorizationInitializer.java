@@ -50,6 +50,7 @@ class AuthorizationInitializer implements WorkspaceInitializer, AccessControlCon
                     ImmutableList.<String>of(NT_REP_DENY_ACE, NT_REP_GRANT_ACE, NT_REP_ACE));
         }
 
+        // FIXME: Node types may be shared between the mounted and shared DocumentNodeStores.
         // create the permission store and the root for this workspace.
         NodeBuilder permissionStore =
                 builder.child(JCR_SYSTEM).child(REP_PERMISSION_STORE);

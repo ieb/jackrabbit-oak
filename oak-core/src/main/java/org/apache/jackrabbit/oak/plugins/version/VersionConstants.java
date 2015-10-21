@@ -70,6 +70,7 @@ public interface VersionConstants extends JcrConstants {
      * Similar to the /jcr:system/jcr:versionStorage subgraph, the activity storage
      * is a single repository wide store, but is reflected into each workspace.
      */
+    // FIXME: Check what uses this.
     String ACTIVITIES_PATH = '/' + JCR_SYSTEM + '/' + JCR_ACTIVITIES;
 
     /**
@@ -82,6 +83,7 @@ public interface VersionConstants extends JcrConstants {
      * not a common repository-wide store mirrored into each workspace, as is
      * the case with version storage.
      */
+    // FIXME: Check what uses this.
     String CONFIGURATIONS_PATH = '/' + JCR_SYSTEM + '/' + JCR_CONFIGURATIONS;
 
     /**
@@ -93,6 +95,7 @@ public interface VersionConstants extends JcrConstants {
      * reflected in each workspace as a protected subgraph [...] located below
      * /jcr:system/jcr:versionStorage.
      */
+    // FIXME: Check what uses this.
     String VERSION_STORE_PATH = '/' + JCR_SYSTEM + '/' + JCR_VERSIONSTORAGE;
 
     Collection<String> SYSTEM_PATHS = Collections.unmodifiableList(Arrays.asList(
