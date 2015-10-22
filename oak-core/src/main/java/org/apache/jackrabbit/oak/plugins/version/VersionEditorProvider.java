@@ -41,7 +41,6 @@ public class VersionEditorProvider implements EditorProvider {
         if (!builder.hasChildNode(JCR_SYSTEM)) {
             return null;
         }
-        // FIXME: Node types may be shared between the mounted and shared DocumentNodeStores.
         NodeBuilder system = builder.child(JCR_SYSTEM);
         if (!system.hasChildNode(JCR_VERSIONSTORAGE)) {
             return null;

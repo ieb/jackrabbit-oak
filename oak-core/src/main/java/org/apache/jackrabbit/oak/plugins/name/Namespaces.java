@@ -139,7 +139,6 @@ public class Namespaces implements NamespaceConstants {
     }
 
     private static Tree getNamespaceTree(Tree root) {
-        // FIXME: Node types may be shared between the mounted and shared DocumentNodeStores.
         return root.getChild(JCR_SYSTEM).getChild(REP_NAMESPACES);
     }
 

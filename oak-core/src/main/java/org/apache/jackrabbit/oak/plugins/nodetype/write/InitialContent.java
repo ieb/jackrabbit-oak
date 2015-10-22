@@ -73,7 +73,6 @@ public class InitialContent implements RepositoryInitializer, NodeTypeConstants 
         if (!builder.hasChildNode(JCR_SYSTEM)) {
             NodeBuilder system = builder.child(JCR_SYSTEM);
             system.setProperty(JCR_PRIMARYTYPE, NT_REP_SYSTEM, Type.NAME);
-            // FIXME: Check all the stores, they may be shared between mounted and shared.
 
             system.child(JCR_VERSIONSTORAGE)
                     .setProperty(JCR_PRIMARYTYPE, REP_VERSIONSTORAGE, Type.NAME);

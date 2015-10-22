@@ -160,7 +160,6 @@ public abstract class ReadWriteNodeTypeManager extends ReadOnlyNodeTypeManager {
     private static Tree getOrCreateNodeTypes(Root root) {
         Tree types = root.getTree(NODE_TYPES_PATH);
         if (!types.exists()) {
-            // FIXME: Check all the stores, they may be shared between mounted and shared.
             Tree system = root.getTree('/' + JCR_SYSTEM);
             if (!system.exists()) {
                 system = root.getTree("/").addChild(JCR_SYSTEM);

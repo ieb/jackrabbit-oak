@@ -42,7 +42,6 @@ public class NameValidatorProvider extends ValidatorProvider {
     @Override
     public Validator getRootValidator(
             NodeState before, NodeState after, CommitInfo info) {
-        // FIXME: Node types may be shared between the mounted and shared DocumentNodeStores.
         return new NameValidator(newHashSet(after
                 .getChildNode(JCR_SYSTEM)
                 .getChildNode(REP_NAMESPACES)

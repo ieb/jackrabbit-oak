@@ -24,7 +24,6 @@ import org.apache.jackrabbit.JcrConstants;
 public interface NodeTypeConstants extends JcrConstants {
 
     String JCR_NODE_TYPES = "jcr:nodeTypes";
-    // FIXME: Node types may be shared between the mounted and shared DocumentNodeStores.
     String NODE_TYPES_PATH = '/' + JcrConstants.JCR_SYSTEM + '/' + JCR_NODE_TYPES;
 
     String JCR_IS_ABSTRACT = "jcr:isAbstract";
