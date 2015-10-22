@@ -1966,7 +1966,7 @@ public final class DocumentNodeStore
 
     public String toMapPath(String relativePath, String absolutePath) {
         // FIXME: Provide implmentation.
-        return relativePath;
+        return store.toMapPath(relativePath, absolutePath);
     }
 
     private static class BackgroundReadStats {

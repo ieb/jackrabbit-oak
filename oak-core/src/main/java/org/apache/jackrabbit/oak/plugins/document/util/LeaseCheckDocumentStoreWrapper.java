@@ -201,4 +201,9 @@ public final class LeaseCheckDocumentStoreWrapper implements DocumentStore {
         delegate.setDocumentCreationCustomiser(customiser);
     }
 
+    @Override
+    public String toMapPath(String relativePath, String absolutePath) {
+        return relativePath;
+    }
+
 }

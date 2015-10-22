@@ -313,7 +313,19 @@ public interface DocumentStore {
      * @param customiser the customiser instance to use
      */
     void setDocumentCreationCustomiser(DocumentCreationCustomiser customiser);
-    
+
+    /**
+     * Generates relative path for the given absolute path based on the supplied relative path. This method
+     * allows the DocumentNode store implementation to spefify a relative path belonging to a multiplext store
+     * that can be recognised as such later. It is used in repository locations where the children of the parent
+     * are never iterated over, and are only accessed directly. for example the maps under /jcr:system/.**
+     * @param relativePath the relative path to the node
+     * @param absolutePath the absolute path that the relative path relates to
+     * @return a modified relative path, implementation specific, that can be recognised as belonging to the store where
+     *         the absolute path would also be stored.
+     */
+    String toMapPath(String relativePath, String absolutePath);
+
     /**
      * The <tt>DocumentCreationCustomiser</tt> allows flexibility when creating a document for a new collection
      * 

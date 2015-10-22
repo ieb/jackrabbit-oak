@@ -68,8 +68,9 @@ public class MultiplexingDocumentStore implements DocumentStore {
         this.root = root;
         
         this.mounts = Lists.newArrayList();
-        this.mounts.add(new DocumentStoreMount(root, "/"));
+        this.mounts.add(new DocumentStoreMount(root, "/", "", Builder.MAPPED_PATHS));
         this.mounts.addAll(mounts);
+        Collections.sort(this.mounts);
         
         for ( DocumentStoreMount mount : this.mounts ) {
             mount.getStore().setDocumentCreationCustomiser(new DefaultDocumentCreationCustomiser(this));
@@ -121,52 +122,37 @@ public class MultiplexingDocumentStore implements DocumentStore {
         
         String path = key.getPath();
 
-        List<DocumentStoreMount> candidates = Lists.newArrayList();
-        
         if ( path != null ) {
         
             if(doNotMap(path)) {
                 return root;
             }
             
-            // pick stores which can contribute
+            // mounts is ordered longest mount path first, so the first match is the desired mount.
             for ( DocumentStoreMount mount : mounts ) {
-                if ( Text.isDescendantOrEqual(mount.getMountPath(), path)) {
-                    candidates.add(mount);
+                if ( mount.contains(path) ) {
+                    return mount.getStore();
                 }
             }
             
-            // sort candidates, longest paths first
-            Collections.sort(candidates, new Comparator<DocumentStoreMount>() {
-                @Override
-                public int compare(DocumentStoreMount o1, DocumentStoreMount o2) {
-                    return o2.getMountPath().length() - o1.getMountPath().length();
-                }
-            });
         }
-        
-        if ( candidates.isEmpty()) {
-            
-            if ( onFailure == OnFailure.CALL_FIND_FOR_MATCHING_KEY) {
-                // split documents don't have reasonable id so we can't locate
-                // a store for them beforehand ;
-                for ( DocumentStoreMount mount : mounts ) {
-                    if ( mount.getStore().find(Collection.NODES, key.getValue()) != null ) {
-                        return mount.getStore();
-                    }
-                }
 
-                // if we have looked for the documents everywhere and still have not fond them return a no-op store
-                // this is safe since for query operations it will return no results ( which we already know to be true )
-                // and for any modifications it will fail fast
-                return NoopStore.INSTANCE;
+        if ( onFailure == OnFailure.CALL_FIND_FOR_MATCHING_KEY) {
+            // split documents don't have reasonable id so we can't locate
+            // a store for them beforehand ;
+            for ( DocumentStoreMount mount : mounts ) {
+                if ( mount.getStore().find(Collection.NODES, key.getValue()) != null ) {
+                    return mount.getStore();
+                }
             }
-            
-            throw new IllegalArgumentException("Could not find an owning store for key " + key.getValue() + " ( matched path = " + key.getPath() + ")");
+
+            // if we have looked for the documents everywhere and still have not fond them return a no-op store
+            // this is safe since for query operations it will return no results ( which we already know to be true )
+            // and for any modifications it will fail fast
+            return NoopStore.INSTANCE;
         }
 
-        // guaranteed to have at least one candidate since we mount the root store at '/'
-        return candidates.get(0).getStore();
+        throw new IllegalArgumentException("Could not find an owning store for key " + key.getValue() + " ( matched path = " + key.getPath() + ")");
     }
 
     @Override
@@ -381,7 +367,17 @@ public class MultiplexingDocumentStore implements DocumentStore {
         // TODO - forward to mounts?
         throw new UnsupportedOperationException();
     }
-    
+
+    @Override
+    public String toMapPath(String relativePath, String absolutePath) {
+        for (DocumentStoreMount m : mounts) {
+            if ( m.contains(absolutePath)) {
+                return m.toMappedPath(relativePath);
+            }
+        }
+        return relativePath;
+    }
+
     /**
      * Helper class used to create <tt>MultiplexingDocumentStore</tt> instances
      * 
@@ -391,7 +387,12 @@ public class MultiplexingDocumentStore implements DocumentStore {
      *
      */
     public static class Builder {
-        
+
+        public static final String[] MAPPED_PATHS = new String[]{
+                // TODO, check.
+                "/jcr:system/rep:versionStore/",
+                "/jcr:system/rep:permissionStore/"
+        };
         private DocumentStore root;
         private List<DocumentStoreMount> mounts = Lists.newArrayList();
         
@@ -402,9 +403,10 @@ public class MultiplexingDocumentStore implements DocumentStore {
             return this;
         }
         
-        public Builder mount(String path, DocumentStore store) {
+        public Builder mount(String path, String id, DocumentStore store) {
             
             // TODO - check for duplicate mounts?
+            // TODO - check for duplicate mount IDs.
             
             checkNotNull(store);
             checkNotNull(path);
@@ -413,7 +415,7 @@ public class MultiplexingDocumentStore implements DocumentStore {
             }
             
             
-            mounts.add(new DocumentStoreMount(store, path));
+            mounts.add(new DocumentStoreMount(store, path, id, MAPPED_PATHS));
             
             return this;
         }
@@ -432,13 +434,31 @@ public class MultiplexingDocumentStore implements DocumentStore {
     /**
      * Private abstraction to simplify storing information about mounts
      */
-    private static class DocumentStoreMount {
+    static class DocumentStoreMount implements Comparable<DocumentStoreMount> {
         private final DocumentStore store;
         private final String mountPath;
+        private final String mountId;
+        private String[] mapPaths;
+        private long id;
 
-        public DocumentStoreMount(DocumentStore store, String mountPath) {
+        /**
+         * Create a definition of a document store mount mounting a store at a mountPath with a mountId and
+         * set of paths which are mapped. Mapped paths are paths where multiple stores are present as children
+         * of the same parent node. The path is encoded int he form mappedPaths[I]+mountId eg /jcr:system/rep:permissionStore/mm_1213121
+         * In this example the path belongs to the mount id mm.
+         * @param store
+         * @param mountPath
+         * @param mountId
+         * @param mappedPaths
+         */
+        public DocumentStoreMount(DocumentStore store, String mountPath, String mountId, String[] mappedPaths) {
             this.store = store;
             this.mountPath = mountPath;
+            this.mountId = mountId;
+            mapPaths = new String[mappedPaths.length];
+            for (int i = 0; i < mappedPaths.length; i++) {
+                mapPaths[i] = mappedPaths[i]+mountId+"_";
+            }
         }
         
         public DocumentStore getStore() {
@@ -447,6 +467,57 @@ public class MultiplexingDocumentStore implements DocumentStore {
         
         public String getMountPath() {
             return mountPath;
+        }
+
+        /**
+         * Sort first by length, then if the length is equal by alpha.
+         * Longest paths come first. Needs test coverage to make certain order is correct.
+         * @param o
+         * @return
+         */
+        @Override
+        public int compareTo(DocumentStoreMount o) {
+            int i = o.mountPath.length() - mountPath.length();
+            if ( i == 0 ) {
+                i = mountPath.compareTo(o.mountPath);
+            }
+            return i;
+        }
+
+        /**
+         * If the mount contains the absolute path, returns true. Paths below the mount point
+         * and paths mapped into the mount point return true.
+         * @param absolutePath the absolute path
+         * @return true if contains the absolute path.
+         */
+        public boolean contains(String absolutePath) {
+            if (Text.isDescendantOrEqual(mountPath, absolutePath)) {
+                return true;
+            }
+            for (String mapPath : mapPaths) {
+                if (absolutePath.startsWith(mapPath)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /**
+         * Convert a relative path into a relative path mapped into this mount.
+         * @param relativePath the relative path unmapped
+         * @return the relative path mapped into this mount.
+         */
+        public String toMappedPath(String relativePath) {
+            return mountId+"_"+relativePath;
+        }
+
+        @Override
+        public String toString() {
+            return "id:"+mountId+", path:"+mountPath;
+        }
+
+        public String getMountId() {
+            return mountId;
         }
     }
     

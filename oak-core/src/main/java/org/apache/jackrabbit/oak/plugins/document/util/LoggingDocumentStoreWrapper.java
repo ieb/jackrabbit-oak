@@ -339,6 +339,11 @@ public class LoggingDocumentStoreWrapper implements DocumentStore {
         store.setDocumentCreationCustomiser(customiser);
     }
 
+    @Override
+    public String toMapPath(String relativePath, String absolutePath) {
+        return store.toMapPath(relativePath, absolutePath);
+    }
+
     public long determineServerTimeDifferenceMillis() {
         logMethod("determineServerTimeDifferenceMillis", "start");
         long result = store.determineServerTimeDifferenceMillis();

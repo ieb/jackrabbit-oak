@@ -35,7 +35,7 @@ public class CountingDocumentStore implements DocumentStore {
     boolean printStacks;
 
     class Stats {
-
+        // FIXME: if these are not atomic ints ++ wont be acurate, consider fixing.
         private int numFindCalls;
         private int numQueryCalls;
         private int numRemoveCalls;
@@ -222,6 +222,11 @@ public class CountingDocumentStore implements DocumentStore {
     @Override
     public void setDocumentCreationCustomiser(DocumentCreationCustomiser customiser) {
         delegate.setDocumentCreationCustomiser(customiser);
+    }
+
+    @Override
+    public String toMapPath(String relativePath, String absolutePath) {
+        return delegate.toMapPath(relativePath, absolutePath);
     }
 
     @Override

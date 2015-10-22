@@ -78,12 +78,12 @@ public abstract class NodeStoreFixture {
         public NodeStore createNodeStore() {
             final DocumentStore ds = new MultiplexingDocumentStore.Builder()
             .root(new MemoryDocumentStore())
-            .mount("/jcr:system", new MemoryDocumentStore())
-            .mount("/foo", new MemoryDocumentStore())
-            .mount("/bar", new MemoryDocumentStore())
-            .mount("/test", new MemoryDocumentStore())
-            .mount("/parent", new MemoryDocumentStore())
-            .mount("/n", new MemoryDocumentStore())
+            .mount("/jcr:system", "ss", new MemoryDocumentStore())
+            .mount("/foo", "fo",new MemoryDocumentStore())
+            .mount("/bar", "ba", new MemoryDocumentStore())
+            .mount("/test", "te",new MemoryDocumentStore())
+            .mount("/parent", "pa", new MemoryDocumentStore())
+            .mount("/n", "n", new MemoryDocumentStore())
             .build();
             return new DocumentMK.Builder().setDocumentStore(ds).getNodeStore();
         }

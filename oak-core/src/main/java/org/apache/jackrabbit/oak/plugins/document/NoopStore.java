@@ -117,6 +117,11 @@ class NoopStore implements DocumentStore {
     }
 
     @Override
+    public String toMapPath(String relativePath, String absolutePath) {
+        return relativePath;
+    }
+
+    @Override
     public long determineServerTimeDifferenceMillis() {
         return 0;
     }

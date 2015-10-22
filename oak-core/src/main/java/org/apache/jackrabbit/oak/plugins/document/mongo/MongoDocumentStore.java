@@ -1128,6 +1128,11 @@ public class MongoDocumentStore implements DocumentStore {
         this.customiser = customiser;
     }
 
+    @Override
+    public String toMapPath(String relativePath, String absolutePath) {
+        return relativePath;
+    }
+
     long getMaxDeltaForModTimeIdxSecs() {
         return maxDeltaForModTimeIdxSecs;
     }

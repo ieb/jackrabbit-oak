@@ -1,9 +1,5 @@
 package org.apache.jackrabbit.oak.plugins.document;
 
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertThat;
-import static org.junit.Assert.assertTrue;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -12,8 +8,9 @@ import java.util.Map;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.nullValue;
-import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.*;
 
+import com.google.common.collect.Lists;
 import org.apache.jackrabbit.oak.plugins.document.UpdateOp.Condition;
 import org.apache.jackrabbit.oak.plugins.document.UpdateOp.Key;
 import org.apache.jackrabbit.oak.plugins.document.memory.MemoryDocumentStore;
@@ -54,7 +51,7 @@ public class MultiplexingDocumentStoreTest {
         
         store = new MultiplexingDocumentStore.Builder()
             .root(rootStore)
-            .mount("/1c", subStore)
+            .mount("/1c", "s1", subStore)
             .build();
     }
     
@@ -237,6 +234,26 @@ public class MultiplexingDocumentStoreTest {
         
         assertThat(store.find(Collection.NODES, "1:/1c").get("prop"), equalTo((Object) "newVal"));
     }
+
+    @Test
+    public void testDoucumentStoreMountSortOrder() {
+        List<MultiplexingDocumentStore.DocumentStoreMount> l = Lists.newArrayList();
+        l.add(new MultiplexingDocumentStore.DocumentStoreMount(rootStore, "/","", MultiplexingDocumentStore.Builder.MAPPED_PATHS));
+        l.add(new MultiplexingDocumentStore.DocumentStoreMount(subStore, "/long","l", MultiplexingDocumentStore.Builder.MAPPED_PATHS));
+        l.add(new MultiplexingDocumentStore.DocumentStoreMount(subStore, "/longer","l2", MultiplexingDocumentStore.Builder.MAPPED_PATHS));
+        l.add(new MultiplexingDocumentStore.DocumentStoreMount(subStore, "/longerA","la", MultiplexingDocumentStore.Builder.MAPPED_PATHS));
+        l.add(new MultiplexingDocumentStore.DocumentStoreMount(subStore, "/longerX","lx", MultiplexingDocumentStore.Builder.MAPPED_PATHS));
+        l.add(new MultiplexingDocumentStore.DocumentStoreMount(subStore, "/longerStill","lS", MultiplexingDocumentStore.Builder.MAPPED_PATHS));
+        l.add(new MultiplexingDocumentStore.DocumentStoreMount(subStore, "/longer/still", "ls", MultiplexingDocumentStore.Builder.MAPPED_PATHS));
+        Collections.sort(l);
+        assertEquals(l.get(0).getMountId(), "ls");
+        assertEquals(l.get(1).getMountId(),"lS");
+        assertEquals(l.get(2).getMountId(),"la");
+        assertEquals(l.get(3).getMountId(),"lx");
+        assertEquals(l.get(4).getMountId(),"l2");
+        assertEquals(l.get(5).getMountId(),"l");
+        assertEquals(l.get(6).getMountId(),"");
+    }
     
     // TODO - mock/spy based tests forinvalidateCache, dispose, setReadWriteMode and getIfCached
 
@@ -289,4 +306,6 @@ public class MultiplexingDocumentStoreTest {
         }
         
     }
+
+
 }

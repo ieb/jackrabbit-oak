@@ -453,7 +453,12 @@ public class RDBDocumentStore implements DocumentStore {
     public void setDocumentCreationCustomiser(DocumentCreationCustomiser customiser) {
         this.customiser = customiser;
     }
-    
+
+    @Override
+    public String toMapPath(String relativePath, String absolutePath) {
+        return relativePath;
+    }
+
     // implementation
 
     private static final String MODIFIED = "_modified";

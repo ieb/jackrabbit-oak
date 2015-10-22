@@ -511,16 +511,11 @@ public class DocumentMK {
          * <p>Must be called before {@link #setMongoDB(DB, int, int)} to have effect.</p>
          * 
          * @param mountPath the path where the collection will be mounted, e.g. <tt>/etc</tt>
-         * @param connection the MongoDB connection
+         * @param db the MongoDB connection
          * @param collectionPrefix the prefix to be used for the collection name
          */
         public void addMongoDbMount(String mountPath, DB db, String collectionPrefix) {
-            MongoDbMount m = new MongoDbMount();
-            m.mountPath = mountPath;
-            m.db = db;
-            m.colectionPrefix = collectionPrefix;
-            
-            mounts.add(m);
+            mounts.add(new MongoDbMount(mountPath, db, collectionPrefix));
         }
 
 
@@ -543,7 +538,7 @@ public class DocumentMK {
                         
                         for ( MongoDbMount mount : mounts ) {
                             MongoDocumentStore store = new MongoDocumentStore(mount.db, this, mount.colectionPrefix);
-                            builder.mount(mount.mountPath, store);
+                            builder.mount(mount.mountPath, mount.colectionPrefix, store);
                         }
                         
                         this.documentStore = builder.build();
@@ -994,10 +989,18 @@ public class DocumentMK {
         }
         
         private static class MongoDbMount {
-            
+
+
             private String mountPath;
             private DB db;
             private String colectionPrefix;
+
+            public MongoDbMount(String mountPath, DB db, String collectionPrefix) {
+                this.mountPath = mountPath;
+                this.db = db;
+                this.colectionPrefix = collectionPrefix;
+            }
+
         }
     }
     

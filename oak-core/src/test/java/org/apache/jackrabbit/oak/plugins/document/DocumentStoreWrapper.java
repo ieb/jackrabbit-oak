@@ -163,4 +163,9 @@ public class DocumentStoreWrapper implements DocumentStore {
     public void setDocumentCreationCustomiser(DocumentCreationCustomiser customiser) {
         store.setDocumentCreationCustomiser(customiser);
     }
+
+    @Override
+    public String toMapPath(String relativePath, String absolutePath) {
+        return store.toMapPath(relativePath, absolutePath);
+    }
 }

@@ -60,6 +60,9 @@ public class TimingDocumentStoreWrapper implements DocumentStore {
      * A class that keeps track of timing data and call counts.
      */
     static class Count {
+
+        // FIXME: If these are not Atomic Longs, the counts produced by ++ will be wrong. Consider using a
+        // library written for the purpose that has already solved this class of problems.
         public long count;
         public long max;
         public long total;
@@ -362,7 +365,12 @@ public class TimingDocumentStoreWrapper implements DocumentStore {
     public void setDocumentCreationCustomiser(DocumentCreationCustomiser customiser) {
         base.setDocumentCreationCustomiser(customiser);
     }
-    
+
+    @Override
+    public String toMapPath(String relativePath, String absolutePath) {
+        return base.toMapPath(relativePath, absolutePath);
+    }
+
     public long determineServerTimeDifferenceMillis() {
         try {
             long start = now();
