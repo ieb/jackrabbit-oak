@@ -22,20 +22,23 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.SequenceInputStream;
 import java.security.SecureRandom;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
+import java.util.zip.CRC32;
 
-import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Sets;
+import aQute.lib.strings.Strings;
+import com.google.common.collect.*;
 import com.google.common.io.ByteStreams;
 import com.google.common.primitives.Ints;
+import org.apache.commons.codec.binary.Hex;
+import org.apache.jackrabbit.commons.json.JsonParser;
+import org.apache.jackrabbit.commons.json.JsonUtil;
 import org.apache.jackrabbit.oak.api.Blob;
 import org.apache.jackrabbit.oak.api.PropertyState;
 import org.apache.jackrabbit.oak.api.Type;
 import org.apache.jackrabbit.oak.commons.StringUtils;
+import org.apache.jackrabbit.oak.commons.json.JsopBuilder;
+import org.apache.jackrabbit.oak.commons.json.JsopReader;
+import org.apache.jackrabbit.oak.json.JsonSerializer;
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
 import org.apache.jackrabbit.oak.util.PerfLogger;
 import org.apache.lucene.store.AlreadyClosedException;
@@ -47,7 +50,11 @@ import org.apache.lucene.store.Lock;
 import org.apache.lucene.store.LockFactory;
 import org.apache.lucene.store.NoLockFactory;
 import org.apache.lucene.util.WeakIdentityMap;
+import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkElementIndex;
@@ -58,6 +65,7 @@ import static com.google.common.collect.Lists.newArrayList;
 import static org.apache.jackrabbit.JcrConstants.JCR_DATA;
 import static org.apache.jackrabbit.JcrConstants.JCR_LASTMODIFIED;
 import static org.apache.jackrabbit.oak.api.Type.BINARIES;
+import static org.apache.jackrabbit.oak.api.Type.STRING;
 import static org.apache.jackrabbit.oak.api.Type.STRINGS;
 import static org.apache.jackrabbit.oak.plugins.index.lucene.LuceneIndexConstants.INDEX_DATA_CHILD_NAME;
 import static org.apache.jackrabbit.oak.plugins.memory.PropertyStates.createProperty;
@@ -89,7 +97,9 @@ class OakDirectory extends Directory {
         this.directoryBuilder = builder.child(INDEX_DATA_CHILD_NAME);
         this.definition = definition;
         this.readOnly = readOnly;
-        this.listing = new SimpleDirectoryListing(definition, directoryBuilder);
+        long start = PERF_LOGGER.start();
+        this.listing = new SimpleDirectoryListing(definition, builder);
+        PERF_LOGGER.end(start, 100, "Directory listing performed. Total {} files", listing.listAll().length);
         this.activeDeleteEnabled = definition.getActiveDeleteEnabled();
     }
 
@@ -107,6 +117,7 @@ class OakDirectory extends Directory {
     public void deleteFile(String name) throws IOException {
         checkArgument(!readOnly, "Read only directory");
         listing.remove(name);
+        // TODO: make remove control if the data is removed, trashed or left alone.
         NodeBuilder f = directoryBuilder.getChildNode(name);
         if (activeDeleteEnabled) {
             PropertyState property = f.getProperty(JCR_DATA);
@@ -567,7 +578,7 @@ class OakDirectory extends Directory {
 
         @Override
         public void writeByte(byte b) throws IOException {
-            writeBytes(new byte[] { b }, 0, 1);
+            writeBytes(new byte[]{b}, 0, 1);
         }
 
         @Override
@@ -584,24 +595,63 @@ class OakDirectory extends Directory {
 
     }
 
-    private class SimpleDirectoryListing implements DirectoryListing {
+    /**
+     * Maintains an DirectoryListing of an OakDirectory.
+     */
+    public interface DirectoryListing {
+        /**
+         * List all files in the directory.
+         * @return
+         */
+        @Nonnull
+        String[] listAll();
+
+        /**
+         * return true if the name is in the directory.
+         * @param name
+         * @return
+         */
+        boolean contains(@Nullable String name);
+
+        /**
+         * remove the name from the directory listing, throw an exception if the name is not in the directory to let the caller
+         * know of the problem. Save any unsaved state if required.
+         * @param name
+         */
+        void remove(@Nonnull String name);
+
+        /**
+         * Add the name to the directory listing, saving any unsaved state.
+         * @param name
+         */
+        void add(@Nonnull String name);
+
+        /**
+         * Close the directory listing, saving any unsaved state.
+         */
+        void close();
+
+    }
+
+
+    private static class SimpleDirectoryListing implements DirectoryListing {
 
         private Set<String> fileNames = Sets.newConcurrentHashSet();
         private NodeBuilder directoryBuilder;
         private IndexDefinition definition;
 
-        private SimpleDirectoryListing(IndexDefinition definition, NodeBuilder directoryBuilder) {
+        private SimpleDirectoryListing(@Nonnull IndexDefinition definition, @Nonnull NodeBuilder builder) {
             this.definition = definition;
-            this.directoryBuilder = directoryBuilder;
-            fileNames.addAll(getListing());
+            this.directoryBuilder = builder.child(INDEX_DATA_CHILD_NAME);
+            this.fileNames.addAll(getListing());
         }
 
 
+        @Nonnull
         private Set<String> getListing(){
-            long start = PERF_LOGGER.start();
             Iterable<String> fileNames = null;
             if (this.definition.saveDirListing()) {
-                PropertyState listing = this.directoryBuilder.getProperty(PROP_DIR_LISTING);
+                PropertyState listing = this.directoryBuilder.getProperty(OakDirectory.PROP_DIR_LISTING);
                 if (listing != null) {
                     fileNames = listing.getValue(Type.STRINGS);
                 }
@@ -611,7 +661,6 @@ class OakDirectory extends Directory {
                 fileNames = this.directoryBuilder.getChildNodeNames();
             }
             Set<String> result = ImmutableSet.copyOf(fileNames);
-            PERF_LOGGER.end(start, 100, "Directory listing performed. Total {} files", result.size());
             return result;
         }
 
@@ -621,25 +670,290 @@ class OakDirectory extends Directory {
         }
 
         @Override
-        public boolean contains(String name) {
+        public boolean contains(@Nonnull String name) {
             return fileNames.contains(name);
         }
 
         @Override
-        public void remove(String name) {
+        public void remove(@Nonnull String name) {
             fileNames.remove(name);
         }
 
         @Override
-        public void add(String name) {
+        public void add(@Nonnull String name) {
             fileNames.add(name);
         }
 
         @Override
         public void close() {
-            this.directoryBuilder.setProperty(createProperty(PROP_DIR_LISTING, fileNames, STRINGS));
+            this.directoryBuilder.setProperty(createProperty(OakDirectory.PROP_DIR_LISTING, fileNames, STRINGS));
         }
 
 
     }
+
+
+
+    /**
+     * Implements a simple generational list of the lucene directory, loading the last valid
+     * generation on creation, and saving new generations on each update.
+     * Created by ieb on 23/10/15.
+     */
+    private static class GenerationalDirectoryListing implements DirectoryListing {
+
+
+        private static final Logger LOGGER = LoggerFactory.getLogger(GenerationalDirectoryListing.class);
+        public static final String DIRECTORY_LISTING_CONTAINER = ":dir";
+        public static final String DIRECTORY_LISTING_PREFIX = "l_";
+        public static final String LISTING_STATE_PROPERTY = "state";
+        private final IndexDefinition definition;
+        // the buidler containing lucene files.
+        private final NodeBuilder directoryBuilder;
+        // the parent builder
+        private final NodeBuilder builder;
+        private final NodeBuilder listingBuilder;
+        private Map<String, IndexFileMetadata> listOfFiles = Maps.newConcurrentMap();
+
+        private GenerationalDirectoryListing(@Nonnull IndexDefinition definition, @Nonnull NodeBuilder builder) {
+
+            this.definition = definition;
+            this.builder = builder;
+            this.directoryBuilder = builder.child(INDEX_DATA_CHILD_NAME);
+            this.listingBuilder = getDirectoryListingContainer();
+            if(load()) {
+                save();
+            }
+        }
+
+        @Nonnull
+        private NodeBuilder getDirectoryListingContainer() {
+            if (builder.hasChildNode(DIRECTORY_LISTING_CONTAINER)) {
+                return builder.getChildNode(DIRECTORY_LISTING_CONTAINER);
+            } else {
+                // create the container if required.
+                return builder.setChildNode(DIRECTORY_LISTING_CONTAINER);
+            }
+        }
+
+        @Override
+        @Nonnull
+        public String[] listAll() {
+            return listOfFiles.keySet().toArray(new String[listOfFiles.size()]);
+        }
+
+        @Override
+        @Nonnull
+        public boolean contains(@Nonnull String name) {
+            return listOfFiles.containsKey(name);
+        }
+
+        @Override
+        public void remove(@Nonnull String name) {
+            if (listOfFiles.containsKey(name)) {
+                listOfFiles.remove(name);
+                save();
+                LOGGER.debug("Removed " + name + " from list");
+            } else {
+                LOGGER.warn("Attempt to remove " + name + " from list denied, as name not in list");
+            }
+        }
+
+        /**
+         *
+         * @param name
+         */
+        @Override
+        public void add(@Nonnull String name) {
+            listOfFiles.put(name, getIndexFileMetaData(name));
+            LOGGER.debug("Added " + name + " to list");
+        }
+
+
+        /**
+         * Save the current state into the property of a new child node.
+         */
+        private void save() {
+
+            // This may generate too many nodes. If this objects exists for 1 write operartion we might move the ID
+            // out further.
+            // TODO: check the lifecycle.
+            NodeBuilder n = listingBuilder.setChildNode(DIRECTORY_LISTING_PREFIX + System.currentTimeMillis());
+            n.setProperty(LISTING_STATE_PROPERTY, getCurrentState());
+            // TODO: clean up previous versions ?
+            // This really depends on how many are persisted. Since we save the state every time a
+            // file is added or removed, it may not be realistic to just control the list size. Number and time
+            // need to be considered. This save may not be right, could be too frequent.
+        }
+
+
+        /**
+         * Convert the current state into a string representation.
+         * @return
+         */
+        @Nonnull
+        private String getCurrentState() {
+            StringBuilder sb = new StringBuilder();
+            for (Map.Entry<String, IndexFileMetadata> n : listOfFiles.entrySet()) {
+                sb.append(n.getKey()).append(",").append(n.getValue().length).append(",").append(n.getValue().checkSum).append(";");
+            }
+            return sb.toString();
+        }
+
+        /**
+         * Extract the state from the node builder, return null of the state isnt present.
+         * @param listing
+         * @return
+         */
+        @Nullable
+        private Map<String, IndexFileMetadata> parseState(@Nonnull NodeBuilder listing) {
+            if (listing.hasProperty(LISTING_STATE_PROPERTY)) {
+                ImmutableMap.Builder<String, IndexFileMetadata> mb = ImmutableMap.builder();
+                for(String l : listing.getProperty(LISTING_STATE_PROPERTY).getValue(STRING).split(";")) {
+                    String[] f = l.split(",");
+                    mb.put(f[0], new IndexFileMetadata(f[0],Long.parseLong(f[1]), f[2]));
+                }
+                return mb.build();
+            }
+            return null;
+        }
+
+        /**
+         * Validate the listing checking that its contents are present and correct in the Oak repo.
+         * @param listing
+         * @return
+         */
+        @Nullable
+        private Map<String, IndexFileMetadata> validateListing(@Nonnull NodeBuilder listing) {
+            if (listing.exists()) {
+                Map<String, IndexFileMetadata> state = parseState(listing);
+                if (state != null) {
+                    for (Map.Entry<String, IndexFileMetadata> n : state.entrySet()) {
+                        IndexFileMetadata oakVersion = getIndexFileMetaData(n.getKey());
+                        if (!n.getValue().equals(oakVersion)) {
+                            LOGGER.warn("Index File and Oak Version and not the same  {}",n.getValue().diff(oakVersion));
+                            return null;
+                        }
+                    }
+                    // all the files are present, so the listing validates.
+                    return state;
+                }
+            }
+            return null;
+
+        }
+
+
+        /**
+         * Load the fist valid listing, returning true of the listing should be saved.
+         * @return
+         */
+        private boolean load() {
+            // try and find generational files.
+            // If no generational files fallback to previous methods.
+            List<String> childNodes = Lists.newArrayList(listingBuilder.getChildNodeNames());
+            Collections.sort(childNodes);
+            int checked = 0;
+            for (int i = childNodes.size()-1; i >= 0; i++) {
+                if (childNodes.get(i).startsWith(DIRECTORY_LISTING_PREFIX)) {
+                    checked++;
+                    Map<String, IndexFileMetadata> validatedList = validateListing(listingBuilder.getChildNode(childNodes.get(i)));
+                    if (validatedList != null) {
+                        listOfFiles.clear();
+                        listOfFiles.putAll(validatedList);
+                        // if the first list is valid, then return false, otherwise, true
+                        return i != childNodes.size() - 1;
+                    }
+                }
+            }
+            // if there were files checked and none valid the index has to be rebuilt from scratch.
+            // if none where checked then this is directory has no directory listings so fallback to the
+            // simple method used previously.
+            if (checked == 0) {
+                // no generational files, fallback to simple method
+                OakDirectory.SimpleDirectoryListing simpleDirectoryListing = new OakDirectory.SimpleDirectoryListing(definition, directoryBuilder);
+                for (String s : simpleDirectoryListing.listAll()) {
+                    IndexFileMetadata ifm = getIndexFileMetaData(s);
+                    if (ifm != null) {
+                        listOfFiles.put(s, ifm);
+                    } else {
+                        LOGGER.warn("Based On Directory Listing the file name {} is invalid ",s);
+                    }
+
+                }
+            }
+            return true;
+        }
+
+        @Nullable
+        private IndexFileMetadata getIndexFileMetaData(@Nonnull String name) {
+            if (directoryBuilder.hasChildNode(name)) {
+                OakIndexFile inp = new OakIndexFile(name, directoryBuilder.getChildNode(name));
+                // Looking at OakIndexFile it will be quite expensive to generate a checksum due to the block nature, so for the moment
+                // use the unique key.
+                return new IndexFileMetadata(name, inp.length, new String(Hex.encodeHex(inp.uniqueKey)));
+            }
+            return null;
+        }
+
+
+        @Override
+        public void close() {
+            // no action required since save already performed.
+        }
+    }
+
+    /**
+     * Store some basic metadata about the file. A name, length and some form of checksum.
+     */
+    private static class IndexFileMetadata {
+
+        private final String name;
+        private final long length;
+        private final String checkSum;
+
+        public IndexFileMetadata(@Nonnull String name, long length, @Nonnull String checkSum) {
+            this.name = name;
+            this.length = length;
+            this.checkSum = checkSum;
+        }
+
+        /**
+         * Metadata is equal if the name, length and checksum match.
+         * @param obj
+         * @return
+         */
+        @Override
+        public boolean equals(@Nullable Object obj) {
+            if (obj instanceof IndexFileMetadata) {
+                IndexFileMetadata ifm = (IndexFileMetadata) obj;
+                return name.equals(ifm.name) && length == ifm.length && checkSum.equals(ifm.checkSum);
+            }
+            return false;
+        }
+
+
+        /**
+         * report differences between metadata.
+         * @param otherVersion
+         * @return
+         */
+        @Nonnull
+        public String diff(@Nullable IndexFileMetadata otherVersion) {
+            if (otherVersion == null) {
+                return " OakVersion doesnt exist";
+            }
+            StringBuilder sb = new StringBuilder();
+            if (!name.equals(otherVersion.name)) {
+                sb.append("Names: ").append(name).append(" != ").append(otherVersion.name).append(",");
+            }
+            if (!checkSum.equals(otherVersion.checkSum)) {
+                sb.append("CheckSum: ").append(checkSum).append(" != ").append(otherVersion.checkSum).append(",");
+            }
+            if (length != otherVersion.length) {
+                sb.append("Length: ").append(length).append(" != ").append(otherVersion.length).append(",");
+            }
+            return sb.toString();
+        }
+    }
+
 }
