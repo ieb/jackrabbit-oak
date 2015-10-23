@@ -80,7 +80,7 @@ class OakDirectory extends Directory {
     private final IndexDefinition definition;
     private LockFactory lockFactory;
     private final boolean readOnly;
-    private final Set<String> fileNames = Sets.newConcurrentHashSet();
+    private final DirectoryListing listing;
     private final boolean activeDeleteEnabled;
 
     public OakDirectory(NodeBuilder builder, IndexDefinition definition, boolean readOnly) {
@@ -89,24 +89,24 @@ class OakDirectory extends Directory {
         this.directoryBuilder = builder.child(INDEX_DATA_CHILD_NAME);
         this.definition = definition;
         this.readOnly = readOnly;
-        this.fileNames.addAll(getListing());
+        this.listing = new SimpleDirectoryListing(definition, directoryBuilder);
         this.activeDeleteEnabled = definition.getActiveDeleteEnabled();
     }
 
     @Override
     public String[] listAll() throws IOException {
-        return fileNames.toArray(new String[fileNames.size()]);
+        return listing.listAll();
     }
 
     @Override
     public boolean fileExists(String name) throws IOException {
-        return fileNames.contains(name);
+        return listing.contains(name);
     }
 
     @Override
     public void deleteFile(String name) throws IOException {
         checkArgument(!readOnly, "Read only directory");
-        fileNames.remove(name);
+        listing.remove(name);
         NodeBuilder f = directoryBuilder.getChildNode(name);
         if (activeDeleteEnabled) {
             PropertyState property = f.getProperty(JCR_DATA);
@@ -158,7 +158,7 @@ class OakDirectory extends Directory {
         } else {
             file = directoryBuilder.child(name);
         }
-        fileNames.add(name);
+        listing.add(name);
         return new OakIndexOutput(name, file);
     }
 
@@ -192,7 +192,7 @@ class OakDirectory extends Directory {
     @Override
     public void close() throws IOException {
         if (!readOnly && definition.saveDirListing()) {
-            directoryBuilder.setProperty(createProperty(PROP_DIR_LISTING, fileNames, STRINGS));
+            listing.close();
         }
     }
 
@@ -211,23 +211,6 @@ class OakDirectory extends Directory {
         return "Directory for " + definition.getIndexName();
     }
 
-    private Set<String> getListing(){
-        long start = PERF_LOGGER.start();
-        Iterable<String> fileNames = null;
-        if (definition.saveDirListing()) {
-            PropertyState listing = directoryBuilder.getProperty(PROP_DIR_LISTING);
-            if (listing != null) {
-                fileNames = listing.getValue(Type.STRINGS);
-            }
-        }
-
-        if (fileNames == null){
-            fileNames = directoryBuilder.getChildNodeNames();
-        }
-        Set<String> result = ImmutableSet.copyOf(fileNames);
-        PERF_LOGGER.end(start, 100, "Directory listing performed. Total {} files", result.size());
-        return result;
-    }
 
     /**
      * Size of the blob entries to which the Lucene files are split.
@@ -601,4 +584,62 @@ class OakDirectory extends Directory {
 
     }
 
+    private class SimpleDirectoryListing implements DirectoryListing {
+
+        private Set<String> fileNames = Sets.newConcurrentHashSet();
+        private NodeBuilder directoryBuilder;
+        private IndexDefinition definition;
+
+        private SimpleDirectoryListing(IndexDefinition definition, NodeBuilder directoryBuilder) {
+            this.definition = definition;
+            this.directoryBuilder = directoryBuilder;
+            fileNames.addAll(getListing());
+        }
+
+
+        private Set<String> getListing(){
+            long start = PERF_LOGGER.start();
+            Iterable<String> fileNames = null;
+            if (this.definition.saveDirListing()) {
+                PropertyState listing = this.directoryBuilder.getProperty(PROP_DIR_LISTING);
+                if (listing != null) {
+                    fileNames = listing.getValue(Type.STRINGS);
+                }
+            }
+
+            if (fileNames == null){
+                fileNames = this.directoryBuilder.getChildNodeNames();
+            }
+            Set<String> result = ImmutableSet.copyOf(fileNames);
+            PERF_LOGGER.end(start, 100, "Directory listing performed. Total {} files", result.size());
+            return result;
+        }
+
+        @Override
+        public String[] listAll() {
+            return fileNames.toArray(new String[fileNames.size()]);
+        }
+
+        @Override
+        public boolean contains(String name) {
+            return fileNames.contains(name);
+        }
+
+        @Override
+        public void remove(String name) {
+            fileNames.remove(name);
+        }
+
+        @Override
+        public void add(String name) {
+            fileNames.add(name);
+        }
+
+        @Override
+        public void close() {
+            this.directoryBuilder.setProperty(createProperty(PROP_DIR_LISTING, fileNames, STRINGS));
+        }
+
+
+    }
 }
