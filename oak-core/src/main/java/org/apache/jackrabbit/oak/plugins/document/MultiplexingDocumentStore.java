@@ -6,6 +6,8 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.apache.jackrabbit.oak.cache.CacheStats;
 import org.apache.jackrabbit.oak.plugins.document.UpdateOp.Condition;
@@ -390,8 +392,8 @@ public class MultiplexingDocumentStore implements DocumentStore {
 
         public static final String[] MAPPED_PATHS = new String[]{
                 // TODO, check.
-                "/jcr:system/rep:versionStore/",
-                "/jcr:system/rep:permissionStore/"
+                "^\\/jcr:system\\/rep:versionStore\\/",
+                "^\\/jcr:system\\/rep:permissionStore\\/.*?\\/"
         };
         private DocumentStore root;
         private List<DocumentStoreMount> mounts = Lists.newArrayList();
@@ -438,7 +440,7 @@ public class MultiplexingDocumentStore implements DocumentStore {
         private final DocumentStore store;
         private final String mountPath;
         private final String mountId;
-        private String[] mapPaths;
+        private Pattern[] mapPaths;
         private long id;
 
         /**
@@ -449,15 +451,15 @@ public class MultiplexingDocumentStore implements DocumentStore {
          * @param store
          * @param mountPath
          * @param mountId
-         * @param mappedPaths
+         * @param mappedPathPatterns
          */
-        public DocumentStoreMount(DocumentStore store, String mountPath, String mountId, String[] mappedPaths) {
+        public DocumentStoreMount(DocumentStore store, String mountPath, String mountId, String[] mappedPathPatterns) {
             this.store = store;
             this.mountPath = mountPath;
             this.mountId = mountId;
-            mapPaths = new String[mappedPaths.length];
-            for (int i = 0; i < mappedPaths.length; i++) {
-                mapPaths[i] = mappedPaths[i]+mountId+"_";
+            mapPaths = new Pattern[mappedPathPatterns.length];
+            for (int i = 0; i < mappedPathPatterns.length; i++) {
+                mapPaths[i] = Pattern.compile(mappedPathPatterns[i]+mountId+"_");
             }
         }
         
@@ -494,10 +496,11 @@ public class MultiplexingDocumentStore implements DocumentStore {
             if (Text.isDescendantOrEqual(mountPath, absolutePath)) {
                 return true;
             }
-            for (String mapPath : mapPaths) {
-                if (absolutePath.startsWith(mapPath)) {
-                    return true;
-                }
+            // this is not correct.
+            // some paths dont have a static prefix, we need to use a pattern.
+
+            for (Pattern p : mapPaths) {
+                return p.matcher(absolutePath).matches();
             }
             return false;
         }
