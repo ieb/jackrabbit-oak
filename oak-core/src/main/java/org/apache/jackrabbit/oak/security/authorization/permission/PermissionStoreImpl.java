@@ -91,6 +91,7 @@ public class PermissionStoreImpl implements PermissionStore, PermissionConstants
     @Override
     @CheckForNull
     public Collection<PermissionEntry> load(@Nullable Collection<PermissionEntry> entries, @Nonnull String principalName, @Nonnull String path) {
+        LoggerFactory.getLogger(PermissionUtil.class).info("ToMapPath {} principal {} ", path, principalName);
         Tree principalRoot = getPrincipalRoot(principalName);
         if (principalRoot != null) {
             String name = PermissionUtil.getEntryName(path, principalRoot);

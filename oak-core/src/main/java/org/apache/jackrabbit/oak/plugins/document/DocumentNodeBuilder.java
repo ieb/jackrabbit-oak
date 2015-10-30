@@ -26,6 +26,7 @@ import org.apache.jackrabbit.oak.plugins.memory.MemoryNodeBuilder;
 import org.apache.jackrabbit.oak.spi.state.ApplyDiff;
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
 import org.apache.jackrabbit.oak.spi.state.NodeState;
+import org.slf4j.LoggerFactory;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static org.apache.jackrabbit.oak.spi.state.AbstractNodeState.checkValidName;
@@ -133,6 +134,7 @@ class DocumentNodeBuilder extends AbstractDocumentNodeBuilder {
 
     @Override
     public String toMapPath(String relativePath, String absolutePath) {
+        LoggerFactory.getLogger(this.getClass()).info("ToMapPath {} {} ", relativePath, absolutePath);
         return root.toMapPath(relativePath, absolutePath);
     }
 }

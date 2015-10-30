@@ -18,6 +18,8 @@ import org.apache.jackrabbit.util.Text;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * The <tt>MultiplexingDocumentStore</tt> wraps two or more <tt>DocumentStore</tt> instances
@@ -30,7 +32,8 @@ import com.google.common.collect.Maps;
  * 
  */
 public class MultiplexingDocumentStore implements DocumentStore {
-    
+    private static final Logger LOGGER = LoggerFactory.getLogger(MultiplexingDocumentStore.class);
+
     // === Implementation Notes === 
     // 
     // The MultiplexingDocumentStore assumes that paths are most of the time hierarchical and
@@ -374,9 +377,14 @@ public class MultiplexingDocumentStore implements DocumentStore {
     public String toMapPath(String relativePath, String absolutePath) {
         for (DocumentStoreMount m : mounts) {
             if ( m.contains(absolutePath)) {
-                return m.toMappedPath(relativePath);
+                String mappedPath =  m.toMappedPath(relativePath);
+                LOGGER.info("Mapped path from {} to {} by {}", new Object[]{ relativePath, mappedPath, m});
+                return mappedPath;
+            } else {
+
             }
         }
+        LOGGER.info("Path Not Mapped {} {}", new Object[]{ relativePath, absolutePath});
         return relativePath;
     }
 
@@ -437,6 +445,7 @@ public class MultiplexingDocumentStore implements DocumentStore {
      * Private abstraction to simplify storing information about mounts
      */
     static class DocumentStoreMount implements Comparable<DocumentStoreMount> {
+        private static final Logger LOGGER = LoggerFactory.getLogger(DocumentStoreMount.class);
         private final DocumentStore store;
         private final String mountPath;
         private final String mountId;
@@ -461,6 +470,7 @@ public class MultiplexingDocumentStore implements DocumentStore {
             for (int i = 0; i < mappedPathPatterns.length; i++) {
                 mapPaths[i] = Pattern.compile(mappedPathPatterns[i]+mountId+"_");
             }
+            LOGGER.info("Created Mount {} ", this);
         }
         
         public DocumentStore getStore() {
@@ -494,13 +504,16 @@ public class MultiplexingDocumentStore implements DocumentStore {
          */
         public boolean contains(String absolutePath) {
             if (Text.isDescendantOrEqual(mountPath, absolutePath)) {
+                LOGGER.debug("Mounted {} {} ", absolutePath, this);
                 return true;
             }
             // this is not correct.
             // some paths dont have a static prefix, we need to use a pattern.
 
             for (Pattern p : mapPaths) {
-                return p.matcher(absolutePath).matches();
+                if( p.matcher(absolutePath).matches()) {
+                    LOGGER.info("Mounted by patthern {} {} ", absolutePath, this);
+                };
             }
             return false;
         }

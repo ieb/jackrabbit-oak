@@ -29,6 +29,7 @@ import org.apache.jackrabbit.oak.spi.commit.CommitHook;
 import org.apache.jackrabbit.oak.spi.commit.CommitInfo;
 import org.apache.jackrabbit.oak.spi.state.ConflictAnnotatingRebaseDiff;
 import org.apache.jackrabbit.oak.spi.state.NodeState;
+import org.slf4j.LoggerFactory;
 
 /**
  * This implementation tracks the number of pending changes and purges them to
@@ -177,6 +178,7 @@ class DocumentRootBuilder extends AbstractDocumentNodeBuilder {
 
     @Override
     public String toMapPath(String relativePath, String absolutePath) {
+        LoggerFactory.getLogger(this.getClass()).info("ToMapPath {} {} ", relativePath, absolutePath);
         return store.toMapPath(relativePath, absolutePath);
     }
 

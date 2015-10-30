@@ -30,6 +30,7 @@ import org.apache.jackrabbit.oak.api.Type;
 import org.apache.jackrabbit.oak.commons.PathUtils;
 import org.apache.jackrabbit.oak.plugins.identifier.IdentifierManager;
 import org.apache.jackrabbit.oak.plugins.nodetype.ReadOnlyNodeTypeManager;
+import org.apache.jackrabbit.oak.plugins.tree.impl.AbstractTree;
 import org.apache.jackrabbit.oak.util.TreeUtil;
 
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -111,7 +112,27 @@ public abstract class ReadOnlyVersionManager {
         return TreeUtil.getTree(getVersionStorage(), getVersionHistoryPath(uuid, versionable.getPath()));
     }
 
-    protected abstract String getVersionHistoryPath(String uuid, String path);
+    /**
+     * Returns the path of the version history for the given {@code uuid}.
+     * The returned path is relative to the version storage tree as returned
+     * by {@link #getVersionStorage()}.
+     *
+     * @param uuid the uuid of the versionable node
+     * @return the relative path of the version history for the given uuid.
+     */
+    @Nonnull
+    public String getVersionHistoryPath(@Nonnull String uuid, @Nonnull String path) {
+        String relPath = "";
+        for (int i = 0; i < 3; i++) {
+            String name = uuid.substring(i * 2, i * 2 + 2);
+            relPath = PathUtils.concat(relPath, name);
+        }
+        Tree versionStore = getVersionStorage();
+        if (versionStore instanceof AbstractTree) {
+            return ((AbstractTree)versionStore).getNodeState().builder().toMapPath(PathUtils.concat(relPath, uuid), path);
+        }
+        return PathUtils.concat(relPath, uuid);
+    }
 
     /**
      * Returns the version tree with the given uuid.

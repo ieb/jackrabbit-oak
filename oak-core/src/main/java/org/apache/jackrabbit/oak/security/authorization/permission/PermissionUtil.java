@@ -36,6 +36,7 @@ import org.apache.jackrabbit.oak.spi.security.principal.AdminPrincipal;
 import org.apache.jackrabbit.oak.spi.security.principal.SystemPrincipal;
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
 import org.apache.jackrabbit.util.Text;
+import org.slf4j.LoggerFactory;
 
 /**
  * Utility methods to evaluate permissions.
@@ -69,6 +70,7 @@ public final class PermissionUtil implements PermissionConstants {
     @Nonnull
     public static String getEntryName(@Nullable String absolutePath, @Nonnull Tree tree) {
         String path = Strings.nullToEmpty(absolutePath);
+        LoggerFactory.getLogger(PermissionUtil.class).info("ToMapPath {} ", absolutePath);
         if (tree instanceof AbstractTree) {
             return getEntryName (absolutePath, ((AbstractTree) tree).getNodeState().builder());
         }
@@ -78,6 +80,8 @@ public final class PermissionUtil implements PermissionConstants {
     @Nonnull
     public static String getEntryName(@Nullable String absolutePath, @Nonnull NodeBuilder nodeBuilder) {
         String path = Strings.nullToEmpty(absolutePath);
+        LoggerFactory.getLogger(PermissionUtil.class).info("ToMapPath {} ", absolutePath);
+
         return nodeBuilder.toMapPath(String.valueOf(path.hashCode()), absolutePath);
     }
 

@@ -1130,6 +1130,7 @@ public class MongoDocumentStore implements DocumentStore {
 
     @Override
     public String toMapPath(String relativePath, String absolutePath) {
+        LOG.info("ToMapPath, default {} {} ", relativePath, absolutePath);
         return relativePath;
     }
 

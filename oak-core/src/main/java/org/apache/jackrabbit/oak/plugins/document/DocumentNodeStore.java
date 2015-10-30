@@ -1966,6 +1966,7 @@ public final class DocumentNodeStore
 
     public String toMapPath(String relativePath, String absolutePath) {
         // FIXME: Provide implmentation.
+        LoggerFactory.getLogger(this.getClass()).info("ToMapPath {} {} ", relativePath, absolutePath);
         return store.toMapPath(relativePath, absolutePath);
     }
 
