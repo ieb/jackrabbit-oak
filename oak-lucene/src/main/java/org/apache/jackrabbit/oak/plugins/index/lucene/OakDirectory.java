@@ -98,7 +98,7 @@ class OakDirectory extends Directory {
         this.definition = definition;
         this.readOnly = readOnly;
         long start = PERF_LOGGER.start();
-        this.listing = new SimpleDirectoryListing(definition, builder);
+        this.listing = new GenerationalDirectoryListing(definition, builder);
         PERF_LOGGER.end(start, 100, "Directory listing performed. Total {} files", listing.listAll().length);
         this.activeDeleteEnabled = definition.getActiveDeleteEnabled();
     }
@@ -198,6 +198,15 @@ class OakDirectory extends Directory {
     @Override
     public void sync(Collection<String> names) throws IOException {
         // ?
+        /*
+         * sync means that the names must be committed to stable storage when it is called.
+         * That should mean a commit is performed and the listing saves the files to the stable storage.
+         * Since stable storage in this case means the Oak session and all names are written to stable
+         * storage already, the listing must be called to perform its implementation of sync.
+         */
+        if (!readOnly && definition.saveDirListing()) {
+            listing.sync(names);
+        }
     }
 
     @Override
@@ -631,6 +640,7 @@ class OakDirectory extends Directory {
          */
         void close();
 
+        void sync(Collection<String> names);
     }
 
 
@@ -686,10 +696,21 @@ class OakDirectory extends Directory {
 
         @Override
         public void close() {
+            save();
+        }
+
+
+        private void save() {
             this.directoryBuilder.setProperty(createProperty(OakDirectory.PROP_DIR_LISTING, fileNames, STRINGS));
         }
 
 
+        @Override
+        public void sync(Collection<String> names) {
+            // this type of directory cant differentiate between files synced and files known about, so just
+            // sync everything by performing a save operation.
+            save();
+        }
     }
 
 
@@ -751,7 +772,6 @@ class OakDirectory extends Directory {
         public void remove(@Nonnull String name) {
             if (listOfFiles.containsKey(name)) {
                 listOfFiles.remove(name);
-                save();
                 LOGGER.debug("Removed " + name + " from list");
             } else {
                 LOGGER.warn("Attempt to remove " + name + " from list denied, as name not in list");
@@ -770,23 +790,6 @@ class OakDirectory extends Directory {
 
 
         /**
-         * Save the current state into the property of a new child node.
-         */
-        private void save() {
-
-            // This may generate too many nodes. If this objects exists for 1 write operartion we might move the ID
-            // out further.
-            // TODO: check the lifecycle.
-            NodeBuilder n = listingBuilder.setChildNode(DIRECTORY_LISTING_PREFIX + System.currentTimeMillis());
-            n.setProperty(LISTING_STATE_PROPERTY, getCurrentState());
-            // TODO: clean up previous versions ?
-            // This really depends on how many are persisted. Since we save the state every time a
-            // file is added or removed, it may not be realistic to just control the list size. Number and time
-            // need to be considered. This save may not be right, could be too frequent.
-        }
-
-
-        /**
          * Convert the current state into a string representation.
          * @return
          */
@@ -794,6 +797,8 @@ class OakDirectory extends Directory {
         private String getCurrentState() {
             StringBuilder sb = new StringBuilder();
             for (Map.Entry<String, IndexFileMetadata> n : listOfFiles.entrySet()) {
+                // make certain state is current by inspecting the file as it is.
+                n.setValue(getIndexFileMetaData(n.getKey()));
                 sb.append(n.getKey()).append(",").append(n.getValue().length).append(",").append(n.getValue().checkSum).append(";");
             }
             return sb.toString();
@@ -808,9 +813,20 @@ class OakDirectory extends Directory {
         private Map<String, IndexFileMetadata> parseState(@Nonnull NodeBuilder listing) {
             if (listing.hasProperty(LISTING_STATE_PROPERTY)) {
                 ImmutableMap.Builder<String, IndexFileMetadata> mb = ImmutableMap.builder();
-                for(String l : listing.getProperty(LISTING_STATE_PROPERTY).getValue(STRING).split(";")) {
-                    String[] f = l.split(",");
-                    mb.put(f[0], new IndexFileMetadata(f[0],Long.parseLong(f[1]), f[2]));
+                String state = listing.getProperty(LISTING_STATE_PROPERTY).getValue(STRING);
+                if (state != null && state.trim().length() > 0) {
+                    LOGGER.debug("Directory state {} ", state);
+                    for (String l : state.split(";")) {
+                        LOGGER.debug("Directory Entry {} ", l);
+                        String[] f = l.split(",");
+                        if (f.length == 3) {
+                            mb.put(f[0], new IndexFileMetadata(f[0], Long.parseLong(f[1]), f[2]));
+                        } else {
+                            LOGGER.warn("Empty or invalid IndexFileMetadata [{}] ",l);
+                        }
+                    }
+                } else {
+                    LOGGER.warn("Empty Listing state for Oak Index Directory");
                 }
                 return mb.build();
             }
@@ -830,7 +846,7 @@ class OakDirectory extends Directory {
                     for (Map.Entry<String, IndexFileMetadata> n : state.entrySet()) {
                         IndexFileMetadata oakVersion = getIndexFileMetaData(n.getKey());
                         if (!n.getValue().equals(oakVersion)) {
-                            LOGGER.warn("Index File and Oak Version and not the same  {}",n.getValue().diff(oakVersion));
+                            LOGGER.warn("Index File and Oak Version and not the same  {}", n.getValue().diff(oakVersion));
                             return null;
                         }
                     }
@@ -853,7 +869,7 @@ class OakDirectory extends Directory {
             List<String> childNodes = Lists.newArrayList(listingBuilder.getChildNodeNames());
             Collections.sort(childNodes);
             int checked = 0;
-            for (int i = childNodes.size()-1; i >= 0; i++) {
+            for (int i = childNodes.size()-1; i >= 0; i--) {
                 if (childNodes.get(i).startsWith(DIRECTORY_LISTING_PREFIX)) {
                     checked++;
                     Map<String, IndexFileMetadata> validatedList = validateListing(listingBuilder.getChildNode(childNodes.get(i)));
@@ -863,7 +879,11 @@ class OakDirectory extends Directory {
                         // if the first list is valid, then return false, otherwise, true
                         return i != childNodes.size() - 1;
                     }
+                    LOGGER.warn("Rejected directory listing {}, loading earlier generation ", childNodes.get(i));
                 }
+            }
+            if ( checked > 0) {
+                LOGGER.warn("Recovery of corrupted index failed, will try and load files that are present in the index, last ditch attempt to recover. ");
             }
             // if there were files checked and none valid the index has to be rebuilt from scratch.
             // if none where checked then this is directory has no directory listings so fallback to the
@@ -898,7 +918,21 @@ class OakDirectory extends Directory {
 
         @Override
         public void close() {
-            // no action required since save already performed.
+            save();
+        }
+
+        private void save() {
+            String listingGeneration = DIRECTORY_LISTING_PREFIX + System.currentTimeMillis();
+            String listingState = getCurrentState();
+            LOGGER.info("Saving Listing state to {} as {} ", listingGeneration, listingState);
+            NodeBuilder n = listingBuilder.setChildNode(listingGeneration);
+            n.setProperty(LISTING_STATE_PROPERTY, listingState);
+        }
+
+        @Override
+        public void sync(Collection<String> names) {
+            // cant differentiate between files in the listing and files that need to be synced so just save everything.
+            save();
         }
     }
 
@@ -953,6 +987,9 @@ class OakDirectory extends Directory {
                 sb.append("Length: ").append(length).append(" != ").append(otherVersion.length).append(",");
             }
             return sb.toString();
+        }
+
+        public void refresh() {
         }
     }
 

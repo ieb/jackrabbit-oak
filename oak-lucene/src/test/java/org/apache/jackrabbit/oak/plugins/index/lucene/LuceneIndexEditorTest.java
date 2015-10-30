@@ -193,7 +193,18 @@ public class LuceneIndexEditorTest {
 
         NodeState indexed = HOOK.processCommit(before, after, CommitInfo.EMPTY);
         NodeState dir = indexed.getChildNode("oak:index").getChildNode("lucene").getChildNode(":data");
-        assertTrue(dir.hasProperty(OakDirectory.PROP_DIR_LISTING));
+        NodeState listing = indexed.getChildNode("oak:index").getChildNode("lucene").getChildNode(":dir");
+        if ( listing != null) {
+            Iterable<String> listingNames = listing.getChildNodeNames();
+            for(String s : listingNames) {
+                if (s.startsWith("l_")) {
+                    assertTrue(listing.getChildNode(s).hasProperty("state"));
+
+                }
+            }
+        } else {
+            assertTrue(dir.hasProperty(OakDirectory.PROP_DIR_LISTING));
+        }
     }
 
     /**
@@ -233,7 +244,7 @@ public class LuceneIndexEditorTest {
 
         assertEquals(2, getSearcher().getIndexReader().numDocs());
         assertEquals("change in non included property should not cause " +
-                "index update",0, getSearcher().getIndexReader().numDeletedDocs());
+                "index update", 0, getSearcher().getIndexReader().numDeletedDocs());
     }
 
     @Test
