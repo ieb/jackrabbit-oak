@@ -21,6 +21,9 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.SequenceInputStream;
+import java.security.DigestException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.*;
 import java.util.zip.CRC32;
@@ -910,7 +913,29 @@ class OakDirectory extends Directory {
                 OakIndexFile inp = new OakIndexFile(name, directoryBuilder.getChildNode(name));
                 // Looking at OakIndexFile it will be quite expensive to generate a checksum due to the block nature, so for the moment
                 // use the unique key.
-                return new IndexFileMetadata(name, inp.length, new String(Hex.encodeHex(inp.uniqueKey)));
+                try {
+                    MessageDigest sha1 = MessageDigest.getInstance("SHA1");
+                    byte[] b = new byte[4096];
+                    int i = 0;
+                    for (; i < (inp.length-b.length); i += b.length) {
+                        inp.readBytes(b, 0, b.length);
+                        sha1.digest(b, 0, b.length);
+                    }
+                    i = (int)(inp.length-i);
+                    if (i > 0) {
+                        inp.readBytes(b, 0, i);
+                        sha1.digest(b, 0, i);
+                    }
+                    return new IndexFileMetadata(name, inp.length, new String(Hex.encodeHex(sha1.digest())));
+                } catch (DigestException e ) {
+                    LOGGER.warn("Digest Exception creating checksum ",e);
+                    return new IndexFileMetadata(name, inp.length, "Unable to generate checksum "+e.getMessage());
+                } catch (IOException e ) {
+                    LOGGER.warn("IO Exception reading index file ",e);
+                    return new IndexFileMetadata(name, inp.length, "Unable to generate checksum "+e.getMessage());
+                } catch (NoSuchAlgorithmException e) {
+                    throw new RuntimeException("JDK Doesnt have SHA1 support");
+                }
             }
             return null;
         }
