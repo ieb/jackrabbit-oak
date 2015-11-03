@@ -101,7 +101,7 @@ class OakDirectory extends Directory {
         this.definition = definition;
         this.readOnly = readOnly;
         long start = PERF_LOGGER.start();
-        this.listing = new GenerationalDirectoryListing(definition, builder);
+        this.listing = new GenerationalDirectoryListing(definition, builder, readOnly);
         PERF_LOGGER.end(start, 100, "Directory listing performed. Total {} files", listing.listAll().length);
         this.activeDeleteEnabled = definition.getActiveDeleteEnabled();
     }
@@ -119,31 +119,32 @@ class OakDirectory extends Directory {
     @Override
     public void deleteFile(String name) throws IOException {
         checkArgument(!readOnly, "Read only directory");
-        listing.remove(name);
-        // TODO: make remove control if the data is removed, trashed or left alone.
-        NodeBuilder f = directoryBuilder.getChildNode(name);
-        if (activeDeleteEnabled) {
-            PropertyState property = f.getProperty(JCR_DATA);
-            ArrayList<Blob> data;
-            if (property != null && property.getType() == BINARIES) {
-                data = newArrayList(property.getValue(BINARIES));
-            } else {
-                data = newArrayList();
+        if (listing.remove(name)) {
+            // TODO: make remove control if the data is removed, trashed or left alone.
+            NodeBuilder f = directoryBuilder.getChildNode(name);
+            if (activeDeleteEnabled) {
+                PropertyState property = f.getProperty(JCR_DATA);
+                ArrayList<Blob> data;
+                if (property != null && property.getType() == BINARIES) {
+                    data = newArrayList(property.getValue(BINARIES));
+                } else {
+                    data = newArrayList();
+                }
+                NodeBuilder trash = builder.child(LuceneIndexConstants.TRASH_CHILD_NAME);
+                long index;
+                if (!trash.hasProperty("index")) {
+                    index = 1;
+                } else {
+                    index = trash.getProperty("index").getValue(Type.LONG) + 1;
+                }
+                trash.setProperty("index", index);
+                NodeBuilder trashEntry = trash.child("run_" + index);
+                trashEntry.setProperty("time", System.currentTimeMillis());
+                trashEntry.setProperty("name", name);
+                trashEntry.setProperty(JCR_DATA, data, BINARIES);
             }
-            NodeBuilder trash = builder.child(LuceneIndexConstants.TRASH_CHILD_NAME);
-            long index;
-            if (!trash.hasProperty("index")) {
-                index = 1;
-            } else {    
-                index = trash.getProperty("index").getValue(Type.LONG) + 1;                
-            }
-            trash.setProperty("index", index);
-            NodeBuilder trashEntry = trash.child("run_" + index);
-            trashEntry.setProperty("time", System.currentTimeMillis());
-            trashEntry.setProperty("name", name);
-            trashEntry.setProperty(JCR_DATA, data, BINARIES);
+            f.remove();
         }
-        f.remove();
     }
 
     @Override
@@ -630,7 +631,7 @@ class OakDirectory extends Directory {
          * know of the problem. Save any unsaved state if required.
          * @param name
          */
-        void remove(@Nonnull String name);
+        boolean remove(@Nonnull String name);
 
         /**
          * Add the name to the directory listing, saving any unsaved state.
@@ -688,8 +689,9 @@ class OakDirectory extends Directory {
         }
 
         @Override
-        public void remove(@Nonnull String name) {
+        public boolean remove(@Nonnull String name) {
             fileNames.remove(name);
+            return true;
         }
 
         @Override
@@ -736,26 +738,17 @@ class OakDirectory extends Directory {
         // the parent builder
         private final NodeBuilder builder;
         private final NodeBuilder listingBuilder;
+        private final boolean readOnly;
         private Map<String, IndexFileMetadata> listOfFiles = Maps.newConcurrentMap();
 
-        private GenerationalDirectoryListing(@Nonnull IndexDefinition definition, @Nonnull NodeBuilder builder) {
-
+        private GenerationalDirectoryListing(@Nonnull IndexDefinition definition, @Nonnull NodeBuilder builder, boolean readOnly) {
+            this.readOnly = readOnly;
             this.definition = definition;
             this.builder = builder;
             this.directoryBuilder = builder.child(INDEX_DATA_CHILD_NAME);
-            this.listingBuilder = getDirectoryListingContainer();
+            this.listingBuilder = builder.child(DIRECTORY_LISTING_CONTAINER);
             if(load()) {
                 save();
-            }
-        }
-
-        @Nonnull
-        private NodeBuilder getDirectoryListingContainer() {
-            if (builder.hasChildNode(DIRECTORY_LISTING_CONTAINER)) {
-                return builder.getChildNode(DIRECTORY_LISTING_CONTAINER);
-            } else {
-                // create the container if required.
-                return builder.setChildNode(DIRECTORY_LISTING_CONTAINER);
             }
         }
 
@@ -772,13 +765,14 @@ class OakDirectory extends Directory {
         }
 
         @Override
-        public void remove(@Nonnull String name) {
+        public boolean remove(@Nonnull String name) {
             if (listOfFiles.containsKey(name)) {
                 listOfFiles.remove(name);
                 LOGGER.debug("Removed " + name + " from list");
             } else {
                 LOGGER.warn("Attempt to remove " + name + " from list denied, as name not in list");
             }
+            return false;
         }
 
         /**
@@ -848,8 +842,9 @@ class OakDirectory extends Directory {
                 if (state != null) {
                     for (Map.Entry<String, IndexFileMetadata> n : state.entrySet()) {
                         IndexFileMetadata oakVersion = getIndexFileMetaData(n.getKey());
-                        if (!n.getValue().equals(oakVersion)) {
-                            LOGGER.warn("Index File and Oak Version and not the same  {}", n.getValue().diff(oakVersion));
+                        IndexFileMetadata localVersion = n.getValue();
+                        if (!localVersion.equals(oakVersion)) {
+                            LOGGER.warn("Index File and Oak Version and not the same {}  {}", localVersion.toString(), localVersion.diff(oakVersion));
                             return null;
                         }
                     }
@@ -872,18 +867,34 @@ class OakDirectory extends Directory {
             List<String> childNodes = Lists.newArrayList(listingBuilder.getChildNodeNames());
             Collections.sort(childNodes);
             int checked = 0;
+            boolean save = false;
+            int loaded = -1;
+            Set<String> toRemove = Sets.newHashSet();
             for (int i = childNodes.size()-1; i >= 0; i--) {
-                if (childNodes.get(i).startsWith(DIRECTORY_LISTING_PREFIX)) {
+                String dirName = childNodes.get(i);
+                if (dirName.startsWith(DIRECTORY_LISTING_PREFIX)) {
                     checked++;
-                    Map<String, IndexFileMetadata> validatedList = validateListing(listingBuilder.getChildNode(childNodes.get(i)));
-                    if (validatedList != null) {
-                        listOfFiles.clear();
-                        listOfFiles.putAll(validatedList);
-                        // if the first list is valid, then return false, otherwise, true
-                        return i != childNodes.size() - 1;
+                    if (loaded < 0) {
+                        Map<String, IndexFileMetadata> validatedList = validateListing(listingBuilder.getChildNode(dirName));
+                        if (validatedList != null) {
+                            LOGGER.info("Accepted directory listing {}, using ", dirName);
+                            listOfFiles.clear();
+                            listOfFiles.putAll(validatedList);
+                            loaded = i;
+                        } else {
+                            LOGGER.warn("Rejected directory listing {} ", dirName);
+                        }
+                    } else if (!readOnly && checked >= 100 ) {
+                        toRemove.add(dirName);
                     }
-                    LOGGER.warn("Rejected directory listing {}, loading earlier generation ", childNodes.get(i));
                 }
+            }
+            // if more than 10 listing files can be removed, perform a GC.
+            if (toRemove.size() > 10) {
+                doGC(childNodes, toRemove);
+            }
+            if (loaded >= 0 ) {
+                return (loaded != childNodes.size() - 1);
             }
             if ( checked > 0) {
                 LOGGER.warn("Recovery of corrupted index failed, will try and load files that are present in the index, last ditch attempt to recover. ");
@@ -907,6 +918,39 @@ class OakDirectory extends Directory {
             return true;
         }
 
+        private void doGC(List<String> childNodes, Set<String> toRemove) {
+            Set<String> keep = Sets.newHashSet();
+            // build a set of index files to keep by scanning all listings not in the remove set.
+            for(String c : childNodes) {
+                if (!toRemove.contains(c)) {
+                    // extract the list of index files.
+                    Map<String, IndexFileMetadata> l = parseState(listingBuilder.getChildNode(c));
+                    if (l != null) {
+                        // add all index files references into the keep set.
+                        keep.addAll(l.keySet());
+                    }
+                }
+            }
+            // scan all remove listings.
+            for(String r : toRemove) {
+                // get all files referenced
+                Map<String, IndexFileMetadata> l = parseState(listingBuilder.getChildNode(r));
+                if ( l != null) {
+                    for(String s : l.keySet()) {
+                        // if not in the keep set, remove the index file.
+                        if (!keep.contains(s)) {
+                            LOGGER.warn("Removing Index file {} ",s);
+                            directoryBuilder.getChildNode(s).remove();
+
+                        }
+                    }
+                }
+                // remove the listing file.
+                LOGGER.warn("Removing Listing file {} ",r);
+                listingBuilder.getChildNode(r).remove();
+            }
+        }
+
         @Nullable
         private IndexFileMetadata getIndexFileMetaData(@Nonnull String name) {
             if (directoryBuilder.hasChildNode(name)) {
@@ -919,17 +963,14 @@ class OakDirectory extends Directory {
                     int i = 0;
                     for (; i < (inp.length-b.length); i += b.length) {
                         inp.readBytes(b, 0, b.length);
-                        sha1.digest(b, 0, b.length);
+                        sha1.update(b, 0, b.length);
                     }
                     i = (int)(inp.length-i);
                     if (i > 0) {
                         inp.readBytes(b, 0, i);
-                        sha1.digest(b, 0, i);
+                        sha1.update(b, 0, i);
                     }
                     return new IndexFileMetadata(name, inp.length, new String(Hex.encodeHex(sha1.digest())));
-                } catch (DigestException e ) {
-                    LOGGER.warn("Digest Exception creating checksum ",e);
-                    return new IndexFileMetadata(name, inp.length, "Unable to generate checksum "+e.getMessage());
                 } catch (IOException e ) {
                     LOGGER.warn("IO Exception reading index file ",e);
                     return new IndexFileMetadata(name, inp.length, "Unable to generate checksum "+e.getMessage());
@@ -943,6 +984,7 @@ class OakDirectory extends Directory {
 
         @Override
         public void close() {
+            LOGGER.info("Saving due to close.");
             save();
         }
 
@@ -957,6 +999,7 @@ class OakDirectory extends Directory {
         @Override
         public void sync(Collection<String> names) {
             // cant differentiate between files in the listing and files that need to be synced so just save everything.
+            LOGGER.info("Saving due to sync  {} .", names);
             save();
         }
     }
@@ -990,6 +1033,10 @@ class OakDirectory extends Directory {
             return false;
         }
 
+        @Override
+        public String toString() {
+            return "Name: "+name+", length:"+length+", checksum:"+checkSum;
+        }
 
         /**
          * report differences between metadata.
@@ -999,7 +1046,7 @@ class OakDirectory extends Directory {
         @Nonnull
         public String diff(@Nullable IndexFileMetadata otherVersion) {
             if (otherVersion == null) {
-                return " OakVersion doesnt exist";
+                return " OakVersion doesnt exist. ";
             }
             StringBuilder sb = new StringBuilder();
             if (!name.equals(otherVersion.name)) {
