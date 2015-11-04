@@ -998,9 +998,14 @@ class OakDirectory extends Directory {
 
         @Override
         public void sync(Collection<String> names) {
-            // cant differentiate between files in the listing and files that need to be synced so just save everything.
-            LOGGER.info("Saving due to sync  {} .", names);
-            save();
+            // only perform a save on sync when the checkpoint files are updated, otherwise do nothing.
+            for (String name : names) {
+                if (listOfFiles.containsKey(name) && listOfFiles.get(name).isCheckpointFile() ) {
+                    LOGGER.info("Saving due to sync  {} .", names);
+                    save();
+                    return;
+                }
+            }
         }
     }
 
@@ -1028,10 +1033,28 @@ class OakDirectory extends Directory {
         public boolean equals(@Nullable Object obj) {
             if (obj instanceof IndexFileMetadata) {
                 IndexFileMetadata ifm = (IndexFileMetadata) obj;
-                return name.equals(ifm.name) && length == ifm.length && checkSum.equals(ifm.checkSum);
+                // the metadata is equal if the name equals and the file is mutable or the checksum and length are equal.
+                return name.equals(ifm.name) && (isMutable() || length == ifm.length && checkSum.equals(ifm.checkSum));
             }
             return false;
         }
+
+        /**
+         * Some files within a Lucene directory are mutable.
+         * @return true if the file is mutable.
+         */
+        private boolean isMutable() {
+            return name.endsWith(".del");
+        }
+
+        /**
+         * Some files in a Lucene directory are checkpoint files, written to perform a checkpoint.
+         * @return
+         */
+        public boolean isCheckpointFile() {
+            return name.equals("segments.gen") || name.startsWith("segments_");
+        }
+
 
         @Override
         public String toString() {
@@ -1063,6 +1086,7 @@ class OakDirectory extends Directory {
 
         public void refresh() {
         }
+
     }
 
 }
