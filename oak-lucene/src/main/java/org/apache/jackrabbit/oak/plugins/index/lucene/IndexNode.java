@@ -37,13 +37,18 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 class IndexNode {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(IndexNode.class);
 
     static IndexNode open(String indexPath, NodeState root, NodeState defnNodeState,@Nullable IndexCopier cloner)
             throws IOException {
         Directory directory = null;
         IndexDefinition definition = new IndexDefinition(root, defnNodeState, indexPath);
+        LOGGER.debug("Opening Index {} ", indexPath);
         NodeState data = defnNodeState.getChildNode(INDEX_DATA_CHILD_NAME);
         if (data.exists()) {
             directory = new OakDirectory(new ReadOnlyBuilder(defnNodeState), definition, true);
