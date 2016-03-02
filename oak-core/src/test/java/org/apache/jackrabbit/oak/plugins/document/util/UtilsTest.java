@@ -57,6 +57,12 @@ public class UtilsTest {
     }
 
     @Test
+    public void childDoc() {
+        System.err.printf("Lower Limit of %s is %s \n","/a/b/c/d/e", Utils.getKeyLowerLimit("/a/b/c/d/e"));
+        System.err.printf("Upper Limit of %s is %s \n", "/a/b/c/d/e", Utils.getKeyUpperLimit("/a/b/c/d/e"));
+    }
+
+    @Test
     public void previousDoc() throws Exception{
         Revision r = new Revision(System.currentTimeMillis(), 0, 0);
         assertTrue(Utils.isPreviousDocId(Utils.getPreviousIdFor("/", r, 0)));

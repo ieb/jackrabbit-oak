@@ -219,6 +219,12 @@
       <optional>true</optional>
     </dependency>
 
+    <dependency>
+      <groupId>com.datastax.cassandra</groupId>
+      <artifactId>cassandra-driver-core</artifactId>
+      <version>3.0.0</version>
+    </dependency>
+
     <!--  Optional dependency for jclouds s3 to enable s3 cloud store -->
     <dependency>
       <groupId>org.apache.jclouds.provider</groupId>
@@ -261,6 +267,11 @@
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-api</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-simple</artifactId>
+      <scope>test</scope>
     </dependency>
 
     <!-- Findbugs annotations -->

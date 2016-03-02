@@ -24,6 +24,7 @@ import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.collect.Maps.newHashMap;
 
 import java.io.Closeable;
+import java.io.IOException;
 import java.util.Map;
 
 import javax.annotation.Nonnull;
@@ -82,7 +83,11 @@ public class ObserverTracker implements ServiceTrackerCustomizer {
     public void removedService(ServiceReference reference, Object service) {
         Closeable subscription = subscriptions.remove(reference);
         if (subscription != null) {
-            Closeables.closeQuietly(subscription);
+            // Guava 16.0.1 fix.
+            try {
+                subscription.close();
+            } catch (IOException e) {
+            }
             bundleContext.ungetService(reference);
         }
     }

@@ -23,6 +23,8 @@ import java.util.List;
 import javax.sql.DataSource;
 
 import org.apache.jackrabbit.oak.commons.FixturesHelper;
+import org.apache.jackrabbit.oak.plugins.document.cassandra.C8Client;
+import org.apache.jackrabbit.oak.plugins.document.cassandra.C8DocumentStore;
 import org.apache.jackrabbit.oak.plugins.document.memory.MemoryDocumentStore;
 import org.apache.jackrabbit.oak.plugins.document.mongo.MongoDocumentStore;
 import org.apache.jackrabbit.oak.plugins.document.rdb.RDBDataSourceFactory;
@@ -69,6 +71,9 @@ public abstract class DocumentStoreFixture {
     public static final DocumentStoreFixture RDB_PG = new RDBFixture("RDB-Postgres", System.getProperty("rdb-postgres-jdbc-url",
             "jdbc:postgresql:oak"), System.getProperty("rdb-postgres-jdbc-user", "postgres"), System.getProperty(
             "rdb-postgres-jdbc-passwd", "geheim"));
+
+    public static final DocumentStoreFixture CASSANDRA = new C8Fixture(System.getProperty("cassandra-database", "oak"), System.getProperty("cassandra-nodes", "127.0.0.1"));
+
 
     public static final String TABLEPREFIX = "dstest_";
 
@@ -261,4 +266,75 @@ public abstract class DocumentStoreFixture {
             connections.clear();
         }
     }
+
+    public static class C8Fixture extends DocumentStoreFixture {
+
+        private static final String DEFAULT_DB = "oak";
+        private static final String DEFAULT_NODES = "localhost";
+        private final String dbName;
+        private final String nodes;
+        private List<C8Client> connections = Lists.newArrayList();
+
+        public C8Fixture() {
+            this(DEFAULT_DB, DEFAULT_NODES);
+        }
+
+
+        public C8Fixture(String dbName, String nodes) {
+            this.dbName = dbName;
+            this.nodes = nodes;
+        }
+
+        @Override
+        public String getName() {
+            return "Cassandra";
+        }
+
+        @Override
+        public DocumentStore createDocumentStore(int clusterId) {
+            try {
+                C8Client c8Client = C8Client.getInstance(dbName, nodes);
+                connections.add(c8Client);
+                c8Client.dropCollections();
+                return new C8DocumentStore(c8Client, new DocumentMK.Builder().setClusterId(clusterId));
+            } catch (Exception e) {
+                LOG.error("Unable to create C8DocumentStore ",e);
+                throw new RuntimeException(e);
+            }
+        }
+
+        @Override
+        public boolean isAvailable() {
+            try {
+                C8Client c8Client = C8Client.getInstance(dbName, nodes);
+                try {
+                    c8Client.ping();
+                } finally {
+                    c8Client.close();
+                }
+                return true;
+            } catch (Exception e) {
+                LOG.error("Unable to ping C8DocumentStore ",e);
+                return false;
+            }
+        }
+
+        @Override
+        public void dispose() {
+            try {
+                C8Client c8Client = C8Client.getInstance(dbName, nodes);
+                try {
+                    c8Client.dropDatabase();
+                } finally {
+                    c8Client.close();
+                }
+            } catch (Exception ignore) {
+            }
+            for (C8Client c : connections) {
+                c.close();
+            }
+            connections.clear();
+        }
+    }
+
 }

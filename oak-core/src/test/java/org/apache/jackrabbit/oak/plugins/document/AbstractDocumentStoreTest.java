@@ -79,16 +79,26 @@ public abstract class AbstractDocumentStoreTest {
 
     protected static Collection<Object[]> fixtures(boolean multi) {
         Collection<Object[]> result = new ArrayList<Object[]>();
-        DocumentStoreFixture candidates[] = new DocumentStoreFixture[] { DocumentStoreFixture.MEMORY, DocumentStoreFixture.MONGO,
-                DocumentStoreFixture.RDB_H2, DocumentStoreFixture.RDB_DERBY, DocumentStoreFixture.RDB_PG,
-                DocumentStoreFixture.RDB_DB2, DocumentStoreFixture.RDB_MYSQL, DocumentStoreFixture.RDB_ORACLE,
-                DocumentStoreFixture.RDB_MSSQL };
+        //DocumentStoreFixture candidates[] = new DocumentStoreFixture[] { DocumentStoreFixture.MEMORY, DocumentStoreFixture.MONGO,
+        //        DocumentStoreFixture.RDB_H2, DocumentStoreFixture.RDB_DERBY, DocumentStoreFixture.RDB_PG,
+        //        DocumentStoreFixture.RDB_DB2, DocumentStoreFixture.RDB_MYSQL, DocumentStoreFixture.RDB_ORACLE,
+        //        DocumentStoreFixture.RDB_MSSQL, DocumentStoreFixture.CASSANDRA };
+
+        DocumentStoreFixture[] candidates = new DocumentStoreFixture[] { DocumentStoreFixture.CASSANDRA };
 
         for (DocumentStoreFixture dsf : candidates) {
+            System.err.printf("Checking Available %s  \n",dsf.getName());
             if (dsf.isAvailable()) {
+                System.err.printf("Available  %s  \n", dsf.getName());
                 if (!multi || dsf.hasSinglePersistence()) {
-                    result.add(new Object[] { dsf });
+                    System.err.printf("Has suitable Persistence %s  \n", dsf.getName());
+                    result.add(new Object[]{dsf});
+                } else {
+                    System.err.printf("No suitable Persistence %s  \n",dsf.getName());
+
                 }
+            } else {
+                System.err.printf("Not Available %s  \n",dsf.getName());
             }
         }
 

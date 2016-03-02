@@ -613,6 +613,7 @@ public class BasicDocumentStoreTest extends AbstractDocumentStoreTest {
 
     @Test
     public void testUpdateModified() {
+        LOG.info("Starting Test");
         String id = this.getClass().getName() + ".testUpdateModified";
         // create a test node
         super.ds.remove(Collection.NODES, id);
