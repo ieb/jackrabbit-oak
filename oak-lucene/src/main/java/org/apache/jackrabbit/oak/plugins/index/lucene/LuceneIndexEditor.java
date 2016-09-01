@@ -46,6 +46,9 @@ import org.apache.jackrabbit.oak.plugins.memory.StringPropertyState;
 import org.apache.jackrabbit.oak.plugins.tree.TreeFactory;
 import org.apache.jackrabbit.oak.spi.commit.Editor;
 import org.apache.jackrabbit.oak.spi.state.NodeState;
+import org.apache.jackrabbit.oak.stats.StatisticsProvider;
+import org.apache.jackrabbit.oak.stats.StatsOptions;
+import org.apache.jackrabbit.oak.stats.TimerStats;
 import org.apache.jackrabbit.oak.util.BlobByteSource;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DoubleDocValuesField;
@@ -924,9 +927,13 @@ public class LuceneIndexEditor implements IndexEditor, Aggregate.AggregateRoot {
     }
 
     private String parseStringValue(Blob v, Metadata metadata, String path, String propertyName) {
+        TimerStats.Context cachedTimer = context.getStatisticsProvider().getTimer(this.getClass().getName() + "-cachedTextExtraction", StatsOptions.METRICS_ONLY).time();
         String text = context.getExtractedTextCache().get(path, propertyName, v, context.isReindex());
+        cachedTimer.stop();
         if (text == null){
+            TimerStats.Context extractionTimer = context.getStatisticsProvider().getTimer(this.getClass().getName()+"-textExtraction", StatsOptions.METRICS_ONLY).time();
             text = parseStringValue0(v, metadata, path);
+            extractionTimer.stop();
         }
         return text;
     }

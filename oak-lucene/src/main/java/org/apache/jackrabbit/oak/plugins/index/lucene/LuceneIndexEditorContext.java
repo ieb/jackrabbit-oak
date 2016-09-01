@@ -33,6 +33,7 @@ import org.apache.jackrabbit.oak.plugins.index.lucene.writer.LuceneIndexWriterFa
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
 import org.apache.jackrabbit.oak.spi.state.NodeState;
 import org.apache.jackrabbit.oak.stats.Clock;
+import org.apache.jackrabbit.oak.stats.StatisticsProvider;
 import org.apache.jackrabbit.oak.util.PerfLogger;
 import org.apache.jackrabbit.util.ISO8601;
 import org.apache.lucene.facet.FacetsConfig;
@@ -90,11 +91,13 @@ public class LuceneIndexEditorContext {
     //Intentionally static, so that it can be set without passing around clock objects
     //Set for testing ONLY
     private static Clock clock = Clock.SIMPLE;
+    private StatisticsProvider statisticsProvider;
 
     LuceneIndexEditorContext(NodeState root, NodeBuilder definition, IndexUpdateCallback updateCallback,
                              LuceneIndexWriterFactory indexWriterFactory,
                              ExtractedTextCache extractedTextCache,
-                             IndexAugmentorFactory augmentorFactory) {
+                             IndexAugmentorFactory augmentorFactory,
+                             StatisticsProvider statisticsProvider) {
         configureUniqueId(definition);
         this.root = root;
         this.definitionBuilder = definition;
@@ -104,6 +107,7 @@ public class LuceneIndexEditorContext {
         this.updateCallback = updateCallback;
         this.extractedTextCache = extractedTextCache;
         this.augmentorFactory = augmentorFactory;
+        this.statisticsProvider = statisticsProvider;
         if (this.definition.isOfOldFormat()){
             IndexDefinition.updateDefinition(definition);
         }
@@ -285,6 +289,10 @@ public class LuceneIndexEditorContext {
             log.warn("Tika configuration not available : "+source, e);
         }
         return TikaConfig.getDefaultConfig();
+    }
+
+    public StatisticsProvider getStatisticsProvider() {
+        return statisticsProvider;
     }
 
     static class TextExtractionStats {

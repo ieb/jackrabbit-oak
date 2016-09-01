@@ -44,6 +44,7 @@ import static org.apache.jackrabbit.oak.plugins.index.lucene.LuceneIndexConstant
  */
 public class LuceneIndexEditorProvider implements IndexEditorProvider {
     private final IndexCopier indexCopier;
+    private final StatisticsProvider statisticsProvider;
     private final ExtractedTextCache extractedTextCache;
     private final IndexAugmentorFactory augmentorFactory;
     private final LuceneIndexWriterFactory indexWriterFactory;
@@ -69,8 +70,10 @@ public class LuceneIndexEditorProvider implements IndexEditorProvider {
                                      @Nullable IndexAugmentorFactory augmentorFactory,
                                      MountInfoProvider mountInfoProvider) {
         this.indexCopier = indexCopier;
+        this.statisticsProvider = statisticsProvider;
         this.extractedTextCache = checkNotNull(extractedTextCache);
         this.augmentorFactory = augmentorFactory;
+
         this.indexWriterFactory = new DefaultIndexWriterFactory(checkNotNull(mountInfoProvider), indexCopier, statisticsProvider);
     }
 
@@ -81,7 +84,7 @@ public class LuceneIndexEditorProvider implements IndexEditorProvider {
             throws CommitFailedException {
         if (TYPE_LUCENE.equals(type)) {
             LuceneIndexEditorContext context = new LuceneIndexEditorContext(root, definition, callback,
-                    indexWriterFactory, extractedTextCache, augmentorFactory);
+                    indexWriterFactory, extractedTextCache, augmentorFactory, statisticsProvider);
             return new LuceneIndexEditor(context);
         }
         return null;
