@@ -68,6 +68,7 @@ import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
 import org.apache.jackrabbit.oak.spi.state.NodeState;
 import org.apache.jackrabbit.oak.spi.state.NodeStateUtils;
 import org.apache.jackrabbit.oak.spi.state.NodeStore;
+import org.apache.jackrabbit.oak.stats.StatisticsProvider;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -107,6 +108,7 @@ public class MultiplexingLucenePropertyIndexTest extends AbstractQueryTest {
             throw new RuntimeException(e);
         }
         LuceneIndexEditorProvider editorProvider = new LuceneIndexEditorProvider(copier,
+                StatisticsProvider.NOOP,
                 new ExtractedTextCache(10*FileUtils.ONE_MB, 100),
                 null,
                 mip);
@@ -129,7 +131,7 @@ public class MultiplexingLucenePropertyIndexTest extends AbstractQueryTest {
         IndexDefinition defn = new IndexDefinition(initialContent, defnBuilder.getNodeState());
 
         //1. Have 2 reader created by writes in 2 diff mounts
-        LuceneIndexWriterFactory factory = new DefaultIndexWriterFactory(mip, null);
+        LuceneIndexWriterFactory factory = new DefaultIndexWriterFactory(mip, null, StatisticsProvider.NOOP);
         LuceneIndexWriter writer = factory.newInstance(defn, builder, true);
 
         writer.updateDocument("/content/en", newDoc("/content/en"));

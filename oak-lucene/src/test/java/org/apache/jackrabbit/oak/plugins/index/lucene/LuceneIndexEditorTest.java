@@ -68,6 +68,7 @@ import org.apache.jackrabbit.oak.spi.mount.Mount;
 import org.apache.jackrabbit.oak.spi.mount.MountInfoProvider;
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
 import org.apache.jackrabbit.oak.spi.state.NodeState;
+import org.apache.jackrabbit.oak.stats.StatisticsProvider;
 import org.apache.jackrabbit.test.ISO8601;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
@@ -353,7 +354,7 @@ public class LuceneIndexEditorTest {
                 new IndexUpdateProvider(
                         new CompositeIndexEditorProvider(
                                 failingProvider,
-                                new LuceneIndexEditorProvider(copier))));
+                                new LuceneIndexEditorProvider(copier, StatisticsProvider.NOOP))));
 
         NodeBuilder index = builder.child(INDEX_DEFINITIONS_NAME);
         NodeBuilder nb = newLuceneIndexDefinitionV2(index, "lucene", of(TYPENAME_STRING));
@@ -394,7 +395,7 @@ public class LuceneIndexEditorTest {
                 .mount("foo", "/libs", "/apps").build();
         EditorHook hook = new EditorHook(
                 new IndexUpdateProvider(
-                        new LuceneIndexEditorProvider(null, new ExtractedTextCache(0, 0), null, mip)));
+                        new LuceneIndexEditorProvider(null, StatisticsProvider.NOOP, new ExtractedTextCache(0, 0), null, mip)));
 
         NodeState indexed = hook.processCommit(EMPTY_NODE, builder.getNodeState(), CommitInfo.EMPTY);
         builder = indexed.builder();

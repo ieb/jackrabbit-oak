@@ -32,6 +32,9 @@ import org.apache.jackrabbit.oak.plugins.multiplex.SimpleMountInfoProvider;
 import org.apache.jackrabbit.oak.spi.mount.MountInfoProvider;
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
 import org.apache.jackrabbit.oak.spi.state.NodeState;
+import org.apache.jackrabbit.oak.stats.DefaultStatisticsProvider;
+import org.apache.jackrabbit.oak.stats.NoopStats;
+import org.apache.jackrabbit.oak.stats.StatisticsProvider;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.IndexReader;
@@ -58,7 +61,7 @@ public class DefaultIndexReaderFactoryTest {
 
     @Test
     public void indexDir() throws Exception{
-        LuceneIndexWriterFactory factory = new DefaultIndexWriterFactory(mip, null);
+        LuceneIndexWriterFactory factory = new DefaultIndexWriterFactory(mip, null, StatisticsProvider.NOOP);
         LuceneIndexWriter writer = factory.newInstance(defn, builder, true);
 
         writer.updateDocument("/content/en", newDoc("/content/en"));
@@ -90,7 +93,7 @@ public class DefaultIndexReaderFactoryTest {
 
     @Test
     public void suggesterDir() throws Exception{
-        LuceneIndexWriterFactory factory = new DefaultIndexWriterFactory(mip, null);
+        LuceneIndexWriterFactory factory = new DefaultIndexWriterFactory(mip, null, StatisticsProvider.NOOP);
         enabledSuggestorForSomeProp();
         defn = new IndexDefinition(root, builder.getNodeState());
         LuceneIndexWriter writer = factory.newInstance(defn, builder, true);
@@ -110,7 +113,7 @@ public class DefaultIndexReaderFactoryTest {
 
     @Test
     public void multipleReaders() throws Exception{
-        LuceneIndexWriterFactory factory = new DefaultIndexWriterFactory(mip, null);
+        LuceneIndexWriterFactory factory = new DefaultIndexWriterFactory(mip, null, StatisticsProvider.NOOP);
         LuceneIndexWriter writer = factory.newInstance(defn, builder, true);
 
         writer.updateDocument("/content/en", newDoc("/content/en"));
@@ -124,7 +127,7 @@ public class DefaultIndexReaderFactoryTest {
 
     @Test
     public void multipleReaders_SingleSuggester() throws Exception{
-        LuceneIndexWriterFactory factory = new DefaultIndexWriterFactory(mip, null);
+        LuceneIndexWriterFactory factory = new DefaultIndexWriterFactory(mip, null, StatisticsProvider.NOOP);
         enabledSuggestorForSomeProp();
         defn = new IndexDefinition(root, builder.getNodeState());
         LuceneIndexWriter writer = factory.newInstance(defn, builder, true);

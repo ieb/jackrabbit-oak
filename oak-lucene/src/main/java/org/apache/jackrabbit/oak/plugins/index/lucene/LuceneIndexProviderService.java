@@ -61,6 +61,7 @@ import org.apache.jackrabbit.oak.spi.mount.MountInfoProvider;
 import org.apache.jackrabbit.oak.spi.query.QueryIndexProvider;
 import org.apache.jackrabbit.oak.spi.whiteboard.Registration;
 import org.apache.jackrabbit.oak.spi.whiteboard.Whiteboard;
+import org.apache.jackrabbit.oak.stats.StatisticsProvider;
 import org.apache.lucene.analysis.util.CharFilterFactory;
 import org.apache.lucene.analysis.util.TokenFilterFactory;
 import org.apache.lucene.analysis.util.TokenizerFactory;
@@ -219,6 +220,8 @@ public class LuceneIndexProviderService {
     private int threadPoolSize;
 
     private ExtractedTextCache extractedTextCache;
+    @Reference
+    private StatisticsProvider statisticsProvider;
 
     @Activate
     private void activate(BundleContext bundleContext, Map<String, ?> config)
@@ -318,10 +321,10 @@ public class LuceneIndexProviderService {
         LuceneIndexEditorProvider editorProvider;
         if (enableCopyOnWrite){
             initializeIndexCopier(bundleContext, config);
-            editorProvider = new LuceneIndexEditorProvider(indexCopier, extractedTextCache, augmentorFactory, mountInfoProvider);
+            editorProvider = new LuceneIndexEditorProvider(indexCopier, statisticsProvider, extractedTextCache, augmentorFactory, mountInfoProvider);
             log.info("Enabling CopyOnWrite support. Index files would be copied under {}", indexDir.getAbsolutePath());
         } else {
-            editorProvider = new LuceneIndexEditorProvider(null, extractedTextCache, augmentorFactory, mountInfoProvider);
+            editorProvider = new LuceneIndexEditorProvider(null, statisticsProvider, extractedTextCache, augmentorFactory, mountInfoProvider);
         }
         regs.add(bundleContext.registerService(IndexEditorProvider.class.getName(), editorProvider, null));
         oakRegs.add(registerMBean(whiteboard,

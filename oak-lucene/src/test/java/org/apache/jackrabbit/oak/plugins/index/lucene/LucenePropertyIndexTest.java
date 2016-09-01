@@ -120,6 +120,7 @@ import org.apache.jackrabbit.oak.spi.security.OpenSecurityProvider;
 import org.apache.jackrabbit.oak.spi.state.NodeState;
 import org.apache.jackrabbit.oak.spi.state.NodeStateUtils;
 import org.apache.jackrabbit.oak.spi.state.NodeStore;
+import org.apache.jackrabbit.oak.stats.StatisticsProvider;
 import org.apache.jackrabbit.util.ISO8601;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
@@ -161,7 +162,7 @@ public class LucenePropertyIndexTest extends AbstractQueryTest {
     @Override
     protected ContentRepository createRepository() {
         IndexCopier copier = createIndexCopier();
-        editorProvider = new LuceneIndexEditorProvider(copier, new ExtractedTextCache(10* FileUtils.ONE_MB, 100));
+        editorProvider = new LuceneIndexEditorProvider(copier, StatisticsProvider.NOOP, new ExtractedTextCache(10* FileUtils.ONE_MB, 100));
         LuceneIndexProvider provider = new LuceneIndexProvider(copier);
         nodeStore = new MemoryNodeStore();
         return new Oak(nodeStore)

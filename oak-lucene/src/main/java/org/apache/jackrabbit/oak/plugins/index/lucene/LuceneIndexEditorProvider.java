@@ -30,6 +30,7 @@ import org.apache.jackrabbit.oak.spi.mount.MountInfoProvider;
 import org.apache.jackrabbit.oak.spi.mount.Mounts;
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
 import org.apache.jackrabbit.oak.spi.state.NodeState;
+import org.apache.jackrabbit.oak.stats.StatisticsProvider;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static org.apache.jackrabbit.oak.plugins.index.lucene.LuceneIndexConstants.TYPE_LUCENE;
@@ -48,27 +49,29 @@ public class LuceneIndexEditorProvider implements IndexEditorProvider {
     private final LuceneIndexWriterFactory indexWriterFactory;
 
     public LuceneIndexEditorProvider() {
-        this(null);
+        this(null, StatisticsProvider.NOOP);
     }
 
-    public LuceneIndexEditorProvider(@Nullable IndexCopier indexCopier) {
+    public LuceneIndexEditorProvider(@Nullable IndexCopier indexCopier, StatisticsProvider statisticsProvider) {
         //Disable the cache by default in ExtractedTextCache
-        this(indexCopier, new ExtractedTextCache(0, 0));
+        this(indexCopier, statisticsProvider, new ExtractedTextCache(0, 0));
     }
 
     public LuceneIndexEditorProvider(@Nullable IndexCopier indexCopier,
+                                     StatisticsProvider statisticsProvider,
                                      ExtractedTextCache extractedTextCache) {
-        this(indexCopier, extractedTextCache, null, Mounts.defaultMountInfoProvider());
+        this(indexCopier, statisticsProvider, extractedTextCache, null, Mounts.defaultMountInfoProvider());
     }
 
     public LuceneIndexEditorProvider(@Nullable IndexCopier indexCopier,
+                                     StatisticsProvider statisticsProvider,
                                      ExtractedTextCache extractedTextCache,
                                      @Nullable IndexAugmentorFactory augmentorFactory,
                                      MountInfoProvider mountInfoProvider) {
         this.indexCopier = indexCopier;
         this.extractedTextCache = checkNotNull(extractedTextCache);
         this.augmentorFactory = augmentorFactory;
-        this.indexWriterFactory = new DefaultIndexWriterFactory(checkNotNull(mountInfoProvider), indexCopier);
+        this.indexWriterFactory = new DefaultIndexWriterFactory(checkNotNull(mountInfoProvider), indexCopier, statisticsProvider);
     }
 
     @Override

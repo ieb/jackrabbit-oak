@@ -32,6 +32,10 @@ import org.apache.jackrabbit.oak.plugins.index.lucene.IndexDefinition;
 import org.apache.jackrabbit.oak.plugins.index.lucene.OakDirectory;
 import org.apache.jackrabbit.oak.plugins.index.lucene.util.SuggestHelper;
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
+import org.apache.jackrabbit.oak.stats.MeterStats;
+import org.apache.jackrabbit.oak.stats.StatisticsProvider;
+import org.apache.jackrabbit.oak.stats.StatsOptions;
+import org.apache.jackrabbit.oak.stats.TimerStats;
 import org.apache.jackrabbit.oak.util.PerfLogger;
 import org.apache.jackrabbit.util.ISO8601;
 import org.apache.lucene.analysis.Analyzer;
@@ -61,36 +65,49 @@ class DefaultIndexWriter implements LuceneIndexWriter {
     private final String dirName;
     private final String suggestDirName;
     private final boolean reindex;
+    private final StatisticsProvider statisticsProvider;
+    private final String statsName;
     private IndexWriter writer;
     private Directory directory;
 
     public DefaultIndexWriter(IndexDefinition definition, NodeBuilder definitionBuilder,
-                              @Nullable IndexCopier indexCopier, String dirName, String suggestDirName, boolean reindex){
+                              @Nullable IndexCopier indexCopier, StatisticsProvider statisticsProvider, String dirName, String suggestDirName, boolean reindex){
         this.definition = definition;
         this.definitionBuilder = definitionBuilder;
         this.indexCopier = indexCopier;
         this.dirName = dirName;
         this.suggestDirName = suggestDirName;
         this.reindex = reindex;
+        this.statisticsProvider = statisticsProvider;
+        this.statsName = DefaultIndexWriter.class.getName()+"-"+dirName+"-";
     }
 
     @Override
     public void updateDocument(String path, Iterable<? extends IndexableField> doc) throws IOException {
+        TimerStats.Context context = getContext("udpateDocument");
         getWriter().updateDocument(newPathTerm(path), doc);
+        context.stop();
     }
+
 
     @Override
     public void deleteDocuments(String path) throws IOException {
+        TimerStats.Context context = getContext("deleteDocuments");
         getWriter().deleteDocuments(newPathTerm(path));
         getWriter().deleteDocuments(new PrefixQuery(newPathTerm(path + "/")));
+        context.stop();
     }
 
     void deleteAll() throws IOException {
+        TimerStats.Context context = getContext("deleteAll");
         getWriter().deleteAll();
+        context.stop();
     }
 
     @Override
     public boolean close(long timestamp) throws IOException {
+        TimerStats.Context context = getContext("close");
+
         //If reindex or fresh index and write is null on close
         //it indicates that the index is empty. In such a case trigger
         //creation of write such that an empty Lucene index state is persisted
@@ -127,6 +144,7 @@ class DefaultIndexWriter implements LuceneIndexWriter {
             directory.close();
             PERF_LOGGER.end(start, -1, "Closed directory for directory {}", definition);
         }
+        context.stop();
         return indexUpdated;
     }
 
@@ -244,4 +262,10 @@ class DefaultIndexWriter implements LuceneIndexWriter {
                 org.apache.jackrabbit.oak.commons.IOUtils.humanReadableByteCount(overallSize),
                 sb.toString());
     }
+
+
+    private TimerStats.Context getContext(String name) {
+        return statisticsProvider.getTimer(this.statsName + name, StatsOptions.METRICS_ONLY).time();
+    }
+
 }

@@ -37,6 +37,7 @@ import org.apache.jackrabbit.oak.spi.mount.Mounts;
 import org.apache.jackrabbit.oak.spi.query.QueryIndexProvider;
 import org.apache.jackrabbit.oak.spi.security.OpenSecurityProvider;
 import org.apache.jackrabbit.oak.spi.state.NodeState;
+import org.apache.jackrabbit.oak.stats.StatisticsProvider;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -73,6 +74,7 @@ public class LuceneIndexAugmentTest extends AbstractQueryTest {
     @Override
     protected ContentRepository createRepository() {
         LuceneIndexEditorProvider editorProvider = new LuceneIndexEditorProvider(null,
+                StatisticsProvider.NOOP,
                 new ExtractedTextCache(0, 0),
                 factory, Mounts.defaultMountInfoProvider());
         LuceneIndexProvider provider = new LuceneIndexProvider(tracker,

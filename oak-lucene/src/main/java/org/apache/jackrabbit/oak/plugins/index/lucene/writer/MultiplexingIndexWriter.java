@@ -28,22 +28,25 @@ import org.apache.jackrabbit.oak.plugins.index.lucene.IndexDefinition;
 import org.apache.jackrabbit.oak.spi.mount.Mount;
 import org.apache.jackrabbit.oak.spi.mount.MountInfoProvider;
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
+import org.apache.jackrabbit.oak.stats.StatisticsProvider;
 import org.apache.lucene.index.IndexableField;
 
 class MultiplexingIndexWriter implements LuceneIndexWriter {
     private final IndexCopier indexCopier;
     private final MountInfoProvider mountInfoProvider;
     private final IndexDefinition definition;
+    private StatisticsProvider statisticsProvider;
     private final NodeBuilder definitionBuilder;
     private final boolean reindex;
 
     private final Map<Mount, DefaultIndexWriter> writers = Maps.newHashMap();
 
     public MultiplexingIndexWriter(IndexCopier indexCopier, MountInfoProvider mountInfoProvider,
-                                   IndexDefinition definition, NodeBuilder definitionBuilder, boolean reindex) {
+                                   IndexDefinition definition, StatisticsProvider statisticsProvider, NodeBuilder definitionBuilder, boolean reindex) {
         this.indexCopier = indexCopier;
         this.mountInfoProvider = mountInfoProvider;
         this.definition = definition;
+        this.statisticsProvider = statisticsProvider;
         this.definitionBuilder = definitionBuilder;
         this.reindex = reindex;
     }
@@ -94,6 +97,6 @@ class MultiplexingIndexWriter implements LuceneIndexWriter {
     private DefaultIndexWriter createWriter(Mount m) {
         String dirName = MultiplexersLucene.getIndexDirName(m);
         String suggestDirName = MultiplexersLucene.getSuggestDirName(m);
-        return new DefaultIndexWriter(definition, definitionBuilder, indexCopier, dirName, suggestDirName, reindex);
+        return new DefaultIndexWriter(definition, definitionBuilder, indexCopier, statisticsProvider, dirName, suggestDirName, reindex);
     }
 }

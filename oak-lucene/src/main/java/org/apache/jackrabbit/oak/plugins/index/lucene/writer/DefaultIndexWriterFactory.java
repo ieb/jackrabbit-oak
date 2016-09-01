@@ -26,23 +26,26 @@ import org.apache.jackrabbit.oak.plugins.index.lucene.IndexDefinition;
 import org.apache.jackrabbit.oak.plugins.index.lucene.LuceneIndexConstants;
 import org.apache.jackrabbit.oak.spi.mount.MountInfoProvider;
 import org.apache.jackrabbit.oak.spi.state.NodeBuilder;
+import org.apache.jackrabbit.oak.stats.StatisticsProvider;
 
 public class DefaultIndexWriterFactory implements LuceneIndexWriterFactory {
     private final MountInfoProvider mountInfoProvider;
     private final IndexCopier indexCopier;
+    private StatisticsProvider statisticsProvider;
 
-    public DefaultIndexWriterFactory(MountInfoProvider mountInfoProvider, @Nullable IndexCopier indexCopier) {
+    public DefaultIndexWriterFactory(MountInfoProvider mountInfoProvider, @Nullable IndexCopier indexCopier, StatisticsProvider statisticsProvider) {
         this.mountInfoProvider = mountInfoProvider;
         this.indexCopier = indexCopier;
+        this.statisticsProvider = statisticsProvider;
     }
 
     @Override
     public LuceneIndexWriter newInstance(IndexDefinition definition,
                                          NodeBuilder definitionBuilder, boolean reindex) {
         if (mountInfoProvider.hasNonDefaultMounts()){
-            return new MultiplexingIndexWriter(indexCopier, mountInfoProvider, definition, definitionBuilder, reindex);
+            return new MultiplexingIndexWriter(indexCopier, mountInfoProvider, definition, statisticsProvider, definitionBuilder, reindex);
         }
-        return new DefaultIndexWriter(definition, definitionBuilder, indexCopier,
+        return new DefaultIndexWriter(definition, definitionBuilder, indexCopier, statisticsProvider,
                 LuceneIndexConstants.INDEX_DATA_CHILD_NAME, LuceneIndexConstants.SUGGEST_DATA_CHILD_NAME, reindex);
     }
 }
