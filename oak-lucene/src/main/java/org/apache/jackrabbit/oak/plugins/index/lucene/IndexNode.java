@@ -51,47 +51,14 @@ import org.slf4j.LoggerFactory;
 public class IndexNode {
     private static final AtomicInteger INDEX_NODE_COUNTER = new AtomicInteger();
 
-//<<<<<<< HEAD
-//    static IndexNode open(String indexPath, NodeState root, NodeState defnNodeState,
-//                          LuceneIndexReaderFactory readerFactory, @Nullable NRTIndexFactory nrtFactory)
-//            throws IOException {
-//        IndexDefinition definition = new IndexDefinition(root, defnNodeState);
-//        List<LuceneIndexReader> readers = readerFactory.createReaders(definition, defnNodeState, indexPath);
-//        NRTIndex nrtIndex = nrtFactory != null ? nrtFactory.createIndex(definition) : null;
-//        if (!readers.isEmpty()){
-//            return new IndexNode(PathUtils.getName(indexPath), definition, readers, nrtIndex);
-//=======
-    private static final Logger LOGGER = LoggerFactory.getLogger(IndexNode.class);
-
-    static IndexNode open(String indexPath, NodeState root, NodeState defnNodeState,@Nullable IndexCopier cloner)
+    static IndexNode open(String indexPath, NodeState root, NodeState defnNodeState,
+                          LuceneIndexReaderFactory readerFactory, @Nullable NRTIndexFactory nrtFactory)
             throws IOException {
-        Directory directory = null;
-        IndexDefinition definition = new IndexDefinition(root, defnNodeState, indexPath);
-        LOGGER.debug("Opening Index {} ", indexPath);
-        NodeState data = defnNodeState.getChildNode(INDEX_DATA_CHILD_NAME);
-        if (data.exists()) {
-            directory = new OakDirectory(new ReadOnlyBuilder(defnNodeState), definition, true);
-            if (cloner != null){
-                directory = cloner.wrapForRead(indexPath, definition, directory);
-            }
-        } else if (PERSISTENCE_FILE.equalsIgnoreCase(defnNodeState.getString(PERSISTENCE_NAME))) {
-            String path = defnNodeState.getString(PERSISTENCE_PATH);
-            if (path != null && new File(path).exists()) {
-                directory = FSDirectory.open(new File(path));
-            }
-        }
-
-        if (directory != null) {
-            try {
-                IndexNode index = new IndexNode(PathUtils.getName(indexPath), definition, directory);
-                directory = null; // closed in Index.close()
-                return index;
-            } finally {
-                if (directory != null) {
-                    directory.close();
-                }
-            }
-// >>>>>>> Introduced mapping between lucene name and storage name so that segments.gen can be immutable
+        IndexDefinition definition = new IndexDefinition(root, defnNodeState);
+        List<LuceneIndexReader> readers = readerFactory.createReaders(definition, defnNodeState, indexPath);
+        NRTIndex nrtIndex = nrtFactory != null ? nrtFactory.createIndex(definition) : null;
+        if (!readers.isEmpty()){
+            return new IndexNode(PathUtils.getName(indexPath), definition, readers, nrtIndex);
         }
         return null;
     }

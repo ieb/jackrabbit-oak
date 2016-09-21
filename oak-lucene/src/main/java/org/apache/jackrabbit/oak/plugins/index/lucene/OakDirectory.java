@@ -104,10 +104,10 @@ public class OakDirectory extends Directory {
         this.definition = definition;
         this.readOnly = readOnly;
         long start = PERF_LOGGER.start();
-        this.listing = new GenerationalDirectoryListing(definition, builder, readOnly);
+        this.indexName = definition.getIndexName();
+        this.listing = new GenerationalDirectoryListing(definition, builder, readOnly, indexName);
         PERF_LOGGER.end(start, 100, "Directory listing performed. Total {} files", listing.listAll().length);
         this.activeDeleteEnabled = definition.getActiveDeleteEnabled();
-        this.indexName = definition.getIndexName();
     }
 
     @Override
@@ -797,8 +797,10 @@ public class OakDirectory extends Directory {
         private final boolean readOnly;
         private Map<String, IndexFileMetadata> listOfFiles = Maps.newConcurrentMap();
         private long generation;
+        private String indexName;
 
-        private GenerationalDirectoryListing(@Nonnull IndexDefinition definition, @Nonnull NodeBuilder builder, boolean readOnly) {
+        private GenerationalDirectoryListing(@Nonnull IndexDefinition definition, @Nonnull NodeBuilder builder, boolean readOnly, String indexName) {
+            this.indexName = indexName;
             this.generation = System.currentTimeMillis();
             this.readOnly = readOnly;
             this.definition = definition;
@@ -1000,7 +1002,7 @@ public class OakDirectory extends Directory {
         @Nullable
         private IndexFileMetadata getIndexFileMetaData(@Nonnull String name, @Nonnull String storageName) {
             if (directoryBuilder.hasChildNode(storageName)) {
-                OakIndexFile inp = new OakIndexFile(name, directoryBuilder.getChildNode(storageName));
+                OakIndexFile inp = new OakIndexFile(name, directoryBuilder.getChildNode(storageName), indexName);
                 // Looking at OakIndexFile it will be quite expensive to generate a checksum due to the block nature, so for the moment
                 // use the unique key.
                 try {
