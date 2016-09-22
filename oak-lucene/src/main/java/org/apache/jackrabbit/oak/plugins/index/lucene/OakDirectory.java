@@ -32,7 +32,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import com.google.common.collect.*;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import com.google.common.io.ByteStreams;
 import com.google.common.primitives.Ints;
 import org.apache.commons.codec.binary.Hex;
@@ -85,7 +89,7 @@ public class OakDirectory extends Directory {
     private final static SecureRandom secureRandom = new SecureRandom();
     
     protected final NodeBuilder builder;
-    protected final NodeBuilder directoryBuilder;
+    protected final NodeBuilder oakDirectoryBuilder;
     private final IndexDefinition definition;
     private LockFactory lockFactory;
     private final boolean readOnly;
@@ -100,12 +104,12 @@ public class OakDirectory extends Directory {
     public OakDirectory(NodeBuilder builder, String dataNodeName, IndexDefinition definition, boolean readOnly) {
         this.lockFactory = NoLockFactory.getNoLockFactory();
         this.builder = builder;
-        this.directoryBuilder = readOnly ? builder.getChildNode(dataNodeName) : builder.child(dataNodeName);
+        this.oakDirectoryBuilder = readOnly ? builder.getChildNode(dataNodeName) : builder.child(dataNodeName);
         this.definition = definition;
         this.readOnly = readOnly;
         long start = PERF_LOGGER.start();
         this.indexName = definition.getIndexName();
-        this.listing = new GenerationalDirectoryListing(definition, builder, readOnly, indexName);
+        this.listing = new GenerationalDirectoryListing(builder, definition, oakDirectoryBuilder, readOnly, indexName);
         PERF_LOGGER.end(start, 100, "Directory listing performed. Total {} files", listing.listAll().length);
         this.activeDeleteEnabled = definition.getActiveDeleteEnabled();
     }
@@ -126,7 +130,7 @@ public class OakDirectory extends Directory {
         String storageName = listing.getStorageName(name);
         if (listing.remove(name)) {
             // TODO: make remove control if the data is removed, trashed or left alone.
-            NodeBuilder f = directoryBuilder.getChildNode(storageName);
+            NodeBuilder f = oakDirectoryBuilder.getChildNode(storageName);
             if (activeDeleteEnabled) {
                 PropertyState property = f.getProperty(JCR_DATA);
                 ArrayList<Blob> data;
@@ -156,7 +160,7 @@ public class OakDirectory extends Directory {
     public long fileLength(String name) throws IOException {
         String storageName = listing.getStorageName(name);
 
-        NodeBuilder file = directoryBuilder.getChildNode(storageName);
+        NodeBuilder file = oakDirectoryBuilder.getChildNode(storageName);
         OakIndexInput input = new OakIndexInput(storageName, file, indexName);
         try {
             return input.length();
@@ -171,15 +175,15 @@ public class OakDirectory extends Directory {
         checkArgument(!readOnly, "Read only directory");
         String storageName = listing.getStorageName(name);
         NodeBuilder file;
-        if (!directoryBuilder.hasChildNode(storageName)) {
-            file = directoryBuilder.child(storageName);
+        if (!oakDirectoryBuilder.hasChildNode(storageName)) {
+            file = oakDirectoryBuilder.child(storageName);
             byte[] uniqueKey = new byte[UNIQUE_KEY_SIZE];
             secureRandom.nextBytes(uniqueKey);
             String key = StringUtils.convertBytesToHex(uniqueKey);
             file.setProperty(PROP_UNIQUE_KEY, key);
             file.setProperty(PROP_BLOB_SIZE, definition.getBlobSize());
         } else {
-            file = directoryBuilder.child(storageName);
+            file = oakDirectoryBuilder.child(storageName);
         }
         listing.add(name);
         return new OakIndexOutput(storageName, file, indexName);
@@ -190,7 +194,7 @@ public class OakDirectory extends Directory {
     public IndexInput openInput(String name, IOContext context)
             throws IOException {
         String storageName = listing.getStorageName(name);
-        NodeBuilder file = directoryBuilder.getChildNode(storageName);
+        NodeBuilder file = oakDirectoryBuilder.getChildNode(storageName);
         if (file.exists()) {
             return new OakIndexInput(storageName, file, indexName);
         } else {
@@ -629,7 +633,7 @@ public class OakDirectory extends Directory {
 
         @Override
         public void writeByte(byte b) throws IOException {
-            writeBytes(new byte[]{b}, 0, 1);
+            writeBytes(new byte[]{ b }, 0, 1);
         }
 
         @Override
@@ -659,6 +663,8 @@ public class OakDirectory extends Directory {
      * Maintains an DirectoryListing of an OakDirectory.
      */
     public interface DirectoryListing {
+
+
         /**
          * List all files in the directory.
          * @return
@@ -700,13 +706,13 @@ public class OakDirectory extends Directory {
 
     private static class SimpleDirectoryListing implements DirectoryListing {
 
-        private Set<String> fileNames = Sets.newConcurrentHashSet();
-        private NodeBuilder directoryBuilder;
-        private IndexDefinition definition;
+        private final Set<String> fileNames = Sets.newConcurrentHashSet();
+        private final NodeBuilder directoryBuilder;
+        private final IndexDefinition definition;
 
         private SimpleDirectoryListing(@Nonnull IndexDefinition definition, @Nonnull NodeBuilder builder) {
             this.definition = definition;
-            this.directoryBuilder = builder.child(INDEX_DATA_CHILD_NAME);
+            this.directoryBuilder = getOrCreateChild(builder, INDEX_DATA_CHILD_NAME);
             this.fileNames.addAll(getListing());
         }
 
@@ -775,6 +781,15 @@ public class OakDirectory extends Directory {
     }
 
 
+    @Nullable
+    private static NodeBuilder getOrCreateChild(@Nonnull NodeBuilder builder, @Nonnull String name) {
+        try {
+            return builder.child(name);
+        } catch ( UnsupportedOperationException e) {
+            return builder.getChildNode(name);
+        }
+    }
+
 
     /**
      * Implements a simple generational list of the lucene directory, loading the last valid
@@ -792,26 +807,27 @@ public class OakDirectory extends Directory {
         // the buidler containing lucene files.
         private final NodeBuilder directoryBuilder;
         // the parent builder
-        private final NodeBuilder builder;
+        private final NodeBuilder parentBuilder;
         private final NodeBuilder listingBuilder;
         private final boolean readOnly;
-        private Map<String, IndexFileMetadata> listOfFiles = Maps.newConcurrentMap();
-        private long generation;
-        private String indexName;
+        private final Map<String, IndexFileMetadata> listOfFiles = Maps.newConcurrentMap();
+        private final long generation;
+        private final String indexName;
 
-        private GenerationalDirectoryListing(@Nonnull IndexDefinition definition, @Nonnull NodeBuilder builder, boolean readOnly, String indexName) {
+        private GenerationalDirectoryListing(@Nonnull NodeBuilder parentBuilder, @Nonnull IndexDefinition definition,   @Nonnull NodeBuilder directoryBuilder, boolean readOnly, String indexName) {
             this.indexName = indexName;
             this.generation = System.currentTimeMillis();
             this.readOnly = readOnly;
             this.definition = definition;
-            this.builder = builder;
-            this.directoryBuilder = builder.child(INDEX_DATA_CHILD_NAME);
-
-            this.listingBuilder = builder.child(DIRECTORY_LISTING_CONTAINER);
+            this.parentBuilder = parentBuilder;
+            this.directoryBuilder = directoryBuilder;
+            this.listingBuilder = getOrCreateChild(directoryBuilder, DIRECTORY_LISTING_CONTAINER);
             if(load()) {
                 save();
             }
         }
+
+
 
         @Override
         @Nonnull
@@ -842,8 +858,15 @@ public class OakDirectory extends Directory {
          */
         @Override
         public void add(@Nonnull String name) {
-            listOfFiles.put(name, getIndexFileMetaData(name, getStorageName(name)));
-            LOGGER.debug("Added " + name + " to list");
+            String storageName = getStorageName(name);
+            IndexFileMetadata indexFileMetadata = getIndexFileMetaData(name, storageName);
+            if ( indexFileMetadata != null && name != null) {
+                listOfFiles.put(name, indexFileMetadata);
+                LOGGER.debug("Added " + name + " to list");
+            } else {
+                LOGGER.error("IndexFileMetadata [{}] or index name [{}] was null, cant add to list of files, storage at [{}]  ",new Object[]{indexFileMetadata, name, storageName});
+                throw new IllegalArgumentException("Invalid Name or medatata being added to index "+name+" storage "+storageName);
+            }
         }
 
 
@@ -914,7 +937,7 @@ public class OakDirectory extends Directory {
             boolean save = false;
             int loaded = -1;
             Set<String> toRemove = Sets.newHashSet();
-            LOGGER.debug("Ordered Listing files (evaluated in reverse order) {} {} ", builder, childNodes);
+            LOGGER.debug("Ordered Listing files (evaluated in reverse order) {} {} ", parentBuilder, childNodes);
             for (int i = childNodes.size()-1; i >= 0; i--) {
                 String dirName = childNodes.get(i);
                 if (dirName.startsWith(DIRECTORY_LISTING_PREFIX)) {
@@ -922,7 +945,7 @@ public class OakDirectory extends Directory {
                     if (loaded < 0) {
                         Map<String, IndexFileMetadata> validatedList = validateListing(listingBuilder.getChildNode(dirName));
                         if (validatedList != null) {
-                            LOGGER.info("Accepted directory listing for {} using {} ", builder, dirName);
+                            LOGGER.info("Accepted directory listing for {} using {} ", parentBuilder, dirName);
                             listOfFiles.clear();
                             listOfFiles.putAll(validatedList);
                             loaded = i;
@@ -1026,6 +1049,7 @@ public class OakDirectory extends Directory {
                     throw new RuntimeException("JDK Doesnt have SHA1 support");
                 }
             }
+
             return null;
         }
 
