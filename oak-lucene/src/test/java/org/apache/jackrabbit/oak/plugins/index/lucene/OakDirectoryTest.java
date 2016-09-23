@@ -40,10 +40,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
+import com.google.common.collect.ImmutableSet;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.io.input.NullInputStream;
 import org.apache.jackrabbit.oak.api.Blob;
@@ -65,6 +68,7 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.InputStreamDataInput;
+import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -134,6 +138,22 @@ public class OakDirectoryTest {
 
     @Test
     public void saveListing() throws Exception{
+        builder.setProperty(LuceneIndexConstants.SAVE_DIR_LISTING, true);
+        Directory dir = createDir(builder, false);
+        Set<String> fileNames = newHashSet();
+        for (int i = 0; i < 10; i++) {
+            String fileName = "foo" + i;
+            createFile(dir, fileName);
+            fileNames.add(fileName);
+        }
+        dir.close();
+
+        dir = createDir(builder, true);
+        assertEquals(fileNames, newHashSet(dir.listAll()));
+    }
+
+    @Test
+    public void saveListingThenCorrupt() throws Exception{
         builder.setProperty(LuceneIndexConstants.SAVE_DIR_LISTING, true);
         Directory dir = createDir(builder, false);
         Set<String> fileNames = newHashSet();
@@ -400,6 +420,7 @@ public class OakDirectoryTest {
 
         blobStore.reset();
 
+
         IndexOutput o3 = dir.createOutput("test3.txt", IOContext.DEFAULT);
         o3.writeBytes(randomBytes(minFileSize), minFileSize);
 
@@ -411,6 +432,205 @@ public class OakDirectoryTest {
             assertThat(e.getMessage(), containsString(indexPath));
             assertThat(e.getMessage(), containsString("test3.txt"));
         }
+
+        store.close();
+    }
+
+    /**
+     * This test test for the behaviour of the OakDirectory in the event of the underlying system loosing files for
+     * whatever reason. When the directory is incomplete, it should fall back to a previous generation of the directory
+     * and when that generation is closed it should make that generation the current last generation allowing the index to roll
+     * forwards without interuption. The test does this by creating an unreliable blobstore that can loose data. The test
+     * creates 3 generations with 3 files in each generation so that the first generation has 3 files, the second has 6 and
+     * the last has 9. It then checks that the directory opens with 9, then looses all of the last set, and reopens, checking for
+     * the correct 6 files. It then recovers the files and reopens, which should result in 6 files as the previous close will have
+     * save the generation. Finally it looses a file from the second generation, reopens and checks that the first generation
+     * was opened.  This test does not test the behavour when a file becomes damaged.
+     * @throws Exception
+     */
+    @Test
+    public void looseFiles() throws Exception{
+        UnreliableBlobStore blobStore = new UnreliableBlobStore();
+        FileStore store = FileStore.builder(tempFolder.getRoot())
+                .withMemoryMapping(false)
+                .withBlobStore(blobStore)
+                .build();
+        SegmentNodeStore nodeStore = SegmentNodeStore.builder(store).build();
+
+        String indexPath = "/foo/bar";
+
+        int minFileSize = Segment.MEDIUM_LIMIT;
+        int blobSize = minFileSize + 1000;
+
+        builder = nodeStore.getRoot().builder();
+        builder.setProperty(IndexConstants.INDEX_PATH, indexPath);
+        builder.setProperty(LuceneIndexConstants.BLOB_SIZE, blobSize);
+        // write the dir three times adding three files each time
+        String[] blobIds = new String[9];
+        for ( int i = 0; i < 3; i++ ) {
+            Directory dir = createDir(builder, false);
+            for ( int j = 0; j < 3; j++ ) {
+                IndexOutput o = dir.createOutput("test_" + i + "_" + j + ".txt", IOContext.DEFAULT);
+                o.writeBytes(randomBytes(blobSize + 10), blobSize + 10);
+                o.flush();
+                blobIds[i*3+j] = blobStore.getLastBlob();
+            }
+            dir.close();
+        }
+        // this should find all files as none have been damaged, all 9 files should be found.
+        Directory dir = createDir(builder, false);
+        Set<String> files = ImmutableSet.copyOf(dir.listAll());
+        dir.close();
+        Assert.assertEquals(9, files.size());
+        for ( int i = 0; i < 3; i++ ) {
+            for ( int j = 0; j < 3; j++ ) {
+                Assert.assertTrue(files.contains("test_" + i + "_" + j + ".txt"));
+            }
+        }
+        // Damage Loose all the last set of files.
+        for (int i = 6; i < 9; i++) {
+            blobStore.damageBlob(blobIds[i], UnreliableBlobStore.LOOSE);
+        }
+        dir = createDir(builder, false);
+        files = ImmutableSet.copyOf(dir.listAll());
+        dir.close();
+        Assert.assertEquals(6, files.size());
+        for ( int i = 0; i < 2; i++ ) {
+            for ( int j = 0; j < 3; j++ ) {
+                Assert.assertTrue(files.contains("test_" + i + "_" + j + ".txt"));
+            }
+        }
+        dir.close();
+        blobStore.recoverAll();
+        // Even though all were recovered, the close saved the last state so we should find 6 again.
+        dir = createDir(builder, false);
+        files = ImmutableSet.copyOf(dir.listAll());
+        dir.close();
+        Assert.assertEquals(6, files.size());
+        for ( int i = 0; i < 2; i++ ) {
+            for ( int j = 0; j < 3; j++ ) {
+                Assert.assertTrue(files.contains("test_" + i + "_" + j + ".txt"));
+            }
+        }
+        // damage just one, the whole set should fail.
+        blobStore.damageBlob(blobIds[7], UnreliableBlobStore.LOOSE);
+        dir = createDir(builder, false);
+        files = ImmutableSet.copyOf(dir.listAll());
+        dir.close();
+        Assert.assertEquals(6, files.size());
+        for ( int i = 0; i < 2; i++ ) {
+            for ( int j = 0; j < 3; j++ ) {
+                Assert.assertTrue(files.contains("test_" + i + "_" + j + ".txt"));
+            }
+        }
+        dir.close();
+        // damage just one, the whole set should fail, so only the first set is available.
+        blobStore.damageBlob(blobIds[5], UnreliableBlobStore.LOOSE);
+        dir = createDir(builder, false);
+        files = ImmutableSet.copyOf(dir.listAll());
+        dir.close();
+        Assert.assertEquals(3, files.size());
+        for ( int j = 0; j < 3; j++ ) {
+            Assert.assertTrue(files.contains("test_0_" + j + ".txt"));
+        }
+        dir.close();
+
+
+
+
+        store.close();
+    }
+
+    /** does the same as looseFiles, but damaages the content of the files. */
+    @Test
+    public void damageFiles() throws Exception{
+        UnreliableBlobStore blobStore = new UnreliableBlobStore();
+        FileStore store = FileStore.builder(tempFolder.getRoot())
+                .withMemoryMapping(false)
+                .withBlobStore(blobStore)
+                .build();
+        SegmentNodeStore nodeStore = SegmentNodeStore.builder(store).build();
+
+        String indexPath = "/foo/bar";
+
+        int minFileSize = Segment.MEDIUM_LIMIT;
+        int blobSize = minFileSize + 1000;
+
+        builder = nodeStore.getRoot().builder();
+        builder.setProperty(IndexConstants.INDEX_PATH, indexPath);
+        builder.setProperty(LuceneIndexConstants.BLOB_SIZE, blobSize);
+        // write the dir three times adding three files each time
+        String[] blobIds = new String[9];
+        for ( int i = 0; i < 3; i++ ) {
+            Directory dir = createDir(builder, false);
+            for ( int j = 0; j < 3; j++ ) {
+                IndexOutput o = dir.createOutput("test_" + i + "_" + j + ".txt", IOContext.DEFAULT);
+                o.writeBytes(randomBytes(blobSize + 10), blobSize + 10);
+                o.flush();
+                blobIds[i*3+j] = blobStore.getLastBlob();
+            }
+            dir.close();
+        }
+        // this should find all files as none have been damaged, all 9 files should be found.
+        Directory dir = createDir(builder, false);
+        Set<String> files = ImmutableSet.copyOf(dir.listAll());
+        dir.close();
+        Assert.assertEquals(9, files.size());
+        for ( int i = 0; i < 3; i++ ) {
+            for ( int j = 0; j < 3; j++ ) {
+                Assert.assertTrue(files.contains("test_" + i + "_" + j + ".txt"));
+            }
+        }
+        // Damage Loose all the last set of files.
+        for (int i = 6; i < 9; i++) {
+            blobStore.damageBlob(blobIds[i], UnreliableBlobStore.DAMAGE);
+        }
+        dir = createDir(builder, false);
+        files = ImmutableSet.copyOf(dir.listAll());
+        dir.close();
+        Assert.assertEquals(6, files.size());
+        for ( int i = 0; i < 2; i++ ) {
+            for ( int j = 0; j < 3; j++ ) {
+                Assert.assertTrue(files.contains("test_" + i + "_" + j + ".txt"));
+            }
+        }
+        dir.close();
+        blobStore.recoverAll();
+        // Even though all were recovered, the close saved the last state so we should find 6 again.
+        dir = createDir(builder, false);
+        files = ImmutableSet.copyOf(dir.listAll());
+        dir.close();
+        Assert.assertEquals(6, files.size());
+        for ( int i = 0; i < 2; i++ ) {
+            for ( int j = 0; j < 3; j++ ) {
+                Assert.assertTrue(files.contains("test_" + i + "_" + j + ".txt"));
+            }
+        }
+        // damage just one, the whole set should fail.
+        blobStore.damageBlob(blobIds[7], UnreliableBlobStore.DAMAGE);
+        dir = createDir(builder, false);
+        files = ImmutableSet.copyOf(dir.listAll());
+        dir.close();
+        Assert.assertEquals(6, files.size());
+        for ( int i = 0; i < 2; i++ ) {
+            for ( int j = 0; j < 3; j++ ) {
+                Assert.assertTrue(files.contains("test_" + i + "_" + j + ".txt"));
+            }
+        }
+        dir.close();
+        // damage just one, the whole set should fail, so only the first set is available.
+        blobStore.damageBlob(blobIds[5], UnreliableBlobStore.DAMAGE);
+        dir = createDir(builder, false);
+        files = ImmutableSet.copyOf(dir.listAll());
+        dir.close();
+        Assert.assertEquals(3, files.size());
+        for ( int j = 0; j < 3; j++ ) {
+            Assert.assertTrue(files.contains("test_0_" + j + ".txt"));
+        }
+        dir.close();
+
+
+
 
         store.close();
     }
@@ -492,6 +712,60 @@ public class OakDirectoryTest {
 
         public void reset(){
             fail = false;
+        }
+    }
+
+
+    private static class UnreliableBlobStore extends MemoryBlobStore {
+
+
+        private static final String LOOSE = "L";
+        private static final String DAMAGE = "D";
+        private Map<String, String> corruption = new HashMap<String, String>();
+        private String lastBlobId;
+
+        @Override
+        public String writeBlob(InputStream in) throws IOException {
+            lastBlobId = super.writeBlob(in);
+            return lastBlobId;
+        }
+
+        @Override
+        public String writeBlob(String tempFilePath) throws IOException {
+             lastBlobId = super.writeBlob(tempFilePath);
+            return lastBlobId;
+        }
+
+        @Override
+        public int readBlob(String blobId, long pos, byte[] buff, int off, int length) throws IOException {
+            int l = super.readBlob(blobId, pos, buff, off, length);
+            String corruptionType = corruption.get(blobId);
+            if ( LOOSE.equals(corruptionType)) {
+                throw new IOException("Blob was lost "+blobId);
+            } else if ( DAMAGE.equals(corruptionType)) {
+                byte[] damaged = new byte[l];
+                for (int i = 0; i < l; i++) {
+                    buff[i] = (byte)(buff[i]>>0x01);
+                }
+            }
+            return l;
+        }
+        public void repaidBlob(String blobId) {
+            corruption.remove(blobId);
+
+        }
+
+        public void damageBlob(String blobId, String corruptionType) {
+            corruption.put(blobId, corruptionType);
+        }
+
+
+        public String getLastBlob() {
+            return lastBlobId;
+        }
+
+        public void recoverAll() {
+            corruption.clear();
         }
     }
 }
