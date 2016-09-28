@@ -1026,8 +1026,15 @@ public class OakDirectory extends Directory {
         private IndexFileMetadata getIndexFileMetaData(@Nonnull String name, @Nonnull String storageName) {
             if (directoryBuilder.hasChildNode(storageName)) {
                 OakIndexFile inp = new OakIndexFile(name, directoryBuilder.getChildNode(storageName), indexName);
-                // Looking at OakIndexFile it will be quite expensive to generate a checksum due to the block nature, so for the moment
-                // use the unique key.
+                // WARNING: This check is potentially expensive.
+                // Generate a checksum of the file to make certain it is not damaged in any way.
+                // this could be expensive depending on how the input stream is implemented as it requires the file is read.
+                // However, to use the file, it will need to be transferred and read anyway, so assuming the underlying
+                // data store does this efficiently, the overhead is a local IO overhead. For very large indexes, there
+                // may need to be some optimisation here. For instance, the SHA1 is cached in some way that ensures the probability
+                // of opening and using a corrupt index file is acceptably low.
+                // If it is found that this check is too expensive, it could be replaced with a check for the file existence, although
+                // to test that might result in a full transfer anyway.
                 try {
                     MessageDigest sha1 = MessageDigest.getInstance("SHA1");
                     byte[] b = new byte[4096];
@@ -1043,10 +1050,10 @@ public class OakDirectory extends Directory {
                     }
                     return new IndexFileMetadata(name, storageName, inp.length, new String(Hex.encodeHex(sha1.digest())));
                 } catch (IOException e ) {
-                    LOGGER.warn("IO Exception reading index file ",e);
-                    return new IndexFileMetadata(name, storageName, inp.length, "Unable to generate checksum "+e.getMessage());
+                    LOGGER.warn("IO Exception reading index file "+storageName ,e);
+                    return new IndexFileMetadata(name, storageName, inp.length, true, "Unable to generate checksum "+e.getMessage());
                 } catch (NoSuchAlgorithmException e) {
-                    throw new RuntimeException("JDK Doesnt have SHA1 support");
+                    throw new RuntimeException("JDK Doesn't have SHA1 support");
                 }
             }
 
@@ -1106,9 +1113,13 @@ public class OakDirectory extends Directory {
         private final String storageName;
         private final long length;
         private final String checkSum;
+        private final boolean invalid;
+        private final String message;
 
 
         public IndexFileMetadata(@Nonnull String externalForm) {
+            this.invalid = false;
+            this.message = null;
             LOGGER.debug("Directory Entry {} ", externalForm);
             String[] f = externalForm.split(",");
             if (f.length == 4) {
@@ -1121,7 +1132,19 @@ public class OakDirectory extends Directory {
             }
         }
 
+        public IndexFileMetadata(@Nonnull String name, @Nonnull String storageName, long length, boolean invalid, @Nonnull String message) {
+            this.name = name;
+            this.storageName = storageName;
+            this.length = length;
+            this.checkSum = null;
+            this.invalid = true;
+            this.message = message;
+        }
+
         private String toExternalForm() {
+            if (invalid) {
+                throw new IllegalStateException("Cant searialise a IndexFileMetadata item in error state");
+            }
             return name+","+storageName+","+length+","+checkSum;
         }
 
@@ -1131,6 +1154,9 @@ public class OakDirectory extends Directory {
             this.storageName = storageName;
             this.length = length;
             this.checkSum = checkSum;
+            this.invalid = false;
+            this.message = null;
+
         }
 
         /**
@@ -1140,6 +1166,9 @@ public class OakDirectory extends Directory {
          */
         @Override
         public boolean equals(@Nullable Object obj) {
+            if (invalid) {
+                return false;
+            }
             if (obj instanceof IndexFileMetadata) {
                 IndexFileMetadata ifm = (IndexFileMetadata) obj;
                 // the metadata is equal if the name equals and the file is mutable or the checksum and length are equal.
@@ -1167,7 +1196,12 @@ public class OakDirectory extends Directory {
 
         @Override
         public String toString() {
-            return "Name: "+name+", length:"+length+", checksum:"+checkSum;
+            if ( invalid ) {
+                return "Invalid File: Name: "+name+", length:"+length+", message:"+message;
+
+            } else {
+                return "Name: "+name+", length:"+length+", checksum:"+checkSum;
+            }
         }
 
         /**
@@ -1177,6 +1211,9 @@ public class OakDirectory extends Directory {
          */
         @Nonnull
         public String diff(@Nullable IndexFileMetadata otherVersion) {
+            if ( invalid) {
+                return "This version is invalid: "+message;
+            }
             if (otherVersion == null) {
                 return " OakVersion doesnt exist. ";
             }
