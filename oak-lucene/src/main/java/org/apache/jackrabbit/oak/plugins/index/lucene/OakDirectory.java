@@ -109,7 +109,7 @@ public class OakDirectory extends Directory {
         this.readOnly = readOnly;
         long start = PERF_LOGGER.start();
         this.indexName = definition.getIndexName();
-        this.listing = new GenerationalDirectoryListing(builder, definition, oakDirectoryBuilder, readOnly, indexName);
+        this.listing = new GenerationalDirectoryListing(builder, definition, oakDirectoryBuilder, readOnly, true, indexName);
         PERF_LOGGER.end(start, 100, "Directory listing performed. Total {} files", listing.listAll().length);
         this.activeDeleteEnabled = definition.getActiveDeleteEnabled();
     }
@@ -341,9 +341,11 @@ public class OakDirectory extends Directory {
                 this.data = newArrayList();
             }
 
+
             this.length = (long)data.size() * blobSize;
             if (!data.isEmpty()) {
                 Blob last = data.get(data.size() - 1);
+                System.err.println("Index File n Blobs is "+data.size()+" "+last.getClass());
                 this.length -= blobSize - last.length();
                 if (uniqueKey != null) {
                     this.length -= uniqueKey.length;
@@ -366,6 +368,7 @@ public class OakDirectory extends Directory {
         }
 
         private void loadBlob(int i) throws IOException {
+            System.err.println("Loading blob "+i);
             checkElementIndex(i, data.size());
             if (index != i) {
                 flushBlob();
@@ -399,6 +402,20 @@ public class OakDirectory extends Directory {
                 }
                 dataModified = true;
                 blobModified = false;
+            }
+        }
+
+
+        public void checkAllBlobs() throws IOException {
+            // check all the blobs exist and can be resolved by the BlobStore or internally.
+            // It seems that getting the length of each Blob in turn makes a call down to the BlobStore itself.
+            // the calculation for length in the constructor doesn't invoke any blobstore code, at least for the SegmentBlobStore.
+            try {
+                for (Blob b : data) {
+                        long l = b.length();
+                }
+            } catch ( Exception e) {
+                throw new IOException("Missing Blob encountered ",e);
             }
         }
 
@@ -813,8 +830,10 @@ public class OakDirectory extends Directory {
         private final Map<String, IndexFileMetadata> listOfFiles = Maps.newConcurrentMap();
         private final long generation;
         private final String indexName;
+        private boolean noChecksums;
 
-        private GenerationalDirectoryListing(@Nonnull NodeBuilder parentBuilder, @Nonnull IndexDefinition definition,   @Nonnull NodeBuilder directoryBuilder, boolean readOnly, String indexName) {
+        private GenerationalDirectoryListing(@Nonnull NodeBuilder parentBuilder, @Nonnull IndexDefinition definition, @Nonnull NodeBuilder directoryBuilder, boolean readOnly, boolean noChecksums, String indexName) {
+            this.noChecksums = noChecksums;
             this.indexName = indexName;
             this.generation = System.currentTimeMillis();
             this.readOnly = readOnly;
@@ -864,7 +883,7 @@ public class OakDirectory extends Directory {
                 listOfFiles.put(name, indexFileMetadata);
                 LOGGER.debug("Added " + name + " to list");
             } else {
-                LOGGER.error("IndexFileMetadata [{}] or index name [{}] was null, cant add to list of files, storage at [{}]  ",new Object[]{indexFileMetadata, name, storageName});
+                LOGGER.error("IndexFileMetadata [{}] or index name [{}] was null, cant add to list of files, storage at [{}]  ", new Object[]{indexFileMetadata, name, storageName});
                 throw new IllegalArgumentException("Invalid Name or medatata being added to index "+name+" storage "+storageName);
             }
         }
@@ -1026,34 +1045,44 @@ public class OakDirectory extends Directory {
         private IndexFileMetadata getIndexFileMetaData(@Nonnull String name, @Nonnull String storageName) {
             if (directoryBuilder.hasChildNode(storageName)) {
                 OakIndexFile inp = new OakIndexFile(name, directoryBuilder.getChildNode(storageName), indexName);
-                // WARNING: This check is potentially expensive.
-                // Generate a checksum of the file to make certain it is not damaged in any way.
-                // this could be expensive depending on how the input stream is implemented as it requires the file is read.
-                // However, to use the file, it will need to be transferred and read anyway, so assuming the underlying
-                // data store does this efficiently, the overhead is a local IO overhead. For very large indexes, there
-                // may need to be some optimisation here. For instance, the SHA1 is cached in some way that ensures the probability
-                // of opening and using a corrupt index file is acceptably low.
-                // If it is found that this check is too expensive, it could be replaced with a check for the file existence, although
-                // to test that might result in a full transfer anyway.
-                try {
-                    MessageDigest sha1 = MessageDigest.getInstance("SHA1");
-                    byte[] b = new byte[4096];
-                    int i = 0;
-                    for (; i < (inp.length-b.length); i += b.length) {
-                        inp.readBytes(b, 0, b.length);
-                        sha1.update(b, 0, b.length);
+                if (noChecksums) {
+                    try {
+                        inp.checkAllBlobs();
+                        return new IndexFileMetadata(name, storageName, inp.length);
+                    } catch ( IOException e) {
+                        e.printStackTrace();
+                        return new IndexFileMetadata(name, storageName, inp.length, true, "Missing Blobs detected: " + e.getMessage());
                     }
-                    i = (int)(inp.length-i);
-                    if (i > 0) {
-                        inp.readBytes(b, 0, i);
-                        sha1.update(b, 0, i);
+                } else {
+                    // WARNING: This check is potentially expensive.
+                    // Generate a checksum of the file to make certain it is not damaged in any way.
+                    // this could be expensive depending on how the input stream is implemented as it requires the file is read.
+                    // However, to use the file, it will need to be transferred and read anyway, so assuming the underlying
+                    // data store does this efficiently, the overhead is a local IO overhead. For very large indexes, there
+                    // may need to be some optimisation here. For instance, the SHA1 is cached in some way that ensures the probability
+                    // of opening and using a corrupt index file is acceptably low.
+                    // If it is found that this check is too expensive, it could be replaced with a check for the file existence, although
+                    // to test that might result in a full transfer anyway.
+                    try {
+                        MessageDigest sha1 = MessageDigest.getInstance("SHA1");
+                        byte[] b = new byte[4096];
+                        int i = 0;
+                        for (; i < (inp.length - b.length); i += b.length) {
+                            inp.readBytes(b, 0, b.length);
+                            sha1.update(b, 0, b.length);
+                        }
+                        i = (int) (inp.length - i);
+                        if (i > 0) {
+                            inp.readBytes(b, 0, i);
+                            sha1.update(b, 0, i);
+                        }
+                        return new IndexFileMetadata(name, storageName, inp.length, new String(Hex.encodeHex(sha1.digest())));
+                    } catch (IOException e) {
+                        LOGGER.warn("IO Exception reading index file " + storageName, e);
+                        return new IndexFileMetadata(name, storageName, inp.length, true, "Unable to generate checksum " + e.getMessage());
+                    } catch (NoSuchAlgorithmException e) {
+                        throw new RuntimeException("JDK Doesn't have SHA1 support");
                     }
-                    return new IndexFileMetadata(name, storageName, inp.length, new String(Hex.encodeHex(sha1.digest())));
-                } catch (IOException e ) {
-                    LOGGER.warn("IO Exception reading index file "+storageName ,e);
-                    return new IndexFileMetadata(name, storageName, inp.length, true, "Unable to generate checksum "+e.getMessage());
-                } catch (NoSuchAlgorithmException e) {
-                    throw new RuntimeException("JDK Doesn't have SHA1 support");
                 }
             }
 
@@ -1141,6 +1170,15 @@ public class OakDirectory extends Directory {
             this.message = message;
         }
 
+        public IndexFileMetadata(String name, String storageName, long length) {
+            this.name = name;
+            this.storageName = storageName;
+            this.length = length;
+            this.checkSum = "na";
+            this.invalid = false;
+            this.message = null;
+        }
+
         private String toExternalForm() {
             if (invalid) {
                 throw new IllegalStateException("Cant searialise a IndexFileMetadata item in error state");
@@ -1171,6 +1209,9 @@ public class OakDirectory extends Directory {
             }
             if (obj instanceof IndexFileMetadata) {
                 IndexFileMetadata ifm = (IndexFileMetadata) obj;
+                if ( "na".equals(checkSum) || "na".equals(ifm.checkSum) ) {
+                    return name.equals(ifm.name) && (isMutable() || length == ifm.length);
+                }
                 // the metadata is equal if the name equals and the file is mutable or the checksum and length are equal.
                 return name.equals(ifm.name) && (isMutable() || length == ifm.length && checkSum.equals(ifm.checkSum));
             }

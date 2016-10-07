@@ -38,13 +38,7 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
-import java.util.Set;
+import java.util.*;
 
 import com.google.common.collect.ImmutableSet;
 import org.apache.commons.io.IOUtils;
@@ -455,6 +449,7 @@ public class OakDirectoryTest {
                 .withMemoryMapping(false)
                 .withBlobStore(blobStore)
                 .build();
+
         SegmentNodeStore nodeStore = SegmentNodeStore.builder(store).build();
 
         String indexPath = "/foo/bar";
@@ -734,6 +729,36 @@ public class OakDirectoryTest {
         public String writeBlob(String tempFilePath) throws IOException {
              lastBlobId = super.writeBlob(tempFilePath);
             return lastBlobId;
+        }
+
+
+        @Override
+        public long getBlobLength(String blobId) throws IOException {
+            System.err.println("Checking Blob length for "+blobId);
+            String corruptionType = corruption.get(blobId);
+            if ( LOOSE.equals(corruptionType)) {
+                throw new IOException("Blob was lost "+blobId);
+            } else if ( DAMAGE.equals(corruptionType)) {
+                return super.getBlobLength(blobId)+(int)(10240*Math.random());
+            } else {
+                return super.getBlobLength(blobId);
+            }
+        }
+
+        @Override
+        public Iterator<String> resolveChunks(String blobId) throws IOException {
+            System.err.println("Resolving Chunks "+blobId);
+            String corruptionType = corruption.get(blobId);
+            if ( LOOSE.equals(corruptionType)) {
+                throw new IOException("Blob was lost " + blobId);
+            } else if ( DAMAGE.equals(corruptionType)) {
+                Iterator<String> i = super.resolveChunks(blobId);
+                if ( i.hasNext()) {
+                    i.next();
+                }
+                return i;
+            }
+            return super.resolveChunks(blobId);
         }
 
         @Override
