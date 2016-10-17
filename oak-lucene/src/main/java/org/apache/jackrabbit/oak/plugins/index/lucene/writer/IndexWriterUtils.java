@@ -44,6 +44,8 @@ import static org.apache.lucene.store.NoLockFactory.getNoLockFactory;
 
 public class IndexWriterUtils {
 
+    private static final int MAX_GENERATIONS = 10;
+
     public static IndexWriterConfig getIndexWriterConfig(IndexDefinition definition, boolean remoteDir) {
         // FIXME: Hack needed to make Lucene work in an OSGi environment
         Thread thread = Thread.currentThread();
@@ -64,6 +66,7 @@ public class IndexWriterUtils {
             if (definition.getCodec() != null) {
                 config.setCodec(definition.getCodec());
             }
+            config.setIndexDeletionPolicy(new DelayedIndexDeletionPolicy(MAX_GENERATIONS));
             return config;
         } finally {
             thread.setContextClassLoader(loader);
