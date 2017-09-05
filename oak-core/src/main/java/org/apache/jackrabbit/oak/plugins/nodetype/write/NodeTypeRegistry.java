@@ -39,7 +39,7 @@ import static org.apache.jackrabbit.oak.plugins.nodetype.NodeTypeConstants.NODE_
 
 /**
  * {@code BuiltInNodeTypes} is a utility class that registers the built-in
- * node types required for a JCR repository running on Oak.
+ * node customtypes required for a JCR repository running on Oak.
  */
 public final class NodeTypeRegistry {
 
@@ -78,7 +78,7 @@ public final class NodeTypeRegistry {
      * Register the node type definitions contained in the specified {@code input}
      * using the given {@link Root}.
      *
-     * @param root The {@code Root} to register the node types.
+     * @param root The {@code Root} to register the node customtypes.
      * @param input The input stream containing the node type defintions to be registered.
      * @param systemId An informative id of the given input.
      */

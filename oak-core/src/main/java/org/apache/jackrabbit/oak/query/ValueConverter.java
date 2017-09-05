@@ -108,7 +108,7 @@ public class ValueConverter {
             case PropertyType.DECIMAL:
                 return PropertyValues.newDecimal(value.getValue(Type.DECIMAL));
         }
-        // for other types, the value is first converted to a string
+        // for other customtypes, the value is first converted to a string
         String v = value.getValue(Type.STRING);
         switch (targetType) {
             case PropertyType.STRING:

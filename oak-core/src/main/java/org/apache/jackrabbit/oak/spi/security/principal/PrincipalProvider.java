@@ -82,7 +82,7 @@ public interface PrincipalProvider {
      * Find the principals that match the specified nameHint and search type.
      *
      * @param nameHint A name hint to use for non-exact matching.
-     * @param searchType Limit the search to certain types of principals. Valid
+     * @param searchType Limit the search to certain customtypes of principals. Valid
      * values are any of
      * <ul><li>{@link org.apache.jackrabbit.api.security.principal.PrincipalManager#SEARCH_TYPE_ALL}</li></ul>
      * <ul><li>{@link org.apache.jackrabbit.api.security.principal.PrincipalManager#SEARCH_TYPE_NOT_GROUP}</li></ul>
@@ -96,7 +96,7 @@ public interface PrincipalProvider {
     /**
      * Find all principals that match the search type.
      *
-     * @param searchType Limit the search to certain types of principals. Valid
+     * @param searchType Limit the search to certain customtypes of principals. Valid
      * values are any of
      * <ul><li>{@link org.apache.jackrabbit.api.security.principal.PrincipalManager#SEARCH_TYPE_ALL}</li></ul>
      * <ul><li>{@link org.apache.jackrabbit.api.security.principal.PrincipalManager#SEARCH_TYPE_NOT_GROUP}</li></ul>

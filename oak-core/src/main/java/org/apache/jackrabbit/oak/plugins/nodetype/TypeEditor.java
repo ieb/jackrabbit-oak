@@ -282,7 +282,7 @@ class TypeEditor extends DefaultEditor {
             list.add(type);
         }
 
-        // mixin types
+        // mixin customtypes
         for (String mixin : mixins) {
             type = types.getChildNode(mixin);
             if (!type.exists()) {

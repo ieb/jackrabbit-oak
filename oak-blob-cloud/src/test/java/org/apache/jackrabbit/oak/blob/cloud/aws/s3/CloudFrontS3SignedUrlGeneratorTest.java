@@ -20,14 +20,8 @@
 
 package org.apache.jackrabbit.oak.blob.cloud.aws.s3;
 
-import org.apache.jackrabbit.oak.api.Blob;
-import org.apache.jackrabbit.oak.plugins.value.OakValue;
-import org.apache.jackrabbit.oak.spi.adapter.AdapterManager;
 import org.junit.Assert;
 import org.junit.Test;
-import org.mockito.Mock;
-import org.mockito.Mockito;
-import org.mockito.MockitoAnnotations;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,11 +29,12 @@ import javax.jcr.RepositoryException;
 import java.net.URI;
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
+import java.util.Properties;
 
 /**
  * Tests Signing URLS with a 1024 key and a 4096 key.
  */
-public class CloudFrontS3SignedUrlAdapterFactoryTest {
+public class CloudFrontS3SignedUrlGeneratorTest {
 
 
     /**
@@ -121,50 +116,40 @@ public class CloudFrontS3SignedUrlAdapterFactoryTest {
         "QByVjsFDed4Te13qthgFthy6iGyk1JZFu9lCnAaiAdg4AA0OyF9FxFUzCsOGD1HS\n" +
         "GoRuVX4I/AZR74Sx \n" +
         "-----END PRIVATE KEY-----";
-    private static final Logger LOGGER = LoggerFactory.getLogger(CloudFrontS3SignedUrlAdapterFactoryTest.class);
-    @Mock
-    private OakValue value;
-    @Mock
-    private Blob blob;
+    private static final Logger LOGGER = LoggerFactory.getLogger(CloudFrontS3SignedUrlGeneratorTest.class);
 
-    public CloudFrontS3SignedUrlAdapterFactoryTest() {
-        MockitoAnnotations.initMocks(this);
-    }
 
     @Test
     public void testSignedURL() throws InvalidKeySpecException, NoSuchAlgorithmException, RepositoryException {
         long t2 = System.currentTimeMillis();
-        CloudFrontS3SignedUrlAdapterFactory adapterFactory1024 = new CloudFrontS3SignedUrlAdapterFactory(
-                "http://applicationA1.cloudfront.net/",
-                60,
-                PRIVATE_KEY_1024,
-        "123");
+        Properties p = new Properties();
+        p.put(CloudFrontS3SignedUrlGenerator.CLOUD_FRONT_URL, "http://applicationA1.cloudfront.net/");
+        p.put(CloudFrontS3SignedUrlGenerator.TTL, "60");
+        p.put(CloudFrontS3SignedUrlGenerator.PRIVATE_KEY, PRIVATE_KEY_1024);
+        p.put(CloudFrontS3SignedUrlGenerator.KEY_PAIR_ID, "123");
+        CloudFrontS3SignedUrlGenerator generator1024 = new CloudFrontS3SignedUrlGenerator(p);
         LOGGER.info("Loaded 1024 private key in {} ms "+(System.currentTimeMillis()-t2));
 
         long t = System.currentTimeMillis();
-        CloudFrontS3SignedUrlAdapterFactory adapterFactory4096 = new CloudFrontS3SignedUrlAdapterFactory(
-                "http://applicationA1.cloudfront.net/",
-                60,
-                PRIVATE_KEY_4096,
-                "PRIVATE_KEY_4096");
+        Properties p2 = new Properties();
+        p2.put(CloudFrontS3SignedUrlGenerator.CLOUD_FRONT_URL, "http://applicationA2.cloudfront.net/");
+        p2.put(CloudFrontS3SignedUrlGenerator.TTL, "60");
+        p2.put(CloudFrontS3SignedUrlGenerator.PRIVATE_KEY, PRIVATE_KEY_4096);
+        p2.put(CloudFrontS3SignedUrlGenerator.KEY_PAIR_ID, "PRIVATE_KEY_4096");
+
+        CloudFrontS3SignedUrlGenerator generator4096 = new CloudFrontS3SignedUrlGenerator(p2);
         LOGGER.info("Loaded 4096 private key in {} ms "+(System.currentTimeMillis()-t));
 
 
-        Assert.assertArrayEquals(new String[]{URI.class.getName()}, adapterFactory4096.getTargetClasses());
-        Assert.assertNull(adapterFactory4096.adaptTo("shouldConvertToNull", String.class));
-        Assert.assertNull(adapterFactory4096.adaptTo("shouldConvertToNull", URI.class));
+
 
         t = System.currentTimeMillis();
-        Mockito.when(value.getBlob()).thenReturn(blob);
-        Mockito.when(blob.getContentIdentity()).thenReturn("1234567891ABCDEFGH");
-        URI u = adapterFactory4096.adaptTo(value, URI.class);
+        URI u = generator4096.getCloudFrontURI("asasasas");
         Assert.assertNotNull(u);
         LOGGER.info("Signed with 4096 key in {} ms ",(System.currentTimeMillis()-t));
 
         t = System.currentTimeMillis();
-        Mockito.when(value.getBlob()).thenReturn(blob);
-        Mockito.when(blob.getContentIdentity()).thenReturn("1234567891ABCDEFGH");
-        u = adapterFactory1024.adaptTo(value, URI.class);
+        u = generator1024.getCloudFrontURI("asasasas");
         Assert.assertNotNull(u);
         LOGGER.info("Signed with 1024 key in {} ms ",(System.currentTimeMillis()-t));
 

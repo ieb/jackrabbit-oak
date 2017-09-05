@@ -114,13 +114,13 @@ class TypeRegistration extends DefaultNodeStateDiff {
     }
 
     /**
-     * Returns the names of all node types that may have been modified
+     * Returns the names of all node customtypes that may have been modified
      * in backwards-incompatible ways (including being removed entirely),
      * and thus need to be re-evaluated across the entire content tree.
      * The names of potentially affected subtypes are also included.
      *
      * @param beforeTypes the type registry before the changes
-     * @return names of modified or removed node types
+     * @return names of modified or removed node customtypes
      */
     Set<String> getModifiedTypes(NodeState beforeTypes) {
         Set<String> types = newHashSet();

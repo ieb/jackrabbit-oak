@@ -14,33 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+@Version("1.0.0")
+package org.apache.jackrabbit.oak.api.conversion.customtypes;
 
-package org.apache.jackrabbit.oak.spi.adapter;
-
-/**
- * Concept borrowed from Sling.
- * Modules that want to provide object conversions should implement this class and register it with the AdapterManager.
- */
-public interface AdapterFactory  {
-
-    /**
-     * Adapt from source to an instance of targetClass or return null.
-     * @param source
-     * @param targetClass
-     * @param <T>
-     * @return
-     */
-    <T> T adaptTo(Object source, Class<T> targetClass);
-
-    /**
-     * If this were pure OSGi these would be OSGi properties.
-     * @return
-     */
-    String[] getTargetClasses();
-
-    /**
-     *
-     * @return the priority of this adapter factory. low = 0, high = 10000s.
-     */
-    int getPriority();
-}
+import org.osgi.annotation.versioning.Version;

@@ -48,7 +48,7 @@ public abstract class JoinConditionImpl extends AstElement {
     
     /**
      * Apply the condition to the filter, further restricting the filter if
-     * possible. This may also verify the data types are compatible, and that
+     * possible. This may also verify the data customtypes are compatible, and that
      * paths are valid.
      * 
      * @param f the filter

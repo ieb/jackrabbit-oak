@@ -42,7 +42,7 @@ import org.apache.jackrabbit.oak.plugins.nodetype.ReadOnlyNodeTypeManager;
 
 /**
  * {@code ReadWriteNodeTypeManager} extends the {@link ReadOnlyNodeTypeManager}
- * with support for operations that modify node types.
+ * with support for operations that modify node customtypes.
  * <ul>
  * <li>{@link #registerNodeType(NodeTypeDefinition, boolean)}</li>
  * <li>{@link #registerNodeTypes(NodeTypeDefinition[], boolean)}</li>
@@ -55,9 +55,9 @@ import org.apache.jackrabbit.oak.plugins.nodetype.ReadOnlyNodeTypeManager;
  * changes visible.
  * <p>
  * Subclass responsibility is to provide an implementation of
- * {@link #getTypes()} for read only access to the tree where node types are
+ * {@link #getTypes()} for read only access to the tree where node customtypes are
  * stored in content and {@link #getWriteRoot()} for write access to the
- * repository in order to modify node types stored in content. A subclass may
+ * repository in order to modify node customtypes stored in content. A subclass may
  * also want to override the default implementation of
  * {@link ReadOnlyNodeTypeManager} for the following methods:
  * <ul>
@@ -152,7 +152,7 @@ public abstract class ReadWriteNodeTypeManager extends ReadOnlyNodeTypeManager {
             }
             return new NodeTypeIteratorAdapter(types);
         } catch (CommitFailedException e) {
-            String message = "Failed to register node types.";
+            String message = "Failed to register node customtypes.";
             throw e.asRepositoryException(message);
         }
     }
@@ -192,7 +192,7 @@ public abstract class ReadWriteNodeTypeManager extends ReadOnlyNodeTypeManager {
         Root root = getWriteRoot();
         Tree types = root.getTree(NODE_TYPES_PATH);
         if (!types.exists()) {
-            throw new NoSuchNodeTypeException("Node types can not be unregistered.");
+            throw new NoSuchNodeTypeException("Node customtypes can not be unregistered.");
         }
 
         try {
@@ -206,7 +206,7 @@ public abstract class ReadWriteNodeTypeManager extends ReadOnlyNodeTypeManager {
             root.commit();
             refresh();
         } catch (CommitFailedException e) {
-            String message = "Failed to unregister node types.";
+            String message = "Failed to unregister node customtypes.";
             throw e.asRepositoryException(message);
         }
     }

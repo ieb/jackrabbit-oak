@@ -41,7 +41,7 @@ public class NodeInfo {
     private final String primaryTypeName;
 
     /**
-     * Names of the mixin types of the node being imported.
+     * Names of the mixin customtypes of the node being imported.
      */
     private final Iterable<String> mixinTypeNames;
 
@@ -55,7 +55,7 @@ public class NodeInfo {
      *
      * @param name name of the node being imported
      * @param primaryTypeName name of the primary type of the node being imported
-     * @param mixinTypeNames names of the mixin types of the node being imported
+     * @param mixinTypeNames names of the mixin customtypes of the node being imported
      * @param uuid uuid of the node being imported
      */
     public NodeInfo(String name, String primaryTypeName, Iterable<String> mixinTypeNames,
@@ -85,7 +85,7 @@ public class NodeInfo {
     }
 
     /**
-     * Returns the names of the mixin types of the node being imported.
+     * Returns the names of the mixin customtypes of the node being imported.
      *
      * @return mixin type names
      */

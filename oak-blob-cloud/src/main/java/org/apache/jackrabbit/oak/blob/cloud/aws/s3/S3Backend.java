@@ -20,6 +20,7 @@ package org.apache.jackrabbit.oak.blob.cloud.aws.s3;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -51,9 +52,12 @@ import org.apache.jackrabbit.core.data.DataIdentifier;
 import org.apache.jackrabbit.core.data.DataRecord;
 import org.apache.jackrabbit.core.data.DataStoreException;
 import org.apache.jackrabbit.core.data.util.NamedThreadFactory;
+import org.apache.jackrabbit.oak.api.Blob;
+import org.apache.jackrabbit.oak.api.conversion.customtypes.PrivateURI;
 import org.apache.jackrabbit.oak.blob.cloud.s3.S3Constants;
 import org.apache.jackrabbit.oak.blob.cloud.s3.S3RequestDecorator;
 import org.apache.jackrabbit.oak.blob.cloud.s3.Utils;
+import org.apache.jackrabbit.oak.spi.blob.WithURISupport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -83,7 +87,7 @@ import static java.lang.Thread.currentThread;
 /**
  * A data store backend that stores data on Amazon S3.
  */
-public class S3Backend implements SharedS3Backend {
+public class S3Backend implements SharedS3Backend, WithURISupport {
 
     /**
      * Logger instance.
@@ -108,6 +112,7 @@ public class S3Backend implements SharedS3Backend {
 
     private ThreadPoolExecutor asyncWriteExecuter;
     private S3RequestDecorator s3ReqDecorator;
+    private CloudFrontS3SignedUrlGenerator cloudFrontS3SignedUrlGenerator;
 
     /**
      * Initialize S3Backend. It creates AmazonS3Client and TransferManager from
@@ -230,6 +235,14 @@ public class S3Backend implements SharedS3Backend {
             if (contextClassLoader != null) {
                 Thread.currentThread().setContextClassLoader(contextClassLoader);
             }
+        }
+
+
+        try {
+            cloudFrontS3SignedUrlGenerator = new CloudFrontS3SignedUrlGenerator(prop);
+        } catch ( Exception ex) {
+            LOG.info("CloudFront Signed urls not configured.");
+            LOG.debug("Cause "+ex.getMessage(), ex);
         }
     }
 
@@ -772,6 +785,7 @@ public class S3Backend implements SharedS3Backend {
         }
     }
 
+
     /**
      * Returns an iterator over the S3 objects
      * @param <T>
@@ -1112,6 +1126,12 @@ public class S3Backend implements SharedS3Backend {
     }
 
     /**
+     * Get key from data identifier. Object is stored with key in S3.
+     */
+    private static String getKeyName(String contentIdentifier) {
+        return contentIdentifier.substring(0, 4) + Utils.DASH + contentIdentifier.substring(4);
+    }
+    /**
      * Get data identifier from key.
      */
     private static String getIdentifierName(String key) {
@@ -1121,6 +1141,22 @@ public class S3Backend implements SharedS3Backend {
             return key;
         }
         return key.substring(0, 4) + key.substring(5);
+    }
+
+
+    // WithURISupport implementation.
+    @Override
+    public URI getURI(Blob blob) {
+        if ( cloudFrontS3SignedUrlGenerator != null) {
+            return cloudFrontS3SignedUrlGenerator.getCloudFrontURI(getKeyName(blob.getContentIdentity()));
+        }
+        return null;
+    }
+
+    @Override
+    public PrivateURI getPrivateURI(Blob blob) {
+        // not supported at this time.
+        return null;
     }
 
 

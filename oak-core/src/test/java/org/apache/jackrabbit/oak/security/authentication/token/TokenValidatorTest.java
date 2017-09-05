@@ -52,7 +52,7 @@ public class TokenValidatorTest extends AbstractTokenTest {
         try {
             node.setString(TOKEN_ATTRIBUTE_KEY, "anyValue");
             root.commit(CommitMarker.asCommitAttributes());
-            fail("The reserved token key property must not used with other node types.");
+            fail("The reserved token key property must not used with other node customtypes.");
         } catch (CommitFailedException e) {
             assertEquals(60, e.getCode());
         } finally {

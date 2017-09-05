@@ -26,6 +26,7 @@ import static org.apache.jackrabbit.oak.segment.Segment.MEDIUM_LIMIT;
 import static org.apache.jackrabbit.oak.segment.Segment.SMALL_LIMIT;
 
 import java.io.InputStream;
+import java.net.URI;
 import java.util.List;
 import java.util.Set;
 
@@ -34,14 +35,18 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 import org.apache.jackrabbit.oak.api.Blob;
+import org.apache.jackrabbit.oak.api.conversion.customtypes.PrivateURI;
 import org.apache.jackrabbit.oak.plugins.blob.BlobStoreBlob;
 import org.apache.jackrabbit.oak.plugins.memory.AbstractBlob;
 import org.apache.jackrabbit.oak.spi.blob.BlobStore;
+import org.apache.jackrabbit.oak.spi.blob.BlobWithPrivateURI;
+import org.apache.jackrabbit.oak.spi.blob.BlobWithURI;
+import org.apache.jackrabbit.oak.spi.blob.WithURISupport;
 
 /**
  * A BLOB (stream of bytes). This is a record of type "VALUE".
  */
-public class SegmentBlob extends Record implements Blob {
+public class SegmentBlob extends Record implements Blob, BlobWithURI, BlobWithPrivateURI {
 
     @CheckForNull
     private final BlobStore blobStore;
@@ -258,4 +263,19 @@ public class SegmentBlob extends Record implements Blob {
         return length;
     }
 
+    @Override
+    public URI getURI() {
+        if ( blobStore instanceof WithURISupport ) {
+            return ((WithURISupport) blobStore).getURI(this);
+        }
+        return null;
+    }
+
+    @Override
+    public PrivateURI getPrivateURI() {
+        if ( blobStore instanceof WithURISupport ) {
+            return ((WithURISupport) blobStore).getPrivateURI(this);
+        }
+        return null;
+    }
 }

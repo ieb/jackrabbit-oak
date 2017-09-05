@@ -171,10 +171,10 @@ class EffectiveType {
 
     /**
      * Finds a matching definition for a child node with the given name and
-     * types.
+     * customtypes.
      *
      * @param nameWithIndex child node name, possibly with an SNS index
-     * @param effective effective types of the child node
+     * @param effective effective customtypes of the child node
      * @return {@code true} if there's a matching child node definition,
      *         {@code false} otherwise
      */

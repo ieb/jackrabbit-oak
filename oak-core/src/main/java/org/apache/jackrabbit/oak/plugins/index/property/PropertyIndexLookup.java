@@ -158,7 +158,7 @@ public class PropertyIndexLookup {
      * 
      * @param propertyName the property name
      * @param filter the filter (which contains information of all supertypes,
-     *            unless the filter matches all types)
+     *            unless the filter matches all customtypes)
      * @return the node where the index definition (metadata) is stored (the
      *         parent of ":index"), or null if no index definition or index data
      *         node was found

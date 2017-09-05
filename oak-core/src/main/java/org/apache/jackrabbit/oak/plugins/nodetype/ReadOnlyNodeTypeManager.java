@@ -58,7 +58,7 @@ import org.apache.jackrabbit.oak.namepath.NamePathMapperImpl;
 
 /**
  * Base implementation of a {@link NodeTypeManager} with support for reading
- * node types from the {@link Tree} returned by {@link #getTypes()}. Methods
+ * node customtypes from the {@link Tree} returned by {@link #getTypes()}. Methods
  * related to node type modifications throw
  * {@link UnsupportedRepositoryOperationException}.
  */
@@ -78,7 +78,7 @@ public abstract class ReadOnlyNodeTypeManager implements NodeTypeManager, Effect
     }
 
     /**
-     * @return  {@link org.apache.jackrabbit.oak.api.Tree} instance where the node types
+     * @return  {@link org.apache.jackrabbit.oak.api.Tree} instance where the node customtypes
      * are stored or {@code null} if none.
      */
     @CheckForNull
@@ -113,7 +113,7 @@ public abstract class ReadOnlyNodeTypeManager implements NodeTypeManager, Effect
      * Return a new instance of {@code ReadOnlyNodeTypeManager} that reads node
      * type information from the tree at {@link NodeTypeConstants#NODE_TYPES_PATH}.
      *
-     * @param root The root to read node types from.
+     * @param root The root to read node customtypes from.
      * @param namePathMapper The {@code NamePathMapper} to use.
      * @return a new instance of {@code ReadOnlyNodeTypeManager}.
      */
@@ -319,11 +319,11 @@ public abstract class ReadOnlyNodeTypeManager implements NodeTypeManager, Effect
     }
 
     /**
-     * Returns all the node types of the given node, in a breadth-first
+     * Returns all the node customtypes of the given node, in a breadth-first
      * traversal order of the type hierarchy.
      *
      * @param node node instance
-     * @return all types of the given node
+     * @return all customtypes of the given node
      * @throws RepositoryException if the type information can not be accessed
      */
     @Override

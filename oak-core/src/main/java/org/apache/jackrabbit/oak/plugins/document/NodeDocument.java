@@ -268,7 +268,7 @@ public final class NodeDocument extends Document {
 
     /**
      * A document which is created from splitting a main document can be classified
-     * into multiple types depending on the content i.e. weather it contains
+     * into multiple customtypes depending on the content i.e. weather it contains
      * REVISIONS, COMMIT_ROOT, property history etc
      */
     public enum SplitDocType {
@@ -277,11 +277,11 @@ public final class NodeDocument extends Document {
          */
         NONE(-1),
         /**
-         * A split document which contains all types of data
+         * A split document which contains all customtypes of data
          */
         DEFAULT(10),
         /**
-         * A split document which contains all types of data. In addition
+         * A split document which contains all customtypes of data. In addition
          * when the split document was created the main document did not had
          * any child.
          * This type is deprecated because these kind of documents cannot be
@@ -304,7 +304,7 @@ public final class NodeDocument extends Document {
          */
         INTERMEDIATE(40),
         /**
-         * A split document which contains all types of data. In addition
+         * A split document which contains all customtypes of data. In addition
          * when the split document was created the main document did not had
          * any child.
          */
@@ -314,7 +314,7 @@ public final class NodeDocument extends Document {
          */
         COMMIT_ROOT_ONLY(60),
         /**
-         * A split document which contains all types of data, but no branch
+         * A split document which contains all customtypes of data, but no branch
          * commits.
          */
         DEFAULT_NO_BRANCH(70),

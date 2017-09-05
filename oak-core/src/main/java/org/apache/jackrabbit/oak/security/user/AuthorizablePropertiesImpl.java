@@ -191,7 +191,7 @@ class AuthorizablePropertiesImpl implements AuthorizableProperties {
      *                         of the node of this authorizable; otherwise it is expected that this
      *                         test has been executed by the caller.
      * @return {@code true} if the given property is not protected and is defined
-     *         by the rep:authorizable node type or one of it's sub-node types;
+     *         by the rep:authorizable node type or one of it's sub-node customtypes;
      *         {@code false} otherwise.
      * @throws RepositoryException If an error occurs.
      */
@@ -212,7 +212,7 @@ class AuthorizablePropertiesImpl implements AuthorizableProperties {
      *                         test has been executed by the caller.
      * @return a valid authorizable property or {@code null} if no such property
      *         exists or fi the property is protected or not defined by the rep:authorizable
-     *         node type or one of it's sub-node types.
+     *         node type or one of it's sub-node customtypes.
      * @throws RepositoryException If an error occurs.
      */
     @CheckForNull

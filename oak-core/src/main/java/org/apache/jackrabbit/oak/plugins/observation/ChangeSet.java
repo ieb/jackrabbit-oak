@@ -35,7 +35,7 @@ import org.apache.jackrabbit.oak.commons.json.JsopWriter;
  * A ChangeSet is a collection of items that have been changed as part of a
  * commit. A ChangeSet is immutable and built by a ChangeSetBuilder.
  * <p>
- * Those items are parent paths, parent node names, parent node types and
+ * Those items are parent paths, parent node names, parent node customtypes and
  * (child) properties. 'Changed' refers to any of add, remove, change (where
  * applicable).
  * <p>
@@ -57,7 +57,7 @@ import org.apache.jackrabbit.oak.commons.json.JsopWriter;
  * actual path depths with it in order to find out if any child paths have been
  * cut off.
  * <p>
- * Naming: note that path, node name and node types all refer to the *parent* of
+ * Naming: note that path, node name and node customtypes all refer to the *parent* of
  * a change. While properties naturally are leafs.
  */
 public final class ChangeSet {

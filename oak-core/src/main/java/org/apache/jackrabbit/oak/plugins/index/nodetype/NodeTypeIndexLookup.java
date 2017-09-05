@@ -82,7 +82,7 @@ class NodeTypeIndexLookup implements JcrConstants {
     }
 
     /**
-     * Returns the paths that match the given node types.
+     * Returns the paths that match the given node customtypes.
      *
      * @param filter the filter (used for logging)
      * @return the matched paths (the result might contain duplicate entries)

@@ -20,17 +20,22 @@ package org.apache.jackrabbit.oak.plugins.blob;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
 
 import javax.annotation.CheckForNull;
 import javax.annotation.Nonnull;
 
+import org.apache.jackrabbit.oak.api.conversion.customtypes.PrivateURI;
 import org.apache.jackrabbit.oak.spi.blob.BlobStore;
 import org.apache.jackrabbit.oak.api.Blob;
+import org.apache.jackrabbit.oak.spi.blob.BlobWithPrivateURI;
+import org.apache.jackrabbit.oak.spi.blob.BlobWithURI;
+import org.apache.jackrabbit.oak.spi.blob.WithURISupport;
 
 /**
  * A blob implementation.
  */
-public class BlobStoreBlob implements Blob {
+public class BlobStoreBlob implements Blob, BlobWithPrivateURI, BlobWithURI {
     
     private final BlobStore blobStore;
     private final String blobId;
@@ -104,4 +109,19 @@ public class BlobStoreBlob implements Blob {
         return false;
     }
 
+    @Override
+    public URI getURI() {
+        if ( blobStore instanceof WithURISupport ) {
+            return ((WithURISupport) blobStore).getURI(this);
+        }
+        return null;
+    }
+
+    @Override
+    public PrivateURI getPrivateURI() {
+        if ( blobStore instanceof WithURISupport ) {
+            return ((WithURISupport) blobStore).getPrivateURI(this);
+        }
+        return null;
+    }
 }

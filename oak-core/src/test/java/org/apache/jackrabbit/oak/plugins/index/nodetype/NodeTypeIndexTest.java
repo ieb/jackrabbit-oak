@@ -62,7 +62,7 @@ public class NodeTypeIndexTest {
 
     @Before
     public void setup() {
-        // initialize node types & index definitions
+        // initialize node customtypes & index definitions
         OakInitializer.initialize(store, new InitialContent(),
                 CompositeIndexEditorProvider
                         .compose(new ArrayList<IndexEditorProvider>()));

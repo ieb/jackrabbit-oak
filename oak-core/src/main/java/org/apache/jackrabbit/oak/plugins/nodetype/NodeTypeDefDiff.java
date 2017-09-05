@@ -41,7 +41,7 @@ import org.apache.jackrabbit.JcrConstants;
  * A <code>NodeTypeDefDiff</code> represents the result of the comparison of
  * two node type definitions.
  * <p>
- * The result of the comparison can be categorized as one of the following types:
+ * The result of the comparison can be categorized as one of the following customtypes:
  * <p>
  * <b><code>NONE</code></b> indicates that there is no modification at all.
  * <p>

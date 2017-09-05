@@ -71,7 +71,7 @@ import org.slf4j.LoggerFactory;
  * </ul>
  *
  * This implementation of the {@code LoginModule} currently supports the following
- * types of JCR Credentials:
+ * customtypes of JCR Credentials:
  *
  * <ul>
  *     <li>{@link SimpleCredentials}</li>

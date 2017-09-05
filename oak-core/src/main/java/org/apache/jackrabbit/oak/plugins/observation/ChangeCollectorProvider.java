@@ -226,7 +226,7 @@ public class ChangeCollectorProvider extends ValidatorProvider {
                 // to compensate, add the current path at this level
                 support.changeSetBuilder.addParentPath(path);
 
-                // however, continue normally to handle names/types/properties
+                // however, continue normally to handle names/customtypes/properties
                 // below
             }
             

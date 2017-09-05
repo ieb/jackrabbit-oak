@@ -232,7 +232,7 @@ public final class FilterBuilder {
     }
 
     /**
-     * A condition that holds for matching event types.
+     * A condition that holds for matching event customtypes.
      * @param eventTypes
      * @return event type condition
      * @see EventTypeFilter
@@ -249,7 +249,7 @@ public final class FilterBuilder {
     }
 
     /**
-     * A condition that holds for matching node types.
+     * A condition that holds for matching node customtypes.
      * @param selector  selector selecting the node to check the condition on
      * @param ntNames node type names to match. This conditions never matches if {@code null} and
      *                always matches if empty.

@@ -62,7 +62,7 @@ public interface RevisionContext {
 
     /**
      * Retrieves the commit value for a given change. This method returns the
-     * following types of commit values:
+     * following customtypes of commit values:
      * <ul>
      *     <li>"c" : the change revision is committed as is.</li>
      *     <li>"c-rX-Y-Z" : the change revision is a branch commit merged in

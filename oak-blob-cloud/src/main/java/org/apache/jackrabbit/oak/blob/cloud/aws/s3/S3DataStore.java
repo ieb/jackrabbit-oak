@@ -16,6 +16,7 @@
  */
 package org.apache.jackrabbit.oak.blob.cloud.aws.s3;
 
+import java.net.URI;
 import java.util.Properties;
 
 import com.google.common.base.Strings;
@@ -23,6 +24,9 @@ import org.apache.jackrabbit.core.data.Backend;
 import org.apache.jackrabbit.core.data.CachingDataStore;
 import org.apache.jackrabbit.core.data.DataIdentifier;
 import org.apache.jackrabbit.core.data.DataStoreException;
+import org.apache.jackrabbit.oak.api.Blob;
+import org.apache.jackrabbit.oak.api.conversion.customtypes.PrivateURI;
+import org.apache.jackrabbit.oak.spi.blob.WithURISupport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,7 +34,7 @@ import org.slf4j.LoggerFactory;
 /**
  * An Amazon S3 data store.
  */
-public class S3DataStore extends CachingDataStore {
+public class S3DataStore extends CachingDataStore implements WithURISupport {
 
     /**
      * Logger instance.
@@ -78,5 +82,21 @@ public class S3DataStore extends CachingDataStore {
                 identifier), e);
         }
         return false;
+    }
+
+    @Override
+    public URI getURI(Blob blob) {
+        if ( backend instanceof WithURISupport) {
+            return  ((WithURISupport) backend).getURI(blob);
+        }
+        return null;
+    }
+
+    @Override
+    public PrivateURI getPrivateURI(Blob blob) {
+        if ( backend instanceof WithURISupport) {
+            return  ((WithURISupport) backend).getPrivateURI(blob);
+        }
+        return null;
     }
 }

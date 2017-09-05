@@ -76,7 +76,7 @@ public interface IndexConstants {
 
     /**
      * Defines the property name of the "declaringNodeTypes" property with
-     * allows to restrict a given index definition to specific node types.
+     * allows to restrict a given index definition to specific node customtypes.
      */
     String DECLARING_NODE_TYPES = "declaringNodeTypes";
 

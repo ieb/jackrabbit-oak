@@ -51,7 +51,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import static org.apache.jackrabbit.oak.commons.PathUtils.isAbsolute;
 
 /**
- * This utility class provides factory methods to create commonly used types of
+ * This utility class provides factory methods to create commonly used customtypes of
  * {@link Cursor}s.
  */
 public class Cursors {

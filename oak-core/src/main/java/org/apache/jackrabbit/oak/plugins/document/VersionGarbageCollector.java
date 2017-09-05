@@ -84,7 +84,7 @@ public class VersionGarbageCollector {
     private static final Logger log = LoggerFactory.getLogger(VersionGarbageCollector.class);
 
     /**
-     * Split document types which can be safely garbage collected
+     * Split document customtypes which can be safely garbage collected
      */
     private static final Set<NodeDocument.SplitDocType> GC_TYPES = EnumSet.of(
             DEFAULT_LEAF, COMMIT_ROOT_ONLY, DEFAULT_NO_BRANCH);

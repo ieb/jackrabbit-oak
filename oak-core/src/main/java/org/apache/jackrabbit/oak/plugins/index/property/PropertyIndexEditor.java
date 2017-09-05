@@ -134,7 +134,7 @@ class PropertyIndexEditor implements IndexEditor {
         }
         this.valuePattern = new ValuePattern(definition);
 
-        // get declaring types, and all their subtypes
+        // get declaring customtypes, and all their subtypes
         // TODO: should we reindex when type definitions change?
         if (definition.hasProperty(DECLARING_NODE_TYPES)) {
             this.typePredicate = new TypePredicate(

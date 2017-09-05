@@ -19,7 +19,7 @@ package org.apache.jackrabbit.oak.plugins.document;
 import javax.annotation.Nonnull;
 
 /**
- * The collection types.
+ * The collection customtypes.
  *
  * @param <T> the document type
  */

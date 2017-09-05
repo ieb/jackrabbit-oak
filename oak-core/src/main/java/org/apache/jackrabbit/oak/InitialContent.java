@@ -61,7 +61,7 @@ import org.apache.jackrabbit.oak.spi.state.NodeStore;
  * - jcr:system node and it subtree
  *      - version storage
  *      - activities
- *      - built-in node types
+ *      - built-in node customtypes
  *      - built-in namespaces
  * - some basic index definitions required for a functional JCR repository
  * </pre>
@@ -180,7 +180,7 @@ public class InitialContent implements RepositoryInitializer, NodeTypeConstants 
     }
 
     /**
-     * Registers built in node types using the given {@link Root}.
+     * Registers built in node customtypes using the given {@link Root}.
      *
      * @param root the {@link Root} instance.
      */
@@ -188,12 +188,12 @@ public class InitialContent implements RepositoryInitializer, NodeTypeConstants 
         try {
             InputStream stream = InitialContent.class.getResourceAsStream("builtin_nodetypes.cnd");
             try {
-                NodeTypeRegistry.register(root, stream, "built-in node types");
+                NodeTypeRegistry.register(root, stream, "built-in node customtypes");
             } finally {
                 stream.close();
             }
         } catch (IOException e) {
-            throw new IllegalStateException("Unable to read built-in node types", e);
+            throw new IllegalStateException("Unable to read built-in node customtypes", e);
         }
     }
 }

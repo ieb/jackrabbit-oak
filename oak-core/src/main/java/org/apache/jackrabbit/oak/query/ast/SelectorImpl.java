@@ -108,7 +108,7 @@ public class SelectorImpl extends SourceImpl {
     private final Set<String> primaryTypes;
 
     /**
-     * All of the matching mixin types, or empty if the {@link #matchesAllTypes}
+     * All of the matching mixin customtypes, or empty if the {@link #matchesAllTypes}
      * flag is set
      */
     private final Set<String> mixinTypes;
@@ -215,7 +215,7 @@ public class SelectorImpl extends SourceImpl {
     }
 
     /**
-     * @return all of the matching mixin types, or empty if the
+     * @return all of the matching mixin customtypes, or empty if the
      *         {@link #matchesAllTypes} flag is set
      */
     @Nonnull
@@ -609,7 +609,7 @@ public class SelectorImpl extends SourceImpl {
             for (int i = 1; i < list.size(); i++) {
                 Type<?> t2 = list.get(i).getType();
                 if (t2 != type) {
-                    // types don't match
+                    // customtypes don't match
                     type = Type.STRING;
                     break;
                 }

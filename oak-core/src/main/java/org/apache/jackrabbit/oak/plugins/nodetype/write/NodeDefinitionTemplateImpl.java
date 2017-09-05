@@ -58,7 +58,7 @@ class NodeDefinitionTemplateImpl extends ItemDefinitionTemplate
 
     /**
      * Writes the contents of this node definition to the given tree node.
-     * Used when registering new node types.
+     * Used when registering new node customtypes.
      *
      * @param tree an {@code nt:childNodeDefinition} node
      * @throws RepositoryException if this definition could not be written

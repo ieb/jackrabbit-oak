@@ -18,7 +18,7 @@ package org.apache.jackrabbit.oak.plugins.document.rdb;
 
 /**
  * Convenience class that dumps the table creation statements for various
- * database types.
+ * database customtypes.
  */
 public class RDBHelper {
 

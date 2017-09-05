@@ -86,7 +86,7 @@ public class TypeComparisonTest {
         }
 
         if (b.tag() == a.tag() && a.isArray() && !b.isArray()) {
-            fail("If their tag is the same, types should be ordered by multiplicity");
+            fail("If their tag is the same, customtypes should be ordered by multiplicity");
         }
     }
 

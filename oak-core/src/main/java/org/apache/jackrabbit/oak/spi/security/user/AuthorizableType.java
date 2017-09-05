@@ -26,7 +26,7 @@ import org.apache.jackrabbit.api.security.user.User;
 import org.apache.jackrabbit.api.security.user.UserManager;
 
 /**
- * The different authorizable types.
+ * The different authorizable customtypes.
  */
 public enum AuthorizableType {
 

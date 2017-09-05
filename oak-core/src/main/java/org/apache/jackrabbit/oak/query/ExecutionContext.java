@@ -60,7 +60,7 @@ public class ExecutionContext {
     }
 
     /**
-     * Used to evaluate the query (ie. read the existing node types, index
+     * Used to evaluate the query (ie. read the existing node customtypes, index
      * definitions), doesn't need to be a secured version of a node state
      * 
      * @return base state of the content tree against which the query runs.

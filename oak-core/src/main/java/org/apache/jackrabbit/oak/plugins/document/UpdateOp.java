@@ -224,7 +224,7 @@ public final class UpdateOp {
      * existing value. The property is also set to the given value if the
      * property does not yet exist.
      * <p>
-     * The result of a max operation with different types of values is
+     * The result of a max operation with different customtypes of values is
      * undefined.
      *
      * @param property the name of the property to set.

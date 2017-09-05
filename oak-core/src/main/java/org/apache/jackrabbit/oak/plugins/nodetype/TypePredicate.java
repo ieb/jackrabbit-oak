@@ -90,11 +90,11 @@ public class TypePredicate implements Predicate<NodeState> {
 
     /**
      * Creates a predicate for checking whether a node state is an instance of
-     * any of the named node types. This is an O(n) operation in terms of item
-     * accesses, with n being the number of given node types.
+     * any of the named node customtypes. This is an O(n) operation in terms of item
+     * accesses, with n being the number of given node customtypes.
      *
      * @param root root node state
-     * @param names Oak names of the node types to check for
+     * @param names Oak names of the node customtypes to check for
      */
     public TypePredicate(@Nonnull NodeState root, @Nonnull Iterable<String> names) {
         this.root = root;
@@ -103,11 +103,11 @@ public class TypePredicate implements Predicate<NodeState> {
 
     /**
      * Creates a predicate for checking whether a node state is an instance of
-     * any of the named node types. This is an O(n) operation in terms of item
-     * accesses, with n being the number of given node types.
+     * any of the named node customtypes. This is an O(n) operation in terms of item
+     * accesses, with n being the number of given node customtypes.
      *
      * @param root root node state
-     * @param names Oak names of the node types to check for
+     * @param names Oak names of the node customtypes to check for
      */
     public TypePredicate(@Nonnull NodeState root, @Nonnull String[] names) {
         this(root, Arrays.asList(names));
@@ -132,7 +132,7 @@ public class TypePredicate implements Predicate<NodeState> {
         if (type.getBoolean(JCR_ISMIXIN)) {
             mixinTypes = add(mixinTypes, name);
 
-            // Only mixin types can have mixin descendants, so we
+            // Only mixin customtypes can have mixin descendants, so we
             // only fill the mixinTypes set in this branch of code.
             for (String mixin : type.getNames(REP_MIXIN_SUBTYPES)) {
                 mixinTypes = add(mixinTypes, mixin);

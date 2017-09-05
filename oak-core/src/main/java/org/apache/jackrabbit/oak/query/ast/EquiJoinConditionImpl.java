@@ -76,9 +76,9 @@ public class EquiJoinConditionImpl extends JoinConditionImpl {
         }
         // the value of property property1Name is equal to the value of property property2Name, 
         // as defined in §3.6.5 Comparison of Values.
-        // -> that can be interpreted as follows: if the property types
+        // -> that can be interpreted as follows: if the property customtypes
         // don't match, then they don't match, however for compatibility
-        // with Jackrabbit 2.x, we try to convert the values so the property types match
+        // with Jackrabbit 2.x, we try to convert the values so the property customtypes match
         // (for example, convert reference to string)
         // See OAK-3416
         if (!p1.isArray() && !p2.isArray()) {

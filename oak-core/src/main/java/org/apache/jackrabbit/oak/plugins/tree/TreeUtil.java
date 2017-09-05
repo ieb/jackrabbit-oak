@@ -211,7 +211,7 @@ public final class TreeUtil {
             throw new NoSuchNodeTypeException(
                     "Node type " + typeName + " does not exist");
         } else if (getBoolean(type, JCR_IS_ABSTRACT)
-                // OAK-1013: backwards compatibility for abstract default types
+                // OAK-1013: backwards compatibility for abstract default customtypes
                 && !typeName.equals(getDefaultChildType(typeRoot, parent, name))) {
             throw new ConstraintViolationException(
                     "Node type " + typeName + " is abstract");
@@ -428,7 +428,7 @@ public final class TreeUtil {
     }
 
     /**
-     * Returns the effective node types of the given node.
+     * Returns the effective node customtypes of the given node.
      */
     public static List<Tree> getEffectiveType(Tree tree, Tree typeRoot) {
         List<Tree> types = newArrayList();

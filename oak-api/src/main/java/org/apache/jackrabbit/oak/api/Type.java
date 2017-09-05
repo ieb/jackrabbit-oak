@@ -26,7 +26,7 @@ import javax.annotation.Nonnull;
 import javax.jcr.PropertyType;
 
 /**
- * Instances of this class map Java types to {@link PropertyType property types}.
+ * Instances of this class map Java customtypes to {@link PropertyType property customtypes}.
  * Passing an instance of this class to {@link PropertyState#getValue(Type)} determines
  * the return type of that method.
  * @param <T>
@@ -214,7 +214,7 @@ public final class Type<T> implements Comparable<Type<?>> {
     }
 
     /**
-     * Determine the base type of array types
+     * Determine the base type of array customtypes
      * @return  base type
      * @throws IllegalStateException if {@code isArray} is false.
      */

@@ -25,7 +25,7 @@ import org.apache.jackrabbit.oak.api.PropertyState;
 import org.apache.jackrabbit.oak.spi.state.NodeState;
 
 /**
- * {@code EventTypeFilter} filters based on event types as defined
+ * {@code EventTypeFilter} filters based on event customtypes as defined
  * by {@link javax.jcr.observation.ObservationManager#addEventListener(
         javax.jcr.observation.EventListener, int, String, boolean, String[], String[], boolean)
         ObservationManager.addEventListener()}.
@@ -38,7 +38,7 @@ public class EventTypeFilter implements EventFilter {
      * the {@code eventTypes} bit mask. That is, a given event is included if
      * the corresponding bit in {@code eventType} is set.
      *
-     * @param eventTypes  bit mask encoding the types of events to include
+     * @param eventTypes  bit mask encoding the customtypes of events to include
      *
      * @see Event
      */

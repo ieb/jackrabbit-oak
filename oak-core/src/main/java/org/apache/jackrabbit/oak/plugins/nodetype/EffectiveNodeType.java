@@ -108,10 +108,10 @@ public class EffectiveNodeType {
 
     /**
      * Determines whether this effective node type representation includes
-     * (either through inheritance or aggregation) all of the given node types.
+     * (either through inheritance or aggregation) all of the given node customtypes.
      *
      * @param nodeTypeNames array of node type names
-     * @return {@code true} if all of the given node types are included,
+     * @return {@code true} if all of the given node customtypes are included,
      *         otherwise {@code false}
      */
     public boolean includesNodeTypes(String[] nodeTypeNames) {

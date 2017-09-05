@@ -68,19 +68,19 @@ public class SQL2Parser {
     
     private static final Logger LOG = LoggerFactory.getLogger(SQL2Parser.class);
 
-    // Character types, used during the tokenizer phase
+    // Character customtypes, used during the tokenizer phase
     private static final int CHAR_END = -1, CHAR_IGNORE = 0;
     private static final int CHAR_VALUE = 2, CHAR_QUOTED = 3;
     private static final int CHAR_NAME = 4, CHAR_SPECIAL_1 = 5, CHAR_SPECIAL_2 = 6;
     private static final int CHAR_STRING = 7, CHAR_DECIMAL = 8, CHAR_BRACKETED = 9;
 
-    // Token types
+    // Token customtypes
     private static final int KEYWORD = 1, IDENTIFIER = 2, PARAMETER = 3, END = 4, VALUE = 5;
     private static final int MINUS = 12, PLUS = 13, OPEN = 14, CLOSE = 15;
 
     private final NodeTypeInfoProvider nodeTypes;
 
-    // The query as an array of characters and character types
+    // The query as an array of characters and character customtypes
     private String statement;
     private char[] statementChars;
     private int[] characterTypes;

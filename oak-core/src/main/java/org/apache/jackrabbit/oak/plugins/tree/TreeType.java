@@ -17,11 +17,11 @@
 package org.apache.jackrabbit.oak.plugins.tree;
 
 /**
- * Allows to distinguish different types of trees based on their name, ancestry
- * or primary type. Currently the following types are supported:
+ * Allows to distinguish different customtypes of trees based on their name, ancestry
+ * or primary type. Currently the following customtypes are supported:
  *
  * <ul>
- *     <li>{@link #DEFAULT}: the default type for trees that don't match any of the following types.</li>
+ *     <li>{@link #DEFAULT}: the default type for trees that don't match any of the following customtypes.</li>
  *     <li>{@link #ACCESS_CONTROL}: A tree that stores access control content
  *     and requires special access {@link org.apache.jackrabbit.oak.spi.security.authorization.permission.Permissions#READ_ACCESS_CONTROL permissions}.</li>
  *     <li>{@link #HIDDEN}: a hidden tree whose name starts with ":".
@@ -35,7 +35,7 @@ package org.apache.jackrabbit.oak.plugins.tree;
 public enum TreeType {
 
     /**
-     * Regular trees that don't match any of the other types
+     * Regular trees that don't match any of the other customtypes
      */
     DEFAULT,
 

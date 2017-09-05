@@ -142,7 +142,7 @@ public class PropertyIndexPlan {
                         // OAK-3589
                         // index has a nodetype condition, and the property condition is
                         // relative: can not use this index, as we don't know the nodetype
-                        // of the child node (well, we could, for some node types)
+                        // of the child node (well, we could, for some node customtypes)
                         continue;
                     }
                     Set<String> values = getValues(restriction, new ValuePattern());

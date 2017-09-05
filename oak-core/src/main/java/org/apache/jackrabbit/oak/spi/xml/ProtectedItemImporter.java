@@ -44,7 +44,7 @@ public interface ProtectedItemImporter {
      * @param isWorkspaceImport A flag indicating whether the import has been
      * started from the {@link javax.jcr.Workspace} or from the
      * {@link javax.jcr.Session}. Implementations are free to implement both
-     * types of imports or only a single one. For example it doesn't make sense
+     * customtypes of imports or only a single one. For example it doesn't make sense
      * to allow for importing versions along with a Session import as
      * version operations are required to never leave transient changes behind.
      * @param uuidBehavior The uuid behavior specified with the import call.

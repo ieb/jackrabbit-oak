@@ -22,7 +22,7 @@ import com.google.common.collect.ImmutableSet;
 
 /**
  * Constants for the default access control management implementation and
- * and for built-in access control related node types.
+ * and for built-in access control related node customtypes.
  */
 public interface AccessControlConstants {
 

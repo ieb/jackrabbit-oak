@@ -315,7 +315,7 @@ public interface Tree {
      *              is not empty and does not contain a forward slash.
      * @param value The value of this property
      * @param <T>   The type of this property. Must be one of {@code String, Blob, byte[], Long, Integer, Double, Boolean, BigDecimal}
-     * @throws IllegalArgumentException if {@code T} is not one of the above types or
+     * @throws IllegalArgumentException if {@code T} is not one of the above customtypes or
      *         if {@code name} is not valid.
      */
     <T> void setProperty(@Nonnull String name, @Nonnull T value)

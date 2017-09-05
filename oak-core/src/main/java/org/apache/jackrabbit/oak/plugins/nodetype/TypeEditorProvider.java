@@ -93,7 +93,7 @@ public class TypeEditorProvider implements EditorProvider {
                 }
                 else {
                     long start = System.currentTimeMillis();
-                    // Some node types were modified, so scan the repository
+                    // Some node customtypes were modified, so scan the repository
                     // to make sure that the modified definitions still apply.
                     Editor editor = new VisibleEditor(new TypeEditor(
                             strict, modifiedTypes, afterTypes,

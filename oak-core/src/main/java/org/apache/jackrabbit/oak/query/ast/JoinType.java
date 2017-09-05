@@ -17,7 +17,7 @@
 package org.apache.jackrabbit.oak.query.ast;
 
 /**
- * The enumeration of all join types.
+ * The enumeration of all join customtypes.
  */
 public enum JoinType {
 
