@@ -15,15 +15,12 @@
  * limitations under the License.
  */
 
-package org.apache.jackrabbit.oak.coversion;
+package org.apache.jackrabbit.oak.conversion;
 
 import org.apache.felix.scr.annotations.Component;
-import org.apache.felix.scr.annotations.Reference;
 import org.apache.felix.scr.annotations.Service;
 import org.apache.jackrabbit.oak.api.conversion.OakConversionService;
 import org.apache.jackrabbit.oak.spi.adapter.AdapterManager;
-
-import javax.annotation.Nonnull;
 
 /**
  * Exposed OSGi service implementing the OakConversionService.
@@ -34,24 +31,14 @@ import javax.annotation.Nonnull;
 public class OakConversionServiceImpl implements OakConversionService {
 
 
-    @Reference
-    private AdapterManager adapterManager;
 
 
     public OakConversionServiceImpl() {
 
     }
 
-    /**
-     * Non OSGi IoC constructor, requires and AdapterManager implementation.
-     * @param adapterManager
-     */
-    public OakConversionServiceImpl(@Nonnull AdapterManager adapterManager) {
-        this.adapterManager = adapterManager;
-    }
-
     @Override
     public <T> T convertTo(Object source, Class<T> targetClass) {
-        return adapterManager.adaptTo(source, targetClass);
+        return AdapterManager.getInstance().adaptTo(source, targetClass);
     }
 }

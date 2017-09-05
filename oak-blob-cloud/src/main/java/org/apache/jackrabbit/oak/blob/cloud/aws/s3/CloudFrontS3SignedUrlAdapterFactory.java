@@ -62,7 +62,6 @@ import java.util.Map;
  * details on how to configure CloudFront.
  */
 @Component(immediate = true, metatype = true)
-@Service(AdapterFactory.class)
 public class CloudFrontS3SignedUrlAdapterFactory implements AdapterFactory {
     private static final String[] TARGET_CLASSES = new String[]{URI.class.getName()};
 
@@ -78,7 +77,6 @@ public class CloudFrontS3SignedUrlAdapterFactory implements AdapterFactory {
     public static final String END_PRIVATE_KEY = "-----END PRIVATE KEY-----";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CloudFrontS3SignedUrlAdapterFactory.class);
-    private AdapterManager adapterManager;
     private String cloudFrontUrl;
     private long ttl;
     private String keyPairId;
@@ -92,7 +90,6 @@ public class CloudFrontS3SignedUrlAdapterFactory implements AdapterFactory {
 
     /**
      * Non OSGi IoC constructor, close must be called when done.
-     * @param adapterManager
      * @param cloudFrontUrl
      * @param ttl
      * @param privateKeyPEM
@@ -100,26 +97,18 @@ public class CloudFrontS3SignedUrlAdapterFactory implements AdapterFactory {
      * @throws InvalidKeySpecException
      * @throws NoSuchAlgorithmException
      */
-    public CloudFrontS3SignedUrlAdapterFactory(AdapterManager adapterManager,
-                                               String cloudFrontUrl,
+    public CloudFrontS3SignedUrlAdapterFactory(String cloudFrontUrl,
                                                long ttl,
                                                String privateKeyPEM,
                                                String privateKeyId) throws InvalidKeySpecException, NoSuchAlgorithmException {
-        this.adapterManager = adapterManager;
-        this.adapterManager.removeAdapterFactory(this);
         init(cloudFrontUrl, ttl, privateKeyPEM, privateKeyId);
     }
 
+    @Deactivate
     public void close() {
-        deactivate(new HashMap<String, Object>());
-        if ( adapterManager != null) {
-            adapterManager.addAdapterFactory(this);
-        }
+        AdapterManager.getInstance().removeAdapterFactory(this);
     }
 
-    @Deactivate
-    public void deactivate(Map<String, Object> properties) {
-    }
 
 
     @Activate
@@ -135,6 +124,8 @@ public class CloudFrontS3SignedUrlAdapterFactory implements AdapterFactory {
         this.ttl = ttl;
         this.privateKey = getPrivateKey(privateKeyPEM);
         this.keyPairId = privateKeyId;
+        AdapterManager.getInstance().addAdapterFactory(this);
+
     }
 
 

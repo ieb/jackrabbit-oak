@@ -14,36 +14,90 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.jackrabbit.oak.spi.adapter;
 
+
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * An adapter manager allows objects to be converted to target class instances using registered AdapterFactory implementations.
+ * The AdapterManager maintains a map of lists of AdapterFactories keyed by target class.
+ * This is exposed as a Singleton instance and must only be used by Oak internally.
  */
-public interface AdapterManager {
+public class AdapterManager  {
 
-    /**
-     * Adapt from the cupplied object to an instance of the target class. If the adaption is not possible, return null.
-     * @param o the source object.
-     * @param targetClass the target class.
-     * @param <T> the type of the target class.
-     * @return an instance of the target class or null of the adaption cant be perfomed.
-     */
-    @Nullable
-    <T> T adaptTo(@Nonnull Object o, @Nonnull Class<T> targetClass);
 
-    /**
-     * Only to be active in a non OSGi environment, otherwise throw an exception.
-     * @param adapterFactory the adapterFactory to add.
-     */
-    void addAdapterFactory(AdapterFactory adapterFactory);
+    private static AdapterManager adapterManagerSingleton = new AdapterManager();
 
-    /**
-     * Only to be active in a non OSGi environment, otherwise throw an exception.
-     * @param adapterFactory the adapterFactory to remove.
-     */
-    void removeAdapterFactory(AdapterFactory adapterFactory);
+    public static AdapterManager getInstance() {
+        return adapterManagerSingleton;
+    }
+
+    private AdapterManager() {
+    }
+
+
+
+
+
+    private Map<String, List<AdapterFactory>> adapterFactories = new ConcurrentHashMap<String, List<AdapterFactory>>();
+
+    public <T> T adaptTo(@Nonnull  Object o, @Nonnull Class<T> targetClass) {
+        List<AdapterFactory> possibleAdapters = adapterFactories.get(targetClass.getName());
+        if ( possibleAdapters != null) {
+            for (AdapterFactory af : possibleAdapters) {
+                T target = af.adaptTo(o, targetClass);
+                if (target != null) {
+                    return target;
+                }
+            }
+        }
+        return null;
+    }
+
+
+
+    public synchronized void addAdapterFactory(AdapterFactory adapterFactory) {
+        for( String className: adapterFactory.getTargetClasses()) {
+            // create a new copy every time so that the read only usages don't have
+            // to be synchronised.
+            List<AdapterFactory> updatedAdapters = copyOrCreateAdapterFactoryList(className);
+            updatedAdapters.add(adapterFactory);
+            Collections.sort(updatedAdapters, new Comparator<AdapterFactory>() {
+                @Override
+                public int compare(AdapterFactory o1, AdapterFactory o2) {
+                    return o1.getPriority() - o2.getPriority();
+                }
+            });
+            adapterFactories.put(className, updatedAdapters);
+        }
+    }
+
+
+    public synchronized void removeAdapterFactory(AdapterFactory adapterFactory) {
+        for( String className: adapterFactory.getTargetClasses()) {
+            // create a new copy every time so that the read only usages don't have
+            // to be synchronised.
+            List<AdapterFactory> updatedAdapters = copyOrCreateAdapterFactoryList(className);
+            if (updatedAdapters != null) {
+                updatedAdapters.remove(adapterFactory);
+            }
+            adapterFactories.put(className, updatedAdapters);
+        }
+    }
+
+    private List<AdapterFactory> copyOrCreateAdapterFactoryList(String className) {
+        List<AdapterFactory> copy = new ArrayList<AdapterFactory>();
+        List<AdapterFactory> source = adapterFactories.get(className);
+        if ( source != null) {
+            copy.addAll(source);
+        }
+        return copy;
+    }
+
 }

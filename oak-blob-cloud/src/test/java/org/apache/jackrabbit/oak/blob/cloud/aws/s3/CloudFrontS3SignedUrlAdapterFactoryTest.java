@@ -123,8 +123,6 @@ public class CloudFrontS3SignedUrlAdapterFactoryTest {
         "-----END PRIVATE KEY-----";
     private static final Logger LOGGER = LoggerFactory.getLogger(CloudFrontS3SignedUrlAdapterFactoryTest.class);
     @Mock
-    private AdapterManager adapterManager;
-    @Mock
     private OakValue value;
     @Mock
     private Blob blob;
@@ -136,7 +134,7 @@ public class CloudFrontS3SignedUrlAdapterFactoryTest {
     @Test
     public void testSignedURL() throws InvalidKeySpecException, NoSuchAlgorithmException, RepositoryException {
         long t2 = System.currentTimeMillis();
-        CloudFrontS3SignedUrlAdapterFactory adapterFactory1024 = new CloudFrontS3SignedUrlAdapterFactory(adapterManager,
+        CloudFrontS3SignedUrlAdapterFactory adapterFactory1024 = new CloudFrontS3SignedUrlAdapterFactory(
                 "http://applicationA1.cloudfront.net/",
                 60,
                 PRIVATE_KEY_1024,
@@ -144,7 +142,7 @@ public class CloudFrontS3SignedUrlAdapterFactoryTest {
         LOGGER.info("Loaded 1024 private key in {} ms "+(System.currentTimeMillis()-t2));
 
         long t = System.currentTimeMillis();
-        CloudFrontS3SignedUrlAdapterFactory adapterFactory4096 = new CloudFrontS3SignedUrlAdapterFactory(adapterManager,
+        CloudFrontS3SignedUrlAdapterFactory adapterFactory4096 = new CloudFrontS3SignedUrlAdapterFactory(
                 "http://applicationA1.cloudfront.net/",
                 60,
                 PRIVATE_KEY_4096,
